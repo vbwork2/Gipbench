@@ -273,6 +273,53 @@ def main():
     assert load_vi_words([T / "vi_loan.txt"], same_surface=True) == {"axit", "canxi", "vitamin"}  # lipid không có trong Viet74K
     assert any(l.startswith("#-iot\t") and "IoT trong tech" in l for l in lo_lines)
     assert any(l.startswith("#-mega\t") and "google-10000" in l for l in lo_lines)  # trùng từ Anh phổ biến -> loại
+    # --- Phase 0b T4: VSS -> vss_cs_candidates (chỉ phần train, chặn rò rỉ với bench B1–B3 và reserved_b3)
+    vss2 = dl / "vss2"
+    (vss2 / "audio").mkdir(parents=True, exist_ok=True)
+    tr = [("t0", "HÔM NAY TRỜI ĐẸP QUÁ", "ep1.mp4"),                       # không có từ Anh -> train_vss
+          ("t1", "MÌNH MỞ FACEBOOK LÊN XEM NHÉ", "ep1.mp4"),               # -> vss_cs
+          ("t2", "ANH REVIEW GIÚP EM CÁI PULL REQUEST NHÉ", "ep2.mp4"),    # trùng text câu bench B1 -> loại
+          ("t3", "BÊN ĐÓ DÙNG KUBERNETES CHO CẢ HỆ THỐNG", "ep2.mp4"),     # reserved_b3 -> loại
+          ("t4", "CHẠY DEADLINE XONG THÌ ĐI ĂN", "ep3.mp4")]               # -> vss_cs
+    dv = [("d0", "CÁI MEETING HÔM QUA HƠI DÀI", "ep9.mp4")]                # có từ Anh nhưng ở phần dev -> bỏ
+    for part, rows_ in (("train", tr), ("dev", dv)):
+        js = []
+        for uid, text, src in rows_:
+            (vss2 / "audio" / f"{uid}.wav").write_bytes(wav_bytes(2))
+            js.append({"audio": f"audio/{uid}.wav", "text": text, "duration": 2.0, "source": src})
+        (vss2 / f"{part}.json").write_text(json.dumps(js, ensure_ascii=False), encoding="utf-8")
+    bench_proxy = T / "bench_proxy.jsonl"
+    bench_proxy.write_text(json.dumps({"id": "b1x", "split": "B1", "audio": "x.wav", "duration": 2, "speaker": "yt_q",
+                                       "source": "youtube:q", "text_tagged": "anh <en>review</en> giúp em cái "
+                                       "<en>pull request</en> nhé"}, ensure_ascii=False) + "\n", encoding="utf-8")
+    out_v = run(G / "converters/conv_local.py", "vietsuperspeech", "--root", vss2, "--out", raw / "vss2", "--catalog", cat,
+                "--bench", bench_proxy, "--vi-words")
+    cs = L(raw / "vss2/vss_cs_candidates.jsonl")
+    assert sorted(r["id"] for r in cs) == ["vss_0000001", "vss_0000004"], [r["id"] for r in cs]
+    assert all(r["dataset"] == "vss_cs" and r["train_only"] and r["split"] == "train" and "<en>" in r["text_tagged"] for r in cs)
+    assert len(L(raw / "vss2/train_vss.jsonl")) == 1 and "vss_cs bỏ: text trùng câu bench: 1" in out_v
+    assert "vss_cs bỏ: có thuật ngữ reserved_b3: 1" in out_v and "vss_cs bỏ: câu có từ Anh ở phần dev: 1" in out_v
+    assert (raw / "vss2/vss_cs_terms.tsv").read_text(encoding="utf-8").startswith("term\tcount\n")
+    # --- Phase 0b T4: lọc đồng thuận (lib/agreement.py + tools/agreement_filter.py)
+    from lib.agreement import agree
+    lab = "mở <en>facebook</en> rồi <en>check</en> mail"
+    hy = ["MỞ FB RỒI CHECK MAIL", "mở phây búc rồi check mail"]  # fb = biến thể catalog của facebook
+    assert agree(lab, hy, cat_obj, 1) == {"keep": True, "spans": ["facebook", "check"], "confirmed": [1, 2]}
+    assert not agree(lab, hy, cat_obj, 2)["keep"] and agree(lab, hy, cat_obj, 2, min_span_frac=0.5)["keep"]
+    assert not agree("hôm nay trời đẹp", hy, cat_obj)["keep"]  # không có span -> không có gì để xác nhận
+    ha, hb = T / "hyp_a.jsonl", T / "hyp_b.jsonl"
+    ha.write_text('{"id": "vss_0000001", "hyp": "MÌNH MỞ FACEBOOK LÊN XEM NHÉ"}\n{"id": "vss_0000004", "hyp": "CHẠY ĐÉT LAI XONG"}\n',
+                  encoding="utf-8")
+    hb.write_text('{"id": "vss_0000001", "hyp": "mình mở phây búc lên"}\n', encoding="utf-8")
+    run(G / "tools/agreement_filter.py", "--manifest", raw / "vss2/vss_cs_candidates.jsonl", "--hyps", ha, hb,
+        "--catalog", cat, "--out", T / "vss_cs_agreed.jsonl")
+    ag = L(T / "vss_cs_agreed.jsonl")
+    assert [r["id"] for r in ag] == ["vss_0000001"] and ag[0]["agreement"]["confirmed"] == [1], ag
+    # --- Phase 0b T4: cấu hình trộn: vss_cs thuộc nhóm tổng hợp / nhãn giả, không thuộc CS thật
+    mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
+                                                   if not l.startswith("#")), delimiter="\t")}
+    assert "vss_cs" in mix["synth_pseudo"]["datasets"].split(",") and "vss_cs" not in mix["cs_real"]["datasets"]
+    assert abs(sum(float(r["weight"]) for r in mix.values()) - 1.0) < 1e-9
     # --- Phase 0b T3: score.py --label-field (B3: số chính theo Spec, số phụ theo nhãn gốc)
     sb = T / "score_lf"
     sb.mkdir(parents=True, exist_ok=True)

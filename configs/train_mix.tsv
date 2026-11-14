@@ -1,0 +1,12 @@
+# Cấu hình trộn dữ liệu train (Spec mục 10). Tỉ trọng = phần của batch; ghi đè bằng biến môi trường khi chạy
+# ft/run_e3.sh (Phase 3): MIX_CS_REAL, MIX_SYNTH_PSEUDO, MIX_REPLAY_HUMAN, MIX_DISTILL, MIX_CONFUSABLE.
+# Điểm khởi đầu chưa kiểm chứng, chỉnh trên dev.
+# Cột datasets: giá trị trường `dataset` của manifest (tiền tố trước ':'), ngăn bằng dấu phẩy.
+# vss_cs (câu có từ Anh của VietSuperSpeech, nhãn giả Zipformer-30M, đã lọc đồng thuận) thuộc nhóm
+# synth_pseudo — KHÔNG thuộc cs_real dù là giọng thật, vì nhãn là nhãn máy.
+group	weight	env	datasets	note
+cs_real	0.40	MIX_CS_REAL	ViMedCSS,sea_speech	CS thật: SEA đã lọc đồng thuận, ViMedCSS (giảm tỉ trọng), dữ liệu sản phẩm nếu có
+synth_pseudo	0.10	MIX_SYNTH_PSEUDO	tts,vss_cs	CS tổng hợp (TTS, ghép) và CS nhãn giả (vss_cs)
+replay_human	0.25	MIX_REPLAY_HUMAN	vivos,commonvoice	Replay tiếng Việt nhãn người (+ call center nếu có)
+distill	0.20	MIX_DISTILL	distill	Replay tự chưng cất (ft/make_distill.py)
+confusable	0.05	MIX_CONFUSABLE	confusable	Câu tiếng Việt gần âm thuật ngữ (tools/make_confusables.py)

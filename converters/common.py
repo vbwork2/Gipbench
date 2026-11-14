@@ -8,6 +8,7 @@ Tự gắn tag là BẢN NHÁP cho người duyệt, không phải nhãn cuối:
 import csv
 import io
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -322,10 +323,10 @@ class Writer:
         self.vi_words = None  # tập từ không gắn <en> cho converter dùng chung Writer (None = mặc định configs/)
 
     def rel(self, path: str) -> str:
-        try:
-            return str(Path(path).resolve().relative_to(self.out.resolve()))
-        except ValueError:
-            return str(Path(path).resolve())
+        # os.path.abspath chỉ xử lý chuỗi; Path.resolve() stat từng thành phần, rất chậm trên /mnt/<ổ> của WSL
+        # (67k câu VietSuperSpeech: > 20 phút chỉ vì resolve)
+        p, base = os.path.abspath(str(path)), os.path.abspath(str(self.out))
+        return os.path.relpath(p, base) if p == base or p.startswith(base + os.sep) else p
 
     def add(self, name: str, row: Dict, tag: Optional[Dict] = None):
         if tag is not None:
