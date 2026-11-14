@@ -14,7 +14,8 @@
   catalog              thêm câu chưa duyệt mà mọi span đều khớp catalog và không có cờ
   all                  nhận hết — CHỈ để chạy thử pipeline (bench nháp, không dùng để kết luận)
 Phiếu duyệt: decision = ok | fix (dùng text_tagged_fixed) | drop; viet_levels = "strong,mid" theo thứ tự span;
-region / gender điền nếu nghe ra.
+reading_note = cách đọc nghe được của từ mơ hồ (được chép sang bench); region / gender điền nếu nghe ra.
+Quy ước gắn <en> theo cách đọc: SCHEMA.md và docs/huong_dan_duyet_b1.md.
 """
 import argparse
 import csv
@@ -111,7 +112,7 @@ def main():
             lv = [x.strip() for x in (rv.get("viet_levels") or "").split(",") if x.strip()]
             if lv:
                 r["en_meta"] = [{"viet_level": x} for x in lv]
-            for k in ("region", "gender"):
+            for k in ("region", "gender", "reading_note"):
                 if (rv.get(k) or "").strip():
                     r[k] = rv[k].strip()
             r["review"] = dec or "none"

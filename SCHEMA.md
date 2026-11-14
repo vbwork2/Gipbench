@@ -28,6 +28,23 @@
 
 Category của span lấy từ catalog, không cần ghi trong manifest.
 
+### Quy ước gán `<en>`: theo CÁCH ĐỌC
+
+Một từ / cụm viết bằng chữ Latin được gắn `<en>` khi người nói **đọc nó như tiếng Anh**, không xét nguồn gốc của nó.
+
+| Trường hợp | Gắn `<en>`? | Ví dụ |
+| --- | --- | --- |
+| Từ / cụm tiếng Anh, kể cả khi phát âm kiểu Việt | có | `<en>meeting</en>`, `<en>deadline</en>` |
+| Brand / tên riêng viết bằng chữ Latin, kể cả brand Việt | có | `<en>vietcombank</en>`, `<en>shopee</en>`, `<en>zalo</en>` |
+| Viết tắt tiếng Anh đọc kiểu Anh | có | `<en>ai</en>` (ây ai), `<en>ceo</en>`, `<en>kpi</en>` |
+| Viết tắt / mã đọc kiểu Việt (đánh vần chữ cái tiếng Việt) | không | `vn` (vê en), `bidv`, `plx`, `ubnd`, mã chứng khoán |
+| Từ mượn có trong từ điển tiếng Việt | không | `axit`, `canxi`, `vitamin`, `cà phê` |
+| Không chắc người nói đọc kiểu nào | **người duyệt nghe audio rồi quyết**, ghi lý do vào cột `reading_note` của phiếu duyệt | `pc` (pê xê / pi xi), `tv` |
+
+- Bản nháp tự gắn dựa trên hai danh sách đang chờ duyệt: `configs/vi_abbrev.txt` (viết tắt / mã thường đọc kiểu Việt) và `configs/vi_loanwords.txt` (từ mượn có trong từ điển tiếng Việt). Từ nằm trong hai danh sách này không được gắn `<en>`, trừ khi nó có trong catalog.
+- Cùng một viết tắt có thể được đọc khác nhau ở hai câu (`ai` = "ây ai" hay "a i"), nên người duyệt quyết theo từng câu chứ không theo danh sách.
+- Hướng dẫn duyệt chi tiết: `docs/huong_dan_duyet_b1.md`.
+
 ## 2. Catalog thuật ngữ — `configs/catalog.tsv` (TSV, có header)
 
 | Cột | Ý nghĩa |

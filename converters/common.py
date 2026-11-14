@@ -156,6 +156,10 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
         else:
             i += 1
     spans.sort()
+    # viết tắt ngắn đoán bằng heuristic: chưa biết đọc kiểu Anh hay kiểu Việt -> người duyệt nghe rồi quyết
+    for s, e, k in spans:
+        if k == "H" and e - s == 1 and 2 <= len(core[s]) <= 4 and core[s].isalpha():
+            flags.add(f"abbr_reading:{core[s]}")
     out, pos = [], 0
     for s, e, _ in spans:
         out += raw[pos:s]
@@ -255,8 +259,9 @@ def safe(s) -> str:
 
 
 # ------------------------------------------------------------------ ghi kết quả
+# reading_note: người duyệt ghi cách đọc nghe được cho từ mơ hồ (xem docs/huong_dan_duyet_b1.md)
 REVIEW_COLS = ["id", "split", "audio", "duration", "text_tagged", "confidence", "flags",
-               "decision", "text_tagged_fixed", "viet_levels", "region", "gender", "note"]
+               "decision", "text_tagged_fixed", "viet_levels", "reading_note", "region", "gender", "note"]
 
 
 class Writer:
@@ -303,7 +308,8 @@ class Writer:
                         w.writerow({"id": r["id"], "split": r["split"], "audio": r["audio"], "duration": r["duration"],
                                     "text_tagged": r["text_tagged"], "confidence": at.get("confidence", ""),
                                     "flags": " ".join(at.get("flags", [])), "decision": "", "text_tagged_fixed": "",
-                                    "viet_levels": "", "region": r.get("region", ""), "gender": r.get("gender", ""), "note": ""})
+                                    "viet_levels": "", "reading_note": "", "region": r.get("region", ""),
+                                    "gender": r.get("gender", ""), "note": ""})
                 print(f"  {rp}: phiếu duyệt (điền cột decision = ok / fix / drop)")
         if self.terms:
             tp = self.out / "term_candidates.tsv"

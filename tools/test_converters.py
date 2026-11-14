@@ -127,7 +127,9 @@ def main():
     # --- người duyệt: 1 ok, 1 fix, 1 drop trong phiếu G-Group; ok hết B3 trừ câu không tìm thấy thuật ngữ
     rp = raw / "ggroup/b1_candidates_review.csv"
     rows = list(csv.DictReader(open(rp, encoding="utf-8-sig")))
+    assert "reading_note" in rows[0], list(rows[0])
     rows[0]["decision"], rows[0]["viet_levels"], rows[0]["region"] = "fix", "mid", "south"
+    rows[0]["reading_note"] = "google: gu gồ -> EN"
     rows[0]["text_tagged_fixed"] = "đây là <en>google search</en> <en>google search</en> rất tận dụng"
     rows[1]["decision"] = "ok"
     rows[2]["decision"] = "drop"
@@ -151,6 +153,7 @@ def main():
     assert sorted(r["split"] for r in bench) == ["B1", "B1", "B3", "B5", "B5", "B5", "B5"], [r["split"] for r in bench]
     fixed = next(r for r in bench if r["review"] == "fix")
     assert fixed["en_meta"] == [{"viet_level": "mid"}] and fixed["region"] == "south"
+    assert fixed["reading_note"] == "google: gu gồ -> EN"  # Phase 0b: cột ghi chú cách đọc đi vào bench
     # --- bench đi tiếp được vào validate (phải bắt video y578jWB56QE có ở cả train ViMedCSS và SEA nếu rơi vào bench) và eda
     run(G / "validate.py", "--bench", T / "data/bench_v0.jsonl", "--catalog", T / "configs/catalog_v0.tsv", "--check-audio",
         "--train", raw / "vimedcss/train_vimedcss.jsonl", raw / "sea/train_sea.jsonl", raw / "vss/train_vss.jsonl", ok=(0, 1))
@@ -195,12 +198,17 @@ def main():
     assert abs(s["precision_neutral"] - 1.0) < 1e-9 and abs(s["precision"] - 0.8) < 1e-9, s
     # --- T0.2: luật chính tả âm tiết trong is_vietnamese_token
     from converters.common import auto_tag, is_vietnamese_token
+    from lib.textnorm import Catalog
+    cat_obj = Catalog.load(str(cat))
     not_vi = ["chip", "kit", "mac", "net", "hot", "tech", "op", "chat", "top", "chain", "main", "sing", "boat", "tuan"]
     vi = ["con", "cho", "an", "hay", "nhanh", "sinh", "quan", "huynh", "keng", "toan", "khuya", "ngoai", "giu", "nghe",
           "mình", "tiếp", "ăn", "ba"]
     assert not [w for w in not_vi if is_vietnamese_token(w)], [w for w in not_vi if is_vietnamese_token(w)]
     assert all(is_vietnamese_token(w) for w in vi), [w for w in vi if not is_vietnamese_token(w)]
     assert auto_tag("căn cước công dân gắn chip")["spans"] == ["chip"]  # trước đây lọt vào B5
+    # --- Phase 0b, quy ước theo cách đọc: viết tắt ngắn đoán bằng heuristic -> cờ cho người duyệt
+    assert "abbr_reading:crm" in auto_tag("anh mở cái crm lên nhé")["flags"]
+    assert not any(f.startswith("abbr_reading") for f in auto_tag("anh mở cái kpi lên", cat_obj)["flags"])  # có trong catalog
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 

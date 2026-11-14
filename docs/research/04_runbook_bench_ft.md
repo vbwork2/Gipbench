@@ -45,7 +45,7 @@ python converters/conv_local.py vietsuperspeech --root data/dl/VietSuperSpeech  
 
 Duyệt rồi ghép:
 
-1. Mở từng file `*_review.csv` (Excel, Google Sheets), nghe audio, điền `decision` = ok / fix / drop; với fix thì ghi câu đúng vào `text_tagged_fixed`; điền `viet_levels` (vd `strong,mid`), `region`, `gender` nếu nghe ra. Cột `confidence` = heuristic và cột `flags` cho biết câu nào cần xem kỹ.
+1. Mở từng file `*_review.csv` (Excel, Google Sheets), nghe audio, điền `decision` = ok / fix / drop; với fix thì ghi câu đúng vào `text_tagged_fixed`; điền `viet_levels` (vd `strong,mid`), `region`, `gender` nếu nghe ra. Cột `confidence` = heuristic và cột `flags` cho biết câu nào cần xem kỹ. Gắn `<en>` theo **cách đọc** (SCHEMA.md); từ mơ hồ thì nghe audio rồi ghi lý do vào `reading_note`. Hướng dẫn chi tiết: `docs/huong_dan_duyet_b1.md`.
 2. Bổ sung các dòng đúng trong `term_candidates.tsv` vào `configs/catalog.tsv`.
 3. Ghép bench và gộp catalog:
 
