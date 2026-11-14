@@ -8,6 +8,9 @@ chèn sai thuật ngữ trên B5, khoảng tin cậy bootstrap theo người nó
 Ghi ra: utt_scores.jsonl (lỗi từng utterance, leaderboard.py dùng để so sánh cặp),
 summary.json, slices.md.
 
+--label-field chọn trường reference (mặc định text_tagged, nhãn theo Spec). B3 báo số chính theo Spec và số phụ
+theo nhãn gốc ViMedCSS: chạy thêm một lần với --label-field text_tagged_orig --out <thư mục khác>.
+
 Định nghĩa
   WER     = (S + D + I) / N trên mọi token
   CS-WER  = lỗi trên token thuộc span <en> / số token tiếng Anh trong reference.
@@ -44,12 +47,13 @@ def count_occ(toks, term):
     return c
 
 
-def score_utt(r, hyp_text, cat):
+def score_utt(r, hyp_text, cat, label_field="text_tagged"):
     rec = {"id": r["id"], "split": r["split"], "speaker": r["speaker"]}
     for k in ("region", "gender", "channel", "domain"):
         rec[k] = r.get(k, "unk")
+    ref_text = r.get(label_field) or r["text_tagged"]
     for mode in ("strict", "lenient"):
-        rt, spans = normalize_ref(r["text_tagged"], cat, mode)
+        rt, spans = normalize_ref(ref_text, cat, mode)
         ht = normalize_hyp(hyp_text, cat, mode)
         ref = [t.tok for t in rt]
         sp = [t.span for t in rt]
@@ -130,6 +134,9 @@ def main():
     ap.add_argument("--hyps", required=True)
     ap.add_argument("--out")
     ap.add_argument("--iters", type=int, default=1000)
+    ap.add_argument("--label-field", default="text_tagged",
+                    help="trường chứa reference (mặc định text_tagged = nhãn theo Spec). Vd text_tagged_orig: chấm "
+                         "theo nhãn gốc của ViMedCSS (số phụ cho B3); câu không có trường này dùng text_tagged")
     args = ap.parse_args()
     out = Path(args.out or Path(args.hyps).parent)
     out.mkdir(parents=True, exist_ok=True)
@@ -141,12 +148,16 @@ def main():
     if missing:
         print(f"CẢNH BÁO: {len(missing)} utterance không có hyp (tính như hyp rỗng), vd {missing[:3]}")
 
-    recs = [score_utt(r, hyps.get(r["id"], ""), cat) for r in bench]
+    if args.label_field != "text_tagged":
+        has = sum(1 for r in bench if r.get(args.label_field))
+        print(f"Reference = {args.label_field}: {has} câu có trường này, {len(bench) - has} câu dùng text_tagged")
+    recs = [score_utt(r, hyps.get(r["id"], ""), cat, args.label_field) for r in bench]
     with open(out / "utt_scores.jsonl", "w", encoding="utf-8") as f:
         for r in recs:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    summary = {"system": out.name, "hyps": str(args.hyps), "bench": str(args.bench), "groups": {}}
+    summary = {"system": out.name, "hyps": str(args.hyps), "bench": str(args.bench), "label_field": args.label_field,
+               "groups": {}}
     for g, splits in GROUPS.items():
         R = [r for r in recs if r["split"] in splits]
         if not R:

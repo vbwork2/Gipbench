@@ -24,10 +24,11 @@ vi_abbrev, luật cho từng nhóm:
   trùng catalog (EN), trùng từ tiếng Anh phổ biến (google-10000), hoặc đã là âm tiết tiếng Việt (không cần).
 
 vi_loanwords, hai loại:
-  vi_spelling   mục một chữ trong Viet74K, không phải âm tiết tiếng Việt đơn, không có trong words_alpha
-                (axit, canxi, vaccin): chính tả Việt -> không EN, áp dụng luôn
-  same_surface  span ViMedCSS (thuật ngữ dataset + span heuristic) có trong Viet74K và trùng mặt chữ tiếng Anh
-                (vitamin, protein, insulin): CHỜ DUYỆT, mặc định không EN
+  vi_spelling   mục một chữ trong Viet74K, không phải âm tiết tiếng Việt đơn, không có trong words_alpha, không trùng
+                google-10000 (axit, canxi, vaccin): chính tả Việt -> không EN, áp cho mọi dataset
+  same_surface  thuật ngữ ViMedCSS (cs_terms_list, mặt chữ khớp trong câu) có trong Viet74K và trùng mặt chữ tiếng Anh
+                (vitamin, protein, insulin): CHỜ DUYỆT, mặc định không EN, chỉ áp trong conv_vimedcss
+  --exclude TỪ:LÝ_DO loại tay một mục (vẫn ghi lại thành dòng '#-' kèm lý do)
 """
 import argparse
 import csv
@@ -165,40 +166,49 @@ def build_abbrev(args, cat_keys, g10k):
 
 
 # ------------------------------------------------------------------ vi_loanwords
-def build_loan(args, cat_keys):
+def build_loan(args, cat_keys, g10k, exclude):
     src = Path(args.src)
     viet = read_lines(src / "Viet74K.txt")
     viet_lc = {w.lower() for w in viet}
     en = {l.lower() for l in read_lines(src / "words_alpha.txt")}
-    rows = OrderedDict()
+    rows, dropped = OrderedDict(), OrderedDict()
     for w in viet:
         if " " in w or "-" in w or not w[0].islower() or not re.fullmatch(r"[a-z]+", w) or is_vietnamese_token(w):
             continue
-        if w not in en and w not in cat_keys:
-            rows[w] = ("vi_spelling", "áp dụng", "Viet74K, không có trong words_alpha (chính tả Việt)")
+        if w in en or w in cat_keys:
+            continue
+        reason = exclude.get(w) or ("trùng từ tiếng Anh phổ biến (google-10000)" if w in g10k else "")
+        (dropped if reason else rows)[w] = ("vi_spelling", reason or "áp dụng",
+                                            "Viet74K, không có trong words_alpha (chính tả Việt)")
     surf = Counter()
     if args.vimedcss_meta:
         for f in sorted(Path(args.vimedcss_meta).glob("*_set.csv")):
             for r in csv.DictReader(open(f, encoding="utf-8")):
                 terms = [t.strip() for t in (r.get("cs_terms_list") or "").split(";") if t.strip()]
-                tg = auto_tag(r["segment_text"], None, terms, vi_words=set())
+                # chỉ thuật ngữ do dataset gắn (cs_terms_list), không lấy span heuristic (video, ok, top...)
+                tg = auto_tag(r["segment_text"], None, terms, vi_words=set(), heuristic=False)
                 for s in tg["spans"]:
                     surf[s] += 1
     for s, c in surf.most_common():
-        if s in viet_lc and s not in rows and s not in cat_keys and all(w in en for w in s.split()):
-            rows[s] = ("same_surface", "CHỜ DUYỆT (mặc định không EN)",
-                       f"Viet74K ∩ words_alpha ∩ span ViMedCSS ({c} lần)")
+        if s in viet_lc and s not in rows and s not in dropped and s not in cat_keys and all(w in en for w in s.split()):
+            (dropped if s in exclude else rows)[s] = (
+                "same_surface", exclude.get(s) or "CHỜ DUYỆT (mặc định không EN, chỉ áp cho ViMedCSS)",
+                f"Viet74K ∩ words_alpha ∩ thuật ngữ ViMedCSS ({c} lần)")
+    n_vs = sum(v[0] == "vi_spelling" for v in rows.values())
     hdr = ["# vi_loanwords.txt — từ mượn có trong từ điển tiếng Việt: auto_tag KHÔNG gắn <en> (trừ khi có trong catalog).",
            "# TRẠNG THÁI: NHÁP, chờ duyệt, chưa khoá phiên bản. Sinh bởi tools/build_wordlists.py.",
-           "# kind = vi_spelling: chính tả Việt khác chính tả Anh (axit, canxi) -> không EN theo Spec, áp dụng luôn.",
-           "# kind = same_surface: trùng mặt chữ tiếng Anh (vitamin, protein) -> chờ duyệt, mặc định không EN.",
-           "#   Muốn coi một từ là EN: xoá dòng hoặc thêm '#' đầu dòng.",
-           f"# Số mục: {sum(v[0] == 'vi_spelling' for v in rows.values())} vi_spelling, "
-           f"{sum(v[0] == 'same_surface' for v in rows.values())} same_surface.", "word\tkind\tstatus\tsource"]
+           "# kind = vi_spelling: chính tả Việt khác chính tả Anh (axit, canxi) -> không EN theo Spec; áp cho MỌI dataset.",
+           "# kind = same_surface: trùng mặt chữ tiếng Anh (vitamin, protein) -> chờ duyệt, mặc định không EN;",
+           "#   CHỈ áp trong conv_vimedcss (các bộ khác giữ quy ước B1: test, gen... là EN). Xem load_vi_words(same_surface=).",
+           "# Muốn coi một từ là EN: xoá dòng hoặc thêm '#' đầu dòng. Dòng '#-' = bị loại (lý do ở cột status).",
+           f"# Số mục: {n_vs} vi_spelling, {len(rows) - n_vs} same_surface, {len(dropped)} bị loại.",
+           "word\tkind\tstatus\tsource"]
     order = sorted(rows.items(), key=lambda kv: (kv[1][0] != "same_surface", kv[0]))
-    Path(args.out_loan).write_text("\n".join(hdr + [f"{w}\t{k}\t{st}\t{so}" for w, (k, st, so) in order]) + "\n",
-                                   encoding="utf-8")
-    print(f"Đã ghi {args.out_loan}: {len(rows)} mục")
+    body = [f"{w}\t{k}\t{st}\t{so}" for w, (k, st, so) in order]
+    body += ["", "# ---- bị loại (trùng từ Anh phổ biến hoặc --exclude)"] + \
+        [f"#-{w}\t{k}\tLOẠI: {st}\t{so}" for w, (k, st, so) in dropped.items()]
+    Path(args.out_loan).write_text("\n".join(hdr + body) + "\n", encoding="utf-8")
+    print(f"Đã ghi {args.out_loan}: {len(rows)} mục, {len(dropped)} bị loại ({', '.join(dropped)})")
 
 
 def main():
@@ -209,14 +219,20 @@ def main():
     ap.add_argument("--vimedcss-meta", help="thư mục *_set.csv của ViMedCSS (cho same_surface)")
     ap.add_argument("--out-abbrev")
     ap.add_argument("--out-loan")
+    ap.add_argument("--exclude", nargs="*", default=[], metavar="TỪ:LÝ_DO",
+                    help="loại tay một mục khỏi vi_loanwords, ghi lý do vào file (vd 'iot:trùng IoT trong vi-asr-tech')")
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
     cat_keys = {" ".join(k) for k in cat.strict_map} if cat and cat.strict_map else set()
+    g10k = set(l.lower() for l in read_lines(Path(args.src) / "google-10000-english-no-swears.txt"))
     if args.out_abbrev:
-        g10k = set(l.lower() for l in read_lines(Path(args.src) / "google-10000-english-no-swears.txt"))
         build_abbrev(args, cat_keys, g10k)
     if args.out_loan:
-        build_loan(args, cat_keys)
+        exclude = {}
+        for x in args.exclude:
+            w, _, why = x.partition(":")
+            exclude[nfc(w.strip().lower())] = f"loại tay: {why.strip() or 'không ghi lý do'}"
+        build_loan(args, cat_keys, g10k, exclude)
 
 
 if __name__ == "__main__":

@@ -80,13 +80,15 @@ VI_WORD_FILES = [_ROOT / "configs" / "vi_abbrev.txt", _ROOT / "configs" / "vi_lo
 _VI_WORDS_CACHE: Dict[Tuple[str, ...], frozenset] = {}
 
 
-def load_vi_words(paths: Optional[Sequence] = None) -> frozenset:
+def load_vi_words(paths: Optional[Sequence] = None, same_surface: bool = False) -> frozenset:
     """Đọc cột đầu của các file danh sách (bỏ dòng '#' và dòng header), viết thường, NFC.
 
     paths = None -> các file mặc định trong configs/ (file nào chưa có thì bỏ qua); [] -> tập rỗng.
+    same_surface=False bỏ các dòng kind = same_surface của vi_loanwords.txt (vitamin, test, gen: trùng mặt chữ tiếng
+    Anh, chỉ coi là tiếng Việt trong ViMedCSS; ở các bộ khác chúng theo quy ước B1).
     """
     paths = VI_WORD_FILES if paths is None else paths
-    key = tuple(str(p) for p in paths)
+    key = tuple(str(p) for p in paths) + (str(same_surface),)
     if key not in _VI_WORDS_CACHE:
         words = set()
         for p in paths:
@@ -94,9 +96,13 @@ def load_vi_words(paths: Optional[Sequence] = None) -> frozenset:
             if not p.exists():
                 continue
             for line in open(p, encoding="utf-8"):
-                w = line.split("\t")[0].strip()
-                if w and not w.startswith("#") and w not in ("abbr", "word"):
-                    words.add(unicodedata.normalize("NFC", w).lower())
+                cols = line.rstrip("\n").split("\t")
+                w = cols[0].strip()
+                if not w or w.startswith("#") or w in ("abbr", "word"):
+                    continue
+                if not same_surface and len(cols) > 1 and cols[1].strip() == "same_surface":
+                    continue
+                words.add(unicodedata.normalize("NFC", w).lower())
         _VI_WORDS_CACHE[key] = frozenset(words)
     return _VI_WORDS_CACHE[key]
 
@@ -299,7 +305,8 @@ def safe(s) -> str:
 
 # ------------------------------------------------------------------ ghi kết quả
 # reading_note: người duyệt ghi cách đọc nghe được cho từ mơ hồ (xem docs/huong_dan_duyet_b1.md)
-REVIEW_COLS = ["id", "split", "audio", "duration", "text_tagged", "confidence", "flags",
+# text_tagged_orig: nhãn theo dataset gốc (chỉ ViMedCSS), để người duyệt so; sửa vào text_tagged_fixed theo Spec
+REVIEW_COLS = ["id", "split", "audio", "duration", "text_tagged", "text_tagged_orig", "confidence", "flags",
                "decision", "text_tagged_fixed", "viet_levels", "reading_note", "region", "gender", "note"]
 
 
@@ -312,6 +319,7 @@ class Writer:
         self.dataset = dataset
         self.rows: Dict[str, List[Dict]] = {}
         self.terms = Counter()
+        self.vi_words = None  # tập từ không gắn <en> cho converter dùng chung Writer (None = mặc định configs/)
 
     def rel(self, path: str) -> str:
         try:
@@ -345,7 +353,8 @@ class Writer:
                     for r in rows:
                         at = r.get("auto_tag", {})
                         w.writerow({"id": r["id"], "split": r["split"], "audio": r["audio"], "duration": r["duration"],
-                                    "text_tagged": r["text_tagged"], "confidence": at.get("confidence", ""),
+                                    "text_tagged": r["text_tagged"], "text_tagged_orig": r.get("text_tagged_orig", ""),
+                                    "confidence": at.get("confidence", ""),
                                     "flags": " ".join(at.get("flags", [])), "decision": "", "text_tagged_fixed": "",
                                     "viet_levels": "", "reading_note": "", "region": r.get("region", ""),
                                     "gender": r.get("gender", ""), "note": ""})
@@ -366,4 +375,11 @@ def base_parser(desc: str):
     ap.add_argument("--catalog", help="catalog.tsv để gắn tag tin cậy cao")
     ap.add_argument("--parquet", help="glob file parquet đã tải về (thay cho tải từ Hugging Face)")
     ap.add_argument("--limit", type=int, default=0, help="chỉ lấy N dòng đầu (thử nhanh)")
+    add_vi_words_arg(ap)
     return ap
+
+
+def add_vi_words_arg(ap):
+    ap.add_argument("--vi-words", nargs="*", default=None,
+                    help="file danh sách từ không gắn <en> (mặc định configs/vi_abbrev.txt configs/vi_loanwords.txt; "
+                         "truyền rỗng để tắt)")

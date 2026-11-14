@@ -103,12 +103,16 @@ def main():
 
     cat = G / "configs/catalog.example.tsv"
     raw = T / "raw"
-    run(G / "converters/conv_ggroup.py", "--names", "tech", "finance", "pubadmin", "--out", raw / "ggroup", "--catalog", cat, "--parquet", dl / "ggroup_{name}.parquet")
-    run(G / "converters/conv_vimedcss.py", "--out", raw / "vimedcss", "--catalog", cat, "--parquet", dl / "vimedcss_{split}.parquet")
-    run(G / "converters/conv_sea.py", "--out", raw / "sea", "--catalog", cat, "--parquet", dl / "sea.parquet", "--bench-hours", "0.002")
-    run(G / "converters/conv_local.py", "vivos", "--root", dl / "vivos", "--out", raw / "vivos")
-    run(G / "converters/conv_local.py", "commonvoice", "--root", cv, "--out", raw / "cv")
-    run(G / "converters/conv_local.py", "vietsuperspeech", "--root", vss, "--out", raw / "vss")
+    run(G / "converters/conv_ggroup.py", "--names", "tech", "finance", "pubadmin", "--out", raw / "ggroup", "--catalog", cat, "--parquet", dl / "ggroup_{name}.parquet", "--vi-words")
+    loan = T / "vi_loanwords_test.txt"  # danh sách cố định cho test, không phụ thuộc configs/
+    loan.write_text("word\tkind\tstatus\tsource\naxit\tvi_spelling\táp dụng\ttest\nlipid\tsame_surface\tchờ duyệt\ttest\n"
+                    "vitamin\tsame_surface\tchờ duyệt\ttest\n", encoding="utf-8")
+    run(G / "converters/conv_vimedcss.py", "--out", raw / "vimedcss", "--catalog", cat, "--parquet", dl / "vimedcss_{split}.parquet",
+        "--vi-words", loan)
+    run(G / "converters/conv_sea.py", "--out", raw / "sea", "--catalog", cat, "--parquet", dl / "sea.parquet", "--bench-hours", "0.002", "--vi-words")
+    run(G / "converters/conv_local.py", "vivos", "--root", dl / "vivos", "--out", raw / "vivos", "--vi-words")
+    run(G / "converters/conv_local.py", "commonvoice", "--root", cv, "--out", raw / "cv", "--vi-words")
+    run(G / "converters/conv_local.py", "vietsuperspeech", "--root", vss, "--out", raw / "vss", "--vi-words")
 
     def L(p):
         return [json.loads(l) for l in open(p, encoding="utf-8")]
@@ -119,6 +123,15 @@ def main():
     assert "<en>leukotriene</en>" in b3[0]["text_tagged"] and "term_not_found" in b3[1]["auto_tag"]["flags"]
     catv = list(csv.DictReader(open(raw / "vimedcss/catalog_vimedcss.tsv", encoding="utf-8"), delimiter="\t"))
     assert {r["term"]: r["reserved_b3"] for r in catv}["leukotriene"] == "1"
+    # Phase 0b T3: hai nhãn — Spec (bỏ tag từ mượn) và theo dataset
+    trv = {r["id"]: r for r in L(raw / "vimedcss/train_vimedcss.jsonl")}["vmc_Med_CS-1-1"]
+    assert "<en>lipid</en>" in trv["text_tagged_orig"] and "<en>" not in trv["text_tagged"], trv
+    assert "loanword_untagged" in trv["auto_tag"]["flags"]
+    dv = L(raw / "vimedcss/dev_vimedcss.jsonl")[0]
+    assert dv["text_tagged_orig"] == "<en>methionin</en> là một axit <en>amin</en> thiết yếu.", dv["text_tagged_orig"]
+    assert "<en>axit" not in dv["text_tagged"] and "<en>methionin</en>" in dv["text_tagged"], dv["text_tagged"]
+    assert "lipid" not in {r["term"] for r in catv}  # từ mượn không vào catalog EN
+    assert "text_tagged_orig" in next(csv.reader(open(raw / "vimedcss/b3_candidates_review.csv", encoding="utf-8-sig")))
     seab, seat = L(raw / "sea/b1_candidates_sea.jsonl"), L(raw / "sea/train_sea.jsonl")
     assert not ({r["source"] for r in seab} & {r["source"] for r in seat}) and len(seab) + len(seat) == 5
     assert len(L(raw / "vivos/b5_vivos.jsonl")) == 2 and len(L(raw / "cv/b5_cv.jsonl")) == 1
@@ -165,7 +178,7 @@ def main():
     import pyarrow as pa
     import pyarrow.parquet as pq
     sys.path.insert(0, str(G))
-    from converters.common import iter_hf_parquet
+    from converters.common import iter_hf_parquet, load_vi_words
     shard_dir = T / "hf/org/ds/data"
     shard_dir.mkdir(parents=True, exist_ok=True)
     for k in range(2):
@@ -185,6 +198,9 @@ def main():
         "--samples", "2", "--out", T / "reports/converter_check.md")
     ck = (T / "reports/converter_check.md").read_text(encoding="utf-8")
     assert "| 5 |" in ck and "heuristic" in ck and "2 câu mẫu" in ck, ck
+    # các lần chạy converter ở trên dùng --vi-words rỗng để không phụ thuộc danh sách đang chờ duyệt;
+    # danh sách mặc định trong configs/ vẫn phải đọc được
+    assert {"bidv", "axit"} <= load_vi_words(), "configs/vi_abbrev.txt / vi_loanwords.txt thiếu mục cơ bản"
     # --- tools/eval_autotag.py: số liệu tính tay trên 3 câu vàng
     gold = T / "gold.jsonl"
     gold.write_text("\n".join(json.dumps({"id": i, "gold": g}, ensure_ascii=False) for i, g in [
@@ -240,6 +256,41 @@ def main():
     tg = auto_tag("mua fpt với bidv rồi gửi api", cat_obj, vi_words=ab)
     assert tg["spans"] == ["api"] and "vi_word:fpt" in tg["flags"], tg               # catalog vẫn thắng danh sách
     assert auto_tag("mua fpt", cat_obj, vi_words=set())["spans"] == ["fpt"]
+    # --- Phase 0b T3: vi_loanwords — vi_spelling (mọi bộ) / same_surface (chỉ ViMedCSS) / --exclude / google-10000
+    (lex / "Viet74K.txt").write_text("axit\ncanxi\nvitamin\niot\nmega\ncon\nHà Nội\na-xít\n", encoding="utf-8")
+    (lex / "words_alpha.txt").write_text("vitamin\nlipid\n", encoding="utf-8")
+    (lex / "google-10000-english-no-swears.txt").write_text("the\ngas\npt\nmega\n", encoding="utf-8")
+    vm_meta = lex / "vmc"
+    vm_meta.mkdir(exist_ok=True)
+    with open(vm_meta / "train_set.csv", "w", newline="", encoding="utf-8") as f:
+        cw = csv.writer(f)
+        cw.writerow(["segment_id", "segment_text", "cs_terms_list"])
+        cw.writerow(["a", "uống vitamin và lipid mỗi ngày", "vitamin; lipid"])
+    run(G / "tools/build_wordlists.py", "--src", lex, "--vimedcss-meta", vm_meta, "--out-loan", T / "vi_loan.txt",
+        "--exclude", "iot:IoT trong tech")
+    lo_lines = (T / "vi_loan.txt").read_text(encoding="utf-8").splitlines()
+    assert load_vi_words([T / "vi_loan.txt"]) == {"axit", "canxi"}, load_vi_words([T / "vi_loan.txt"])
+    assert load_vi_words([T / "vi_loan.txt"], same_surface=True) == {"axit", "canxi", "vitamin"}  # lipid không có trong Viet74K
+    assert any(l.startswith("#-iot\t") and "IoT trong tech" in l for l in lo_lines)
+    assert any(l.startswith("#-mega\t") and "google-10000" in l for l in lo_lines)  # trùng từ Anh phổ biến -> loại
+    # --- Phase 0b T3: score.py --label-field (B3: số chính theo Spec, số phụ theo nhãn gốc)
+    sb = T / "score_lf"
+    sb.mkdir(parents=True, exist_ok=True)
+    (sb / "bench.jsonl").write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in [
+        {"id": "x1", "split": "B3", "audio": "a.wav", "duration": 2, "speaker": "s1", "source": "youtube:a",
+         "text_tagged": "uống vitamin và <en>leukotriene</en>", "text_tagged_orig": "uống <en>vitamin</en> và <en>leukotriene</en>"},
+        {"id": "x2", "split": "B1", "audio": "b.wav", "duration": 2, "speaker": "s2", "source": "youtube:b",
+         "text_tagged": "mở <en>facebook</en> lên"}]) + "\n", encoding="utf-8")
+    (sb / "hyps.jsonl").write_text('{"id": "x1", "hyp": "UỐNG VI TA MIN VÀ LEUKOTRIENE"}\n{"id": "x2", "hyp": "MỞ FACEBOOK LÊN"}\n',
+                                   encoding="utf-8")
+    for lf in ("text_tagged", "text_tagged_orig"):
+        run(G / "score.py", "--bench", sb / "bench.jsonl", "--catalog", cat, "--hyps", sb / "hyps.jsonl",
+            "--out", sb / lf, "--label-field", lf, "--iters", "10")
+    s_spec = json.loads((sb / "text_tagged/summary.json").read_text(encoding="utf-8"))["groups"]["B3"]
+    s_orig = json.loads((sb / "text_tagged_orig/summary.json").read_text(encoding="utf-8"))["groups"]["B3"]
+    assert (s_spec["n_en"], s_spec["cs_wer"]) == (1, 0.0), s_spec          # vitamin là tiếng Việt: lỗi tính vào N-WER
+    assert s_orig["n_en"] == 2 and s_orig["cs_wer"] > 0, s_orig            # theo dataset: vitamin là span EN bị sai
+    assert json.loads((sb / "text_tagged_orig/summary.json").read_text(encoding="utf-8"))["groups"]["B1"]["cs_wer"] == 0.0
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 

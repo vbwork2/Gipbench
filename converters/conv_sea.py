@@ -16,7 +16,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from converters.common import Writer, auto_tag, base_parser, load_hf, safe, save_audio  # noqa: E402
+from converters.common import Writer, auto_tag, base_parser, load_hf, load_vi_words, safe, save_audio  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
 
 
@@ -45,6 +45,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
+    vw = load_vi_words(args.vi_words)
     ds = load_hf("gijs/sea_speech", "train", args.parquet, streaming=not args.no_streaming and not args.parquet)
     by_video = defaultdict(list)
     n = 0
@@ -59,7 +60,7 @@ def main():
         path, dur, _ = save_audio(ex["audio"], Path(args.out) / "audio" / vid[:2], uid)
         if not (args.min_dur <= dur <= args.max_dur):
             continue
-        tag = auto_tag(ex["text"], cat, english_spans(ex.get("spans")))
+        tag = auto_tag(ex["text"], cat, english_spans(ex.get("spans")), vi_words=vw)
         if not tag["spans"]:
             continue
         tag["flags"].append("machine_transcript")

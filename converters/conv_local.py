@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from converters.common import Writer, auto_tag, safe, save_audio  # noqa: E402
+from converters.common import Writer, add_vi_words_arg, auto_tag, load_vi_words, safe, save_audio  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
 
 
@@ -28,7 +28,7 @@ def emit(w, name, split, uid, audio, text, speaker, source, domain, dataset, cat
     except Exception:  # noqa: BLE001
         stats["audio lỗi"] = stats.get("audio lỗi", 0) + 1
         return
-    tag = auto_tag(text, cat)
+    tag = auto_tag(text, cat, vi_words=w.vi_words)
     if tag["spans"] and not keep_english:
         stats["bỏ vì có từ Anh"] = stats.get("bỏ vì có từ Anh", 0) + 1
         return
@@ -110,8 +110,10 @@ def main():
     ap.add_argument("--catalog")
     ap.add_argument("--keep-english", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    add_vi_words_arg(ap)
     args = ap.parse_args()
     w, stats = Writer(args.out, args.dataset), {}
+    w.vi_words = load_vi_words(args.vi_words)
     {"vivos": vivos, "commonvoice": commonvoice, "vietsuperspeech": vietsuperspeech}[args.dataset](args, w, Catalog.load(args.catalog), stats)
     w.terms.clear()
     w.close()
