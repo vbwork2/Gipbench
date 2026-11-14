@@ -209,6 +209,37 @@ def main():
     # --- Phase 0b, quy ước theo cách đọc: viết tắt ngắn đoán bằng heuristic -> cờ cho người duyệt
     assert "abbr_reading:crm" in auto_tag("anh mở cái crm lên nhé")["flags"]
     assert not any(f.startswith("abbr_reading") for f in auto_tag("anh mở cái kpi lên", cat_obj)["flags"])  # có trong catalog
+    # --- Phase 0b T2: vi_abbrev — nguồn giả -> tools/build_wordlists.py -> auto_tag không gắn <en>
+    import gzip
+    lex = T / "lex"
+    lex.mkdir(parents=True, exist_ok=True)
+    tick = [{"symbol": s, "board": b, "type": "STOCK", "organShortName": n} for s, b, n in
+            [("FPT", "HSX", "FPT Corp"), ("PLX", "HSX", "Petrolimex"), ("GAS", "HSX", "PV Gas"), ("SHS", "HNX", "CK SHS"),
+             ("QNS", "UPCOM", "Đường Quảng Ngãi"), ("API", "HNX", "Đầu tư Châu Á")]] + \
+        [{"symbol": "E1VFVN30", "board": "HSX", "type": "ETF"}]
+    (lex / "vietcap_symbols.json").write_bytes(gzip.compress(json.dumps(tick).encode()))
+    (lex / "wiki_Danh_sách_ngân_hàng_tại_Việt_Nam.txt").write_text(
+        "== Ngân hàng ==\n{| class=\"wikitable\"\n|-\n|1\n|[[Ngân hàng X|Đầu tư và Phát triển Việt Nam]]\n|BIDV||1 ||x\n"
+        "|-\n|2\n|[[Bắc Á]]\n|Bac A Bank, BAB||2 ||x\n|-\n|3\n|[[Kỹ Thương]]\n|Techcombank||3||x\n|}\n"
+        "==Ngân hàng 100% vốn nước ngoài==\n{|\n|-\n|1\n|[[HSBC]]\n|HSBC||9||x\n|}\n", encoding="utf-8")
+    (lex / "wiki_tinh.txt").write_text("{|\n|-\n|1\n|'''[[Hà Nội]]'''\n|-\n|2\n|[[TP. Hồ Chí Minh]]\n|-\n|3\n|[[Phú Thọ]]\n"
+                                       "|-\n|4\n|[[Đà Nẵng]]\n|}\n", encoding="utf-8")
+    (lex / "wikt_viettat_pages.json").write_text(json.dumps({
+        "THPT": "# {{abbreviation of|vi|trung học phổ thông}}.", "ROM": "# {{abbr of|vi|Read Only Memory}}",
+        "AIDS": "# [[hội chứng]] [[suy giảm]]\n# {{abbreviation of|en|acquired immune deficiency syndrome}}",
+        "STT": "#[[số|Số]] [[thứ tự]]."}, ensure_ascii=False), encoding="utf-8")
+    (lex / "google-10000-english-no-swears.txt").write_text("the\ngas\npt\n", encoding="utf-8")
+    run(G / "tools/build_wordlists.py", "--src", lex, "--catalog", cat, "--out-abbrev", T / "vi_abbrev.txt")
+    ab_lines = (T / "vi_abbrev.txt").read_text(encoding="utf-8").splitlines()
+    from converters.common import load_vi_words
+    ab = load_vi_words([T / "vi_abbrev.txt"])
+    assert ab == {"fpt", "plx", "shs", "bidv", "bab", "hn", "hcm", "thpt", "stt"}, sorted(ab)
+    assert any(l.startswith("#-gas\t") and "google-10000" in l for l in ab_lines)  # trùng từ Anh phổ biến -> loại
+    assert any(l.startswith("#-api\t") and "catalog" in l for l in ab_lines)       # trùng catalog -> loại
+    assert any(l.startswith("#-pt\t") for l in ab_lines)                           # chữ cái đầu Phú Thọ, trùng 'pt'
+    tg = auto_tag("mua fpt với bidv rồi gửi api", cat_obj, vi_words=ab)
+    assert tg["spans"] == ["api"] and "vi_word:fpt" in tg["flags"], tg               # catalog vẫn thắng danh sách
+    assert auto_tag("mua fpt", cat_obj, vi_words=set())["spans"] == ["fpt"]
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 

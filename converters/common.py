@@ -15,7 +15,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT))
 from lib.textnorm import Catalog, basic_tokens  # noqa: E402
 
 # ------------------------------------------------------------------ âm tiết tiếng Việt (dạng không dấu)
@@ -75,8 +76,40 @@ def _fuzzy(tok: str, term: str) -> bool:
     return min(len(tok), len(term)) >= 6 and _edit(tok, term) <= 2
 
 
-def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence[str] = ()) -> Dict:
-    """Trả về {"text_tagged", "confidence": catalog|heuristic|none, "flags": [...], "spans": [...]}."""
+VI_WORD_FILES = [_ROOT / "configs" / "vi_abbrev.txt", _ROOT / "configs" / "vi_loanwords.txt"]
+_VI_WORDS_CACHE: Dict[Tuple[str, ...], frozenset] = {}
+
+
+def load_vi_words(paths: Optional[Sequence] = None) -> frozenset:
+    """Đọc cột đầu của các file danh sách (bỏ dòng '#' và dòng header), viết thường, NFC.
+
+    paths = None -> các file mặc định trong configs/ (file nào chưa có thì bỏ qua); [] -> tập rỗng.
+    """
+    paths = VI_WORD_FILES if paths is None else paths
+    key = tuple(str(p) for p in paths)
+    if key not in _VI_WORDS_CACHE:
+        words = set()
+        for p in paths:
+            p = Path(p)
+            if not p.exists():
+                continue
+            for line in open(p, encoding="utf-8"):
+                w = line.split("\t")[0].strip()
+                if w and not w.startswith("#") and w not in ("abbr", "word"):
+                    words.add(unicodedata.normalize("NFC", w).lower())
+        _VI_WORDS_CACHE[key] = frozenset(words)
+    return _VI_WORDS_CACHE[key]
+
+
+def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence[str] = (),
+             vi_words: Optional[Iterable[str]] = None, heuristic: bool = True) -> Dict:
+    """Trả về {"text_tagged", "confidence": catalog|heuristic|none, "flags": [...], "spans": [...]}.
+
+    vi_words: từ không bao giờ gắn <en> trừ khi khớp catalog (viết tắt đọc kiểu Việt, từ mượn); None = đọc
+    configs/vi_abbrev.txt + configs/vi_loanwords.txt. Thuật ngữ đi kèm dataset (known_terms) mà mặt chữ khớp
+    nằm trong vi_words cũng không được gắn. heuristic=False: chỉ gắn theo catalog + known_terms.
+    """
+    vi_words = load_vi_words() if vi_words is None else vi_words
     raw = text.split()
     parts = [_EDGE.match(w).groups() for w in raw]
     core = [unicodedata.normalize("NFC", p[1]).lower() for p in parts]
@@ -104,7 +137,8 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
             for k in sorted(known, key=len, reverse=True):
                 L = len(k)
                 if i + L <= n and all(_fuzzy(core[i + j], k[j]) for j in range(L)) and not all(
-                        is_vietnamese_token(core[i + j]) and core[i + j] != k[j] for j in range(L)):
+                        is_vietnamese_token(core[i + j]) and core[i + j] != k[j] for j in range(L)) \
+                        and " ".join(core[i:i + L]) not in vi_words:
                     hit = L
                     break
         if hit:
@@ -114,15 +148,19 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
             i += hit
         else:
             i += 1
+    # 1b) viết tắt đọc kiểu Việt, từ mượn có trong từ điển: nhãn V (không bao giờ thành span, không làm mốc ghép)
+    for i in range(n):
+        if not lab[i] and core[i] in vi_words:
+            lab[i] = "V"
     # 2) heuristic theo cấu trúc âm tiết
     for i in range(n):
-        if lab[i] or not core[i]:
+        if lab[i] or not core[i] or not heuristic:
             continue
         if not is_vietnamese_token(core[i]) and re.search(r"[a-z]", core[i]) and len(core[i]) > 1:
             lab[i] = "H"
     # 2b) chuỗi chữ cái đơn (a p i) có ít nhất một phụ âm
     i = 0
-    while i < n:
+    while i < n and heuristic:
         j = i
         while j < n and not lab[j] and len(core[j]) == 1 and core[j].isalpha() and not _VI_MARK.search(core[j]):
             j += 1
@@ -131,7 +169,8 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
                 lab[k] = "H"
         i = max(j, i + 1)
     # 3) từ mơ hồ đứng cạnh từ Anh
-    flags = set()
+    # vi_word:<từ> = từ chữ Latin được coi là tiếng Việt nhờ danh sách: câu B5 có cờ này phải qua người duyệt
+    flags = {f"vi_word:{core[i]}" for i in range(n) if lab[i] == "V"}
     changed = True
     while changed:
         changed = False

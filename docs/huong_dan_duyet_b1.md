@@ -32,6 +32,7 @@ Một từ Latin được gắn `<en>` khi người nói **đọc nó như tiế
 | `ambiguous_joined` | Một từ vừa là tiếng Việt vừa là tiếng Anh (the, to, top…) bị ghép vào span bên cạnh | Kiểm tra chỗ cắt span |
 | `suspect:<từ>` | Từ đứng riêng có thể là tiếng Anh (chat, top, pay…) nhưng chưa gắn | Nghe xem có phải tiếng Anh không |
 | `abbr_reading:<từ>` | Viết tắt ngắn (2–4 chữ) chưa có trong catalog hay `vi_abbrev.txt`, đang được gắn `<en>` | Nghe cách đọc, điền `reading_note`, sửa tag nếu đọc kiểu Việt |
+| `vi_word:<từ>` | Từ chữ Latin không bị gắn `<en>` vì nằm trong `vi_abbrev.txt` / `vi_loanwords.txt` (mã chứng khoán, viết tắt, từ mượn) | Nghe xem có đúng là đọc kiểu Việt không. Nếu người nói đọc kiểu Anh thì `fix` và gắn `<en>` |
 | `term_not_found` | (ViMedCSS) Không tìm thấy thuật ngữ của dataset trong câu | Kiểm tra câu hoặc `drop` |
 
 Nếu thấy một viết tắt lặp lại nhiều lần và luôn được đọc cùng một kiểu, ghi nó vào `note`. Viết tắt đó nên được thêm vào `configs/vi_abbrev.txt` (đọc kiểu Việt) hoặc vào catalog (đọc kiểu Anh) ở phiên bản danh sách sau.

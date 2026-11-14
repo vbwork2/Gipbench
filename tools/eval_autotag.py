@@ -19,6 +19,7 @@ Ghi: <out>.md, <out>.json, và (nếu --spotcheck) <out>_spotcheck.csv để ng�
 import argparse
 import csv
 import glob
+import hashlib
 import json
 import random
 import re
@@ -26,7 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from converters.common import auto_tag  # noqa: E402
+from converters.common import VI_WORD_FILES, auto_tag, load_vi_words  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
 
 _MARK = re.compile(r"\[\[(.+?)\]\]|\{\{(.+?)\}\}|\(\((.+?)\)\)")
@@ -69,7 +70,7 @@ def merge_adjacent(spans):
     return set(out)
 
 
-def evaluate(rows, cat, merge=True):
+def evaluate(rows, cat, merge=True, vi_words=None):
     tp = fp = fp_neutral = fn = 0
     tok_tp = tok_fp = tok_fn = 0
     fns, fps, per = [], [], []
@@ -77,7 +78,7 @@ def evaluate(rows, cat, merge=True):
         toks = r["text"].split()
         gold_en = {(s, e) for s, e, k in r["spans"] if k == "en"}
         abbr = [(s, e) for s, e, k in r["spans"] if k == "vi_abbr"]
-        pred = set(parse_pred(auto_tag(r["text"], cat)["text_tagged"]))
+        pred = set(parse_pred(auto_tag(r["text"], cat, vi_words=vi_words)["text_tagged"]))
         if merge:
             gold_en, pred = merge_adjacent(gold_en), merge_adjacent(pred)
         hit = gold_en & pred
@@ -119,7 +120,13 @@ def main():
     ap.add_argument("--exact-spans", action="store_true", help="không gộp span kề nhau khi so")
     ap.add_argument("--spotcheck", type=int, default=0)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--vi-words", nargs="*", default=None,
+                    help="danh sách từ không gắn <en> (mặc định configs/vi_abbrev.txt + configs/vi_loanwords.txt; "
+                         "truyền rỗng để tắt)")
     args = ap.parse_args()
+    vi_files = VI_WORD_FILES if args.vi_words is None else [Path(p) for p in args.vi_words]
+    vi_used = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()[:12] for p in vi_files if p.exists()}
+    vi_words = load_vi_words(vi_files)
 
     rows = []
     for line in open(args.gold, encoding="utf-8"):
@@ -142,8 +149,10 @@ def main():
     cat = Catalog.load(args.catalog)
     with_en = [r for r in rows if any(k == "en" for _, _, k in r["spans"])]
     merge = not args.exact_spans
-    res = {"merge_adjacent": merge, "subset_en": evaluate(with_en, cat, merge), "all_read": evaluate(rows, cat, merge),
-           "subset_en_exact": {k: v for k, v in evaluate(with_en, cat, False).items() if not k.endswith("_list") and k != "per_utt"},
+    res = {"merge_adjacent": merge, "vi_words_files": vi_used, "vi_words_count": len(vi_words),
+           "subset_en": evaluate(with_en, cat, merge, vi_words), "all_read": evaluate(rows, cat, merge, vi_words),
+           "subset_en_exact": {k: v for k, v in evaluate(with_en, cat, False, vi_words).items()
+                               if not k.endswith("_list") and k != "per_utt"},
            "phonetic_spans": sum(k == "phonetic" for r in rows for _, _, k in r["spans"]),
            "phonetic_utts": sum(any(k == "phonetic" for _, _, k in r["spans"]) for r in rows),
            "vi_abbr_spans": sum(k == "vi_abbr" for r in rows for _, _, k in r["spans"])}
@@ -153,7 +162,9 @@ def main():
 
     def f(x):
         return "–" if x is None else f"{x:.3f}"
+    vi_desc = ", ".join(f"`{p}` (sha256 {h})" for p, h in vi_used.items()) or "không dùng"
     md = [f"# Đánh giá auto_tag — {args.gold}", "",
+          f"Danh sách từ không gắn <en>: {vi_desc}; {len(vi_words)} từ.", "",
           f"Catalog: `{args.catalog}`. {len(rows)} câu đã đọc, {len(with_en)} câu có span tiếng Anh. "
           f"Ngoài ra: {res['vi_abbr_spans']} span viết tắt tiếng Việt, {res['phonetic_spans']} span phiên âm Việt "
           f"trong {res['phonetic_utts']} câu (không tính vào recall). "
