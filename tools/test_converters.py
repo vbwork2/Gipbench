@@ -187,12 +187,20 @@ def main():
     gold.write_text("\n".join(json.dumps({"id": i, "gold": g}, ensure_ascii=False) for i, g in [
         ("a", "mình [[deploy]] lên [[server]] rồi"),          # auto_tag: deploy + server (catalog) -> 2 TP
         ("b", "chấm [[gov]] chấm {{vn}} nhé"),                 # auto_tag gắn cả vn -> 1 FP (nằm trong viết tắt VN)
-        ("c", "học ((ai ten)) với cái [[kit]] này")]) + "\n", encoding="utf-8")  # kit hợp lệ âm tiết Việt -> FN (trước khi sửa)
+        ("c", "học ((ai ten)) với cái [[kit]] này")]) + "\n", encoding="utf-8")  # kit: -t không dấu -> không phải tiếng Việt
     run(G / "tools/eval_autotag.py", "--gold", gold, "--catalog", cat, "--out", T / "reports/eval", "--spotcheck", "2")
     ev = json.loads((T / "reports/eval.json").read_text(encoding="utf-8"))
     s = ev["subset_en"]
-    assert (s["gold_spans"], s["tp"], ev["phonetic_spans"], ev["vi_abbr_spans"]) == (4, 3, 1, 1), s
-    assert abs(s["precision_neutral"] - 1.0) < 1e-9 and abs(s["precision"] - 0.75) < 1e-9, s
+    assert (s["gold_spans"], s["tp"], ev["phonetic_spans"], ev["vi_abbr_spans"]) == (4, 4, 1, 1), s
+    assert abs(s["precision_neutral"] - 1.0) < 1e-9 and abs(s["precision"] - 0.8) < 1e-9, s
+    # --- T0.2: luật chính tả âm tiết trong is_vietnamese_token
+    from converters.common import auto_tag, is_vietnamese_token
+    not_vi = ["chip", "kit", "mac", "net", "hot", "tech", "op", "chat", "top", "chain", "main", "sing", "boat", "tuan"]
+    vi = ["con", "cho", "an", "hay", "nhanh", "sinh", "quan", "huynh", "keng", "toan", "khuya", "ngoai", "giu", "nghe",
+          "mình", "tiếp", "ăn", "ba"]
+    assert not [w for w in not_vi if is_vietnamese_token(w)], [w for w in not_vi if is_vietnamese_token(w)]
+    assert all(is_vietnamese_token(w) for w in vi), [w for w in vi if not is_vietnamese_token(w)]
+    assert auto_tag("căn cước công dân gắn chip")["spans"] == ["chip"]  # trước đây lọt vào B5
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 

@@ -32,11 +32,29 @@ SUSPECT_ALONE = set("chat bot net mic chip pin sim top hot pay mac ai".split())
 _EDGE = re.compile(r"^([^\w<>]*)(.*?)([^\w<>]*)$", re.S)
 
 
+# vần kết thúc bằng bán nguyên âm: không bao giờ có phụ âm cuối (chain, main, boat... không phải tiếng Việt)
+_GLIDE_NUC = {"ai", "ao", "au", "ay", "eo", "ia", "iu", "oi", "ui", "ua", "oai", "oay", "uya"}
+
+
 def is_vietnamese_token(tok: str) -> bool:
+    """True nếu token có thể là một âm tiết tiếng Việt (viết đúng chính tả, có dấu thanh khi cần).
+
+    Token không có dấu nào chỉ hợp lệ khi đúng cấu trúc âm tiết và còn thoả hai luật chính tả:
+      - âm tiết tận cùng -p, -t, -c, -ch chỉ mang thanh sắc hoặc nặng, nên bản không dấu
+        (chip, kit, mac, net, hot, tech, op) không phải tiếng Việt;
+      - vần có bán nguyên âm cuối (ai, ao, oi, ...) không có phụ âm cuối; tiếng Việt viết -inh, không có -ing.
+    Giả định text gốc có dấu đầy đủ (G-Group, ViMedCSS, VIVOS, VietSuperSpeech đều vậy).
+    """
     t = unicodedata.normalize("NFC", tok.lower())
     if _VI_MARK.search(t) or t.isdigit():
         return True
-    return bool(_VI_SYL.match(t))
+    m = _VI_SYL.match(t)
+    if not m:
+        return False
+    _, nuc, fin = m.groups()
+    if fin and (fin in ("p", "t", "c", "ch") or nuc in _GLIDE_NUC or (nuc == "i" and fin == "ng")):
+        return False
+    return True
 
 
 def _edit(a: str, b: str) -> int:
