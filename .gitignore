@@ -1,0 +1,10 @@
+data/
+models/
+exp/
+results/
+reports/**/*.html
+*.onnx
+*.pt
+__pycache__/
+*.pyc
+.venv/
