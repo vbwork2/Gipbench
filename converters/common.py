@@ -1,0 +1,268 @@
+"""Phần dùng chung cho các converter: nạp dataset, lưu audio, tự gắn tag <en>, ghi manifest + phiếu duyệt.
+
+Tự gắn tag là BẢN NHÁP cho người duyệt, không phải nhãn cuối:
+  C = khớp catalog hoặc danh sách thuật ngữ đi kèm dataset  -> tin cậy cao
+  H = token không thể là âm tiết tiếng Việt (không dấu, sai cấu trúc âm tiết) -> cần duyệt
+  A = từ vừa hợp lệ tiếng Việt vừa là từ Anh hay gặp (the, to, chat...) nằm cạnh từ Anh -> ghép vào span, cần duyệt
+"""
+import csv
+import io
+import json
+import re
+import sys
+import unicodedata
+from collections import Counter
+from pathlib import Path
+from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.textnorm import Catalog, basic_tokens  # noqa: E402
+
+# ------------------------------------------------------------------ âm tiết tiếng Việt (dạng không dấu)
+_VI_SYL = re.compile(
+    r"^(ngh|ng|nh|ch|gh|gi|kh|ph|qu|th|tr|[bcdghklmnprstvx])?"
+    r"(oai|oay|uya|ai|ao|au|ay|eo|ia|iu|oa|oe|oi|ua|ui|uy|a|e|i|o|u|y)"
+    r"(ch|ng|nh|[cmnpt])?$")
+_VI_MARK = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]")
+# từ Anh hay gặp nhưng trùng cấu trúc âm tiết Việt: chỉ ghép vào span khi đứng cạnh từ Anh khác
+AMBIG_EN = set("""the to in on at it up no so go he be my me do can man men hit kit bit bot net mic pic tip top pop
+cup but not get set let put cut tap map gap cap hot chat chip pin pen ten pay pet mac sim ai an long""".split())
+# đứng một mình vẫn đáng ngờ là từ Anh -> chỉ gắn cờ cho người duyệt
+SUSPECT_ALONE = set("chat bot net mic chip pin sim top hot pay mac ai".split())
+_EDGE = re.compile(r"^([^\w<>]*)(.*?)([^\w<>]*)$", re.S)
+
+
+def is_vietnamese_token(tok: str) -> bool:
+    t = unicodedata.normalize("NFC", tok.lower())
+    if _VI_MARK.search(t) or t.isdigit():
+        return True
+    return bool(_VI_SYL.match(t))
+
+
+def _edit(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _fuzzy(tok: str, term: str) -> bool:
+    if tok == term:
+        return True
+    if min(len(tok), len(term)) >= 5 and (tok.startswith(term) or term.startswith(tok)):
+        return True
+    return min(len(tok), len(term)) >= 6 and _edit(tok, term) <= 2
+
+
+def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence[str] = ()) -> Dict:
+    """Trả về {"text_tagged", "confidence": catalog|heuristic|none, "flags": [...], "spans": [...]}."""
+    raw = text.split()
+    parts = [_EDGE.match(w).groups() for w in raw]
+    core = [unicodedata.normalize("NFC", p[1]).lower() for p in parts]
+    n = len(core)
+    lab = [""] * n
+    span_id = [-1] * n
+    spans: List[Tuple[int, int, str]] = []  # (start, end, kiểu)
+
+    # 1) catalog (n-gram dài nhất, kể cả biến thể chính tả) rồi thuật ngữ đi kèm dataset
+    keys = set()
+    max_n = 1
+    if catalog and catalog.strict_map:
+        keys = set(catalog.strict_map)
+        max_n = max(len(k) for k in keys)
+    known = [tuple(basic_tokens(k)) for k in known_terms if k and k.strip()]
+    known = [k for k in known if k]
+    i = 0
+    while i < n:
+        hit = 0
+        for L in range(min(max_n, n - i), 0, -1):
+            if tuple(core[i:i + L]) in keys:
+                hit = L
+                break
+        if not hit:
+            for k in sorted(known, key=len, reverse=True):
+                L = len(k)
+                if i + L <= n and all(_fuzzy(core[i + j], k[j]) for j in range(L)) and not all(
+                        is_vietnamese_token(core[i + j]) and core[i + j] != k[j] for j in range(L)):
+                    hit = L
+                    break
+        if hit:
+            for j in range(i, i + hit):
+                lab[j] = "C"
+            spans.append((i, i + hit, "C"))
+            i += hit
+        else:
+            i += 1
+    # 2) heuristic theo cấu trúc âm tiết
+    for i in range(n):
+        if lab[i] or not core[i]:
+            continue
+        if not is_vietnamese_token(core[i]) and re.search(r"[a-z]", core[i]) and len(core[i]) > 1:
+            lab[i] = "H"
+    # 2b) chuỗi chữ cái đơn (a p i) có ít nhất một phụ âm
+    i = 0
+    while i < n:
+        j = i
+        while j < n and not lab[j] and len(core[j]) == 1 and core[j].isalpha() and not _VI_MARK.search(core[j]):
+            j += 1
+        if j - i >= 2 and any(c not in "aeiouy" for c in core[i:j]):
+            for k in range(i, j):
+                lab[k] = "H"
+        i = max(j, i + 1)
+    # 3) từ mơ hồ đứng cạnh từ Anh
+    flags = set()
+    changed = True
+    while changed:
+        changed = False
+        for i in range(n):
+            if not lab[i] and core[i] in AMBIG_EN and (
+                    (i > 0 and lab[i - 1] in "HA" and lab[i - 1]) or (i + 1 < n and lab[i + 1] in "HA" and lab[i + 1])):
+                lab[i] = "A"
+                flags.add("ambiguous_joined")
+                changed = True
+    for i in range(n):
+        if not lab[i] and core[i] in SUSPECT_ALONE:
+            flags.add(f"suspect:{core[i]}")
+    # gộp H/A liền nhau thành span
+    i = 0
+    while i < n:
+        if lab[i] in ("H", "A"):
+            j = i
+            while j < n and lab[j] in ("H", "A"):
+                j += 1
+            spans.append((i, j, "H"))
+            i = j
+        else:
+            i += 1
+    spans.sort()
+    out, pos = [], 0
+    for s, e, _ in spans:
+        out += raw[pos:s]
+        pre, post = parts[s][0], parts[e - 1][2]
+        inner = " ".join([parts[s][1] + (parts[s][2] if e - s > 1 else "")] +
+                         [raw[k] for k in range(s + 1, e - 1)] +
+                         ([parts[e - 1][0] + parts[e - 1][1]] if e - s > 1 else []))
+        out.append(f"{pre}<en>{inner}</en>{post}")
+        pos = e
+    out += raw[pos:]
+    kinds = {k for _, _, k in spans}
+    if "H" in kinds:
+        flags.add("heuristic_span")
+    conf = "none" if not spans else ("heuristic" if "H" in kinds else "catalog")
+    return {"text_tagged": " ".join(out), "confidence": conf, "flags": sorted(flags),
+            "spans": [" ".join(core[s:e]) for s, e, _ in spans], "span_kinds": [k for _, _, k in spans]}
+
+
+# ------------------------------------------------------------------ nạp dataset
+def load_hf(repo: Optional[str], split: str, parquet_glob: Optional[str] = None, streaming: bool = False):
+    """Nạp bằng `datasets`, audio để nguyên bytes (không cần torchcodec)."""
+    from datasets import Audio, load_dataset
+    if parquet_glob:
+        ds = load_dataset("parquet", data_files=parquet_glob, split="train", streaming=streaming)
+    else:
+        ds = load_dataset(repo, split=split, streaming=streaming)
+    feats = getattr(ds, "features", None) or {}
+    if "audio" in feats and feats["audio"].__class__.__name__ == "Audio":
+        ds = ds.cast_column("audio", Audio(decode=False))
+    return ds
+
+
+def save_audio(audio, out_dir: Path, stem: str) -> Tuple[str, float, int]:
+    """Ghi audio (dict {bytes, path} của datasets, hoặc đường dẫn) -> (tên file, duration, sample rate)."""
+    import soundfile as sf
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if isinstance(audio, (str, Path)):
+        info = sf.info(str(audio))
+        return str(audio), info.frames / info.samplerate, info.samplerate
+    data = audio.get("bytes")
+    src = audio.get("path") or ""
+    if data is None:
+        info = sf.info(src)
+        return src, info.frames / info.samplerate, info.samplerate
+    info = sf.info(io.BytesIO(data))
+    ext = {"WAV": ".wav", "FLAC": ".flac", "MP3": ".mp3", "OGG": ".ogg"}.get(info.format, Path(src).suffix or ".wav")
+    path = out_dir / f"{stem}{ext}"
+    path.write_bytes(data)
+    return str(path), info.frames / info.samplerate, info.samplerate
+
+
+def youtube_id(url_or_id: str) -> str:
+    m = re.search(r"(?:v=|youtu\.be/|/shorts/)([\w-]{6,})", url_or_id or "")
+    return m.group(1) if m else re.sub(r"\W+", "_", url_or_id or "unk")
+
+
+def safe(s) -> str:
+    return re.sub(r"[^\w.-]+", "_", str(s)).strip("_")
+
+
+# ------------------------------------------------------------------ ghi kết quả
+REVIEW_COLS = ["id", "split", "audio", "duration", "text_tagged", "confidence", "flags",
+               "decision", "text_tagged_fixed", "viet_levels", "region", "gender", "note"]
+
+
+class Writer:
+    """Gom utterance rồi ghi manifest JSONL (theo tên), phiếu duyệt CSV và thống kê."""
+
+    def __init__(self, out_dir: str, dataset: str):
+        self.out = Path(out_dir)
+        self.out.mkdir(parents=True, exist_ok=True)
+        self.dataset = dataset
+        self.rows: Dict[str, List[Dict]] = {}
+        self.terms = Counter()
+
+    def rel(self, path: str) -> str:
+        try:
+            return str(Path(path).resolve().relative_to(self.out.resolve()))
+        except ValueError:
+            return str(Path(path).resolve())
+
+    def add(self, name: str, row: Dict, tag: Optional[Dict] = None):
+        if tag is not None:
+            row["text_tagged"] = tag["text_tagged"]
+            row["auto_tag"] = {"confidence": tag["confidence"], "flags": tag["flags"]}
+            for s, k in zip(tag["spans"], tag["span_kinds"]):
+                self.terms[(s, k)] += 1
+        row["audio"] = self.rel(row["audio"])
+        row["duration"] = round(float(row["duration"]), 3)
+        self.rows.setdefault(name, []).append(row)
+
+    def close(self, review: Sequence[str] = ()):
+        for name, rows in self.rows.items():
+            p = self.out / f"{name}.jsonl"
+            with open(p, "w", encoding="utf-8") as f:
+                for r in rows:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            hrs = sum(r["duration"] for r in rows) / 3600
+            print(f"  {p}: {len(rows)} câu, {hrs:.2f} h")
+            if name in review:
+                rp = self.out / f"{name}_review.csv"
+                with open(rp, "w", newline="", encoding="utf-8-sig") as f:
+                    w = csv.DictWriter(f, fieldnames=REVIEW_COLS)
+                    w.writeheader()
+                    for r in rows:
+                        at = r.get("auto_tag", {})
+                        w.writerow({"id": r["id"], "split": r["split"], "audio": r["audio"], "duration": r["duration"],
+                                    "text_tagged": r["text_tagged"], "confidence": at.get("confidence", ""),
+                                    "flags": " ".join(at.get("flags", [])), "decision": "", "text_tagged_fixed": "",
+                                    "viet_levels": "", "region": r.get("region", ""), "gender": r.get("gender", ""), "note": ""})
+                print(f"  {rp}: phiếu duyệt (điền cột decision = ok / fix / drop)")
+        if self.terms:
+            tp = self.out / "term_candidates.tsv"
+            with open(tp, "w", encoding="utf-8") as f:
+                f.write("term\tkind\tcount\n")
+                for (t, k), c in self.terms.most_common():
+                    f.write(f"{t}\t{'catalog' if k == 'C' else 'heuristic'}\t{c}\n")
+            print(f"  {tp}: {len(self.terms)} thuật ngữ gặp được (bổ sung dòng 'heuristic' đúng vào catalog)")
+
+
+def base_parser(desc: str):
+    import argparse
+    ap = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", required=True, help="thư mục ghi manifest + audio")
+    ap.add_argument("--catalog", help="catalog.tsv để gắn tag tin cậy cao")
+    ap.add_argument("--parquet", help="glob file parquet đã tải về (thay cho tải từ Hugging Face)")
+    ap.add_argument("--limit", type=int, default=0, help="chỉ lấy N dòng đầu (thử nhanh)")
+    return ap

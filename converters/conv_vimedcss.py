@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""ViMedCSS (tensorxt/ViMedCSS, CC-BY-4.0)  ->  B3 (split hard), bench ngoài (test), train, dev + catalog y tế.
+
+  python converters/conv_vimedcss.py --out data/raw/vimedcss --catalog configs/catalog.tsv
+
+Trường gốc: segment_id, audio, duration_seconds, segment_text, cs_terms_list ("a; b"), cs_terms_count, topic,
+original_video_link, start_time, end_time. Split: train / validation / test / hard.
+Thuật ngữ trong cs_terms_list được dò lại trong câu (khớp gần đúng) để gắn <en>; câu không dò ra thuật ngữ nào
+bị gắn cờ `term_not_found`. Nhãn gốc do Gemini tạo -> phiếu duyệt cho phần vào bench.
+Thuật ngữ CHỈ có ở split hard được ghi reserved_b3=1 trong catalog_vimedcss.tsv.
+Người nói không có trong dataset: speaker = video (yt_<id>), source = youtube:<id>.
+Ghi: b3_candidates.jsonl (+_review.csv), ext_vimedcss_test.jsonl (+_review.csv, split ghi B1 để chấm độc lập),
+     train_vimedcss.jsonl, dev_vimedcss.jsonl, catalog_vimedcss.tsv.
+"""
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from converters.common import Writer, auto_tag, base_parser, load_hf, safe, save_audio, youtube_id  # noqa: E402
+from lib.textnorm import Catalog  # noqa: E402
+
+PLAN = {"hard": ("b3_candidates", "B3"), "test": ("ext_vimedcss_test", "B1"),
+        "train": ("train_vimedcss", "train"), "validation": ("dev_vimedcss", "dev")}
+
+
+def main():
+    ap = base_parser(__doc__)
+    ap.add_argument("--splits", nargs="+", default=list(PLAN))
+    args = ap.parse_args()
+    cat = Catalog.load(args.catalog)
+    w = Writer(args.out, "vimedcss")
+    surface = defaultdict(Counter)  # split -> dạng viết thực tế của thuật ngữ
+    for split in args.splits:
+        name, bsplit = PLAN[split]
+        ds = load_hf("tensorxt/ViMedCSS", split, args.parquet.replace("{split}", split) if args.parquet else None)
+        for i, ex in enumerate(ds):
+            if args.limit and i >= args.limit:
+                break
+            uid = f"vmc_{safe(ex['segment_id'])}"
+            terms = [t.strip() for t in str(ex.get("cs_terms_list") or "").split(";") if t.strip()]
+            tag = auto_tag(ex["segment_text"], cat, terms)
+            if not any(k == "C" for k in tag["span_kinds"]):
+                tag["flags"].append("term_not_found")
+            for s, k in zip(tag["spans"], tag["span_kinds"]):
+                if k == "C":
+                    surface[split][s] += 1
+            vid = youtube_id(ex.get("original_video_link") or "")
+            path, dur, _ = save_audio(ex["audio"], Path(args.out) / "audio" / split, uid)
+            w.add(name, {"id": uid, "split": bsplit, "audio": path, "duration": dur, "speaker": f"yt_{vid}",
+                         "source": f"youtube:{vid}", "region": "unk", "gender": "u", "channel": "wideband",
+                         "domain": "medical", "topic": ex.get("topic"), "dataset": f"ViMedCSS:{split}"}, tag)
+    w.close(review=["b3_candidates", "ext_vimedcss_test"])
+    other = set()
+    for sp, c in surface.items():
+        if sp != "hard":
+            other |= set(c)
+    allc = Counter()
+    for c in surface.values():
+        allc.update(c)
+    p = Path(args.out) / "catalog_vimedcss.tsv"
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("term\tcategory\tvariants\tphonetic\treserved_b3\n")
+        for t, _ in allc.most_common():
+            reserved = int(t in surface.get("hard", {}) and t not in other)
+            f.write(f"{t}\tmedical\t\t\t{reserved}\n")
+    print(f"  {p}: {len(allc)} thuật ngữ y tế ({sum(1 for t in allc if t in surface.get('hard', {}) and t not in other)} reserved_b3)")
+
+
+if __name__ == "__main__":
+    main()

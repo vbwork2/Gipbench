@@ -1,0 +1,13 @@
+# bench (validate, eda, score, leaderboard)
+numpy>=1.20
+soundfile>=0.12
+# decode (sherpa-onnx >= 1.13 tách lib native sang sherpa-onnx-core)
+sherpa-onnx>=1.10
+sherpa-onnx-core>=1.10
+sentencepiece>=0.1.99
+huggingface_hub>=0.20
+# fine-tune: cài thêm theo icefall (torch, k2, kaldifeat) — xem pyproject.toml của repo gipformer
+lhotse>=1.20
+lilcom
+# converter
+datasets>=2.19

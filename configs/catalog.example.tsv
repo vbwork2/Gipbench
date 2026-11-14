@@ -1,0 +1,38 @@
+term	category	variants	phonetic	reserved_b3
+facebook	brand	fb|face book	phây búc|phê búc	0
+zalo	brand		da lô	0
+youtube	brand	you tube	diu túp	0
+tiktok	brand	tik tok	tích tóc	0
+iphone	brand	i phone	ai phôn	0
+wifi	tech	wi fi	oai phai	0
+email	tech	e mail|mail	i meo	0
+online	tech	on line	on lai	0
+app	tech		áp	0
+website	tech	web site|web	quép sai	0
+server	tech		sơ vơ	0
+deploy	tech		đi ploi	0
+bug	tech		bấc	0
+code	tech		cốt	0
+api	acronym	a p i	ê pi ai	0
+kpi	acronym	k p i	ca pi ai	0
+ceo	acronym	c e o	xi i âu	0
+meeting	business		mít tinh|mi ting	0
+deadline	business	dead line	đét lai	0
+team	business		tim	0
+feedback	business	feed back	phít bách	0
+marketing	business		ma két tinh	0
+sale	business		seo	0
+voucher	finance		vao chơ	0
+crypto	finance		críp tô	0
+bitcoin	finance	btc	bít coi	0
+trading	finance		tre đinh	0
+ielts	edu		ai eo	0
+scholarship	edu		sơ ca la síp	0
+workshop	edu	work shop	uốc sóp	0
+combo	daily		com bô	0
+booking	daily		bu king	0
+skincare	daily	skin care	sờ kin ke	0
+livestream	tech	live stream	lai sờ trim	0
+kubernetes	tech	k8s	ku bơ nét	1
+webhook	tech	web hook	quép húc	1
+amortization	finance		a mo ti dây sần	1
