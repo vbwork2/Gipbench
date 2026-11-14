@@ -157,8 +157,46 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
 
 
 # ------------------------------------------------------------------ nạp dataset
-def load_hf(repo: Optional[str], split: str, parquet_glob: Optional[str] = None, streaming: bool = False):
-    """Nạp bằng `datasets`, audio để nguyên bytes (không cần torchcodec)."""
+def iter_hf_parquet(repo: str, split: str, limit: int, batch_size: int = 32, fs=None,
+                    root: str = "datasets/") -> Optional[Iterator[Dict]]:
+    """Đọc `limit` dòng đầu của split từ file parquet trên Hugging Face (data/<split>-*.parquet) bằng pyarrow.
+
+    Chỉ tải các row group cần dùng. Generator tự kết thúc sau `limit` dòng, nên không để lại stream đọc dở:
+    `datasets` 5.2 + pyarrow 26 bị crash lúc thoát (PyGILState_Release, mã 134) khi dừng giữa một shard lớn.
+    Trả về None nếu repo không có file theo mẫu đó. `fs`/`root` chỉ đổi khi kiểm thử (filesystem cục bộ).
+    """
+    import pyarrow.parquet as pq
+    if fs is None:
+        from huggingface_hub import HfFileSystem
+        fs = HfFileSystem()
+    files = sorted(fs.glob(f"{root}{repo}/data/{split}-*.parquet"))
+    if not files:
+        return None
+
+    def gen():
+        n = 0
+        for f in files:
+            with fs.open(f, "rb") as fh:
+                for batch in pq.ParquetFile(fh).iter_batches(batch_size=batch_size):
+                    for row in batch.to_pylist():
+                        yield row
+                        n += 1
+                        if n >= limit:
+                            return
+    return gen()
+
+
+def load_hf(repo: Optional[str], split: str, parquet_glob: Optional[str] = None, streaming: bool = False,
+            limit: int = 0):
+    """Nạp bằng `datasets`, audio để nguyên bytes (không cần torchcodec).
+
+    Có `limit` và đọc từ Hugging Face thì chỉ đọc `limit` dòng đầu (xem iter_hf_parquet), không tải cả split.
+    """
+    if limit and repo and not parquet_glob:
+        it = iter_hf_parquet(repo, split, limit)
+        if it is not None:
+            return it
+        streaming = True
     from datasets import Audio, load_dataset
     if parquet_glob:
         ds = load_dataset("parquet", data_files=parquet_glob, split="train", streaming=streaming)

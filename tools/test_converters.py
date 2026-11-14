@@ -157,6 +157,43 @@ def main():
     run(G / "eda.py", "--bench", T / "data/bench_v0.jsonl", "--catalog", T / "configs/catalog_v0.tsv", "--out", T / "eda")
     run(G / "ft/to_lhotse.py", "--manifest", raw / "vimedcss/train_vimedcss.jsonl", raw / "sea/train_sea.jsonl", "--name", "cs_train",
         "--bench", T / "data/bench_v0.jsonl", "--catalog", T / "configs/catalog_v0.tsv", "--out", T / "lhotse", "--min-dur", "1")
+    # --- Phase 0: đọc N dòng đầu từ parquet nhiều shard (đường --limit khi tải từ HF), filesystem cục bộ thay HF
+    import fsspec
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    sys.path.insert(0, str(G))
+    from converters.common import iter_hf_parquet
+    shard_dir = T / "hf/org/ds/data"
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    for k in range(2):
+        pq.write_table(pa.table({"id": [f"{k}-{j}" for j in range(5)], "text": ["x"] * 5}),
+                       str(shard_dir / f"test-0000{k}-of-00002.parquet"), row_group_size=2)
+    lfs = fsspec.filesystem("file")
+    got = [r["id"] for r in iter_hf_parquet("org/ds", "test", 7, batch_size=2, fs=lfs, root=str(T / "hf") + "/")]
+    assert got == ["0-0", "0-1", "0-2", "0-3", "0-4", "1-0", "1-1"], got
+    assert iter_hf_parquet("org/ds", "hard", 3, fs=lfs, root=str(T / "hf") + "/") is None
+    # --- VietSuperSpeech: --limit áp cho từng phần train/dev
+    (vss / "dev.json").write_text(json.dumps([{"audio": "audio/b.wav", "text": "HỌC HÀNH CHĂM CHỈ", "duration": 3.0,
+                                               "source": "ep3.mp4"}], ensure_ascii=False), encoding="utf-8")
+    run(G / "converters/conv_local.py", "vietsuperspeech", "--root", vss, "--out", raw / "vss_l1", "--limit", "1")
+    assert len(L(raw / "vss_l1/dev_vss.jsonl")) == 1  # trước đây dev không được đọc khi có --limit
+    # --- tools/converter_check.py
+    run(G / "tools/converter_check.py", "--manifests", raw / "ggroup/b1_candidates.jsonl", raw / "vss/train_vss.jsonl",
+        "--samples", "2", "--out", T / "reports/converter_check.md")
+    ck = (T / "reports/converter_check.md").read_text(encoding="utf-8")
+    assert "| 5 |" in ck and "heuristic" in ck and "2 câu mẫu" in ck, ck
+    # --- tools/eval_autotag.py: số liệu tính tay trên 3 câu vàng
+    gold = T / "gold.jsonl"
+    gold.write_text("\n".join(json.dumps({"id": i, "gold": g}, ensure_ascii=False) for i, g in [
+        ("a", "mình [[deploy]] lên [[server]] rồi"),          # auto_tag: deploy + server (catalog) -> 2 TP
+        ("b", "chấm [[gov]] chấm {{vn}} nhé"),                 # auto_tag gắn cả vn -> 1 FP (nằm trong viết tắt VN)
+        ("c", "học ((ai ten)) với cái [[kit]] này")]) + "\n", encoding="utf-8")  # kit hợp lệ âm tiết Việt -> FN (trước khi sửa)
+    run(G / "tools/eval_autotag.py", "--gold", gold, "--catalog", cat, "--out", T / "reports/eval", "--spotcheck", "2")
+    ev = json.loads((T / "reports/eval.json").read_text(encoding="utf-8"))
+    s = ev["subset_en"]
+    assert (s["gold_spans"], s["tp"], ev["phonetic_spans"], ev["vi_abbr_spans"]) == (4, 3, 1, 1), s
+    assert abs(s["precision_neutral"] - 1.0) < 1e-9 and abs(s["precision"] - 0.75) < 1e-9, s
+    assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 
 

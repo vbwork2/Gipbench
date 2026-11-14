@@ -9,5 +9,6 @@ huggingface_hub>=0.20
 # fine-tune: cài thêm theo icefall (torch, k2, kaldifeat) — xem pyproject.toml của repo gipformer
 lhotse>=1.20
 lilcom
+urllib3  # lhotse 1.33 import urllib3 nhưng không khai báo phụ thuộc
 # converter
 datasets>=2.19

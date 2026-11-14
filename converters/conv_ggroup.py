@@ -23,7 +23,8 @@ def main():
     cat = Catalog.load(args.catalog)
     w = Writer(args.out, "ggroup")
     for name in args.names:
-        ds = load_hf(f"g-group-ai-lab/vi-asr-{name}-test", "test", args.parquet.replace("{name}", name) if args.parquet else None)
+        ds = load_hf(f"g-group-ai-lab/vi-asr-{name}-test", "test", args.parquet.replace("{name}", name) if args.parquet else None,
+                     limit=args.limit)
         for i, ex in enumerate(ds):
             if args.limit and i >= args.limit:
                 break

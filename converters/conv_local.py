@@ -91,9 +91,11 @@ def vietsuperspeech(args, w, cat, stats):
         for f in files:
             part = "dev" if "valid" in Path(f).name or "dev" in Path(f).name else "train"
             items += [(part, d) for d in load_dataset("parquet", data_files=f, split="train")]
+    seen = {}
     for i, (part, d) in enumerate(items):
-        if args.limit and i >= args.limit:
-            break
+        seen[part] = seen.get(part, 0) + 1
+        if args.limit and seen[part] > args.limit:  # --limit áp cho từng phần (train, dev), như vivos/commonvoice
+            continue
         src = safe(d.get("source") or "unk")
         emit(w, f"{part}_vss", part, f"vss_{i:07d}", root / d["audio"], str(d["text"]).lower(), f"vss_{src}",
              f"vss:{src}", "conversation", "VietSuperSpeech", cat, args.keep_english, stats)

@@ -33,7 +33,9 @@ def main():
     surface = defaultdict(Counter)  # split -> dạng viết thực tế của thuật ngữ
     for split in args.splits:
         name, bsplit = PLAN[split]
-        ds = load_hf("tensorxt/ViMedCSS", split, args.parquet.replace("{split}", split) if args.parquet else None)
+        # có --limit thì chỉ đọc N dòng đầu, không tải cả split (train ~24 h audio, ~14 GB)
+        ds = load_hf("tensorxt/ViMedCSS", split, args.parquet.replace("{split}", split) if args.parquet else None,
+                     limit=args.limit)
         for i, ex in enumerate(ds):
             if args.limit and i >= args.limit:
                 break
