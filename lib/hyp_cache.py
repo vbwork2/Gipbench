@@ -14,6 +14,7 @@ Một hyp chỉ được dùng lại cho một câu khi CẢ id lẫn hash audio
 import csv
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -30,13 +31,13 @@ def audio_rel(row: Dict, audio_root: Optional[str] = None) -> str:
     """Đường dẫn audio tương đối với gốc dataset (= đường dẫn trong repo HF)."""
     if row.get("audio_rel"):
         return row["audio_rel"]
-    p = Path(row.get("_audio_path") or row["audio"])
+    # os.path.abspath chỉ xử lý chuỗi (không gọi hệ thống file như Path.resolve): nhanh trên /mnt/d của WSL
+    p = os.path.abspath(row.get("_audio_path") or row["audio"])
     if audio_root:
-        try:
-            return p.resolve().relative_to(Path(audio_root).resolve()).as_posix()
-        except ValueError:
-            pass
-    s = p.as_posix()
+        root = os.path.abspath(audio_root)
+        if p.startswith(root + os.sep):
+            return Path(os.path.relpath(p, root)).as_posix()
+    s = Path(p).as_posix()
     return s[s.index("audio/"):] if "audio/" in s else s
 
 
@@ -102,12 +103,17 @@ class HypTable:
         self.by_key: Dict[Tuple[str, str], str] = {}
         self.by_id: Dict[str, str] = {}
         self.n_legacy = 0
+        self.n_bad = 0
         for fp in iter_hyp_files(path):
             with open(fp, encoding="utf-8") as f:
                 for line in f:
                     if not line.strip():
                         continue
-                    h = json.loads(line)
+                    try:
+                        h = json.loads(line)
+                    except json.JSONDecodeError:  # dòng bị cắt khi tiến trình bị dừng giữa lúc ghi
+                        self.n_bad += 1
+                        continue
                     hyp = h.get("hyp", "")
                     self.by_id.setdefault(h["id"], hyp)
                     if h.get("audio_sha256"):

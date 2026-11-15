@@ -30,24 +30,26 @@ from lib.manifest import read_jsonl  # noqa: E402
 
 
 def load_engine(args):
+    """Trả về run(paths: list) -> list hyp. Qwen3-ASR giải mã theo lô --batch-size; faster-whisper từng câu (beam 5)."""
     if args.engine == "faster-whisper":
         from faster_whisper import WhisperModel
         m = WhisperModel(args.model, device=args.device, compute_type=args.compute_type)
         lang = args.language or "vi"
 
-        def run(path):
+        def one(path):
             segs, _ = m.transcribe(path, language=lang, beam_size=args.beam_size, vad_filter=False,
                                    condition_on_previous_text=False)
             return " ".join(s.text.strip() for s in segs).strip()
-        return run
+        return lambda paths: [one(p) for p in paths]
     import torch
     from qwen_asr import Qwen3ASRModel
     dtype = {"bf16": torch.bfloat16, "fp16": torch.float16, "fp32": torch.float32}[args.dtype]
     m = Qwen3ASRModel.from_pretrained(args.model, dtype=dtype, device_map=args.device if args.device != "auto" else "cuda:0",
-                                      max_inference_batch_size=1, max_new_tokens=args.max_new_tokens)
+                                      max_inference_batch_size=args.batch_size, max_new_tokens=args.max_new_tokens)
 
-    def run(path):
-        return m.transcribe(audio=path, language=args.language)[0].text.strip()
+    def run(paths):
+        res = m.transcribe(audio=list(paths), language=args.language)
+        return [x.text.strip() for x in res]
     return run
 
 
@@ -64,6 +66,7 @@ def main():
     ap.add_argument("--language", default=None, help="faster-whisper: mã (vi); qwen3-asr: tên (Vietnamese); mặc định xem trên")
     ap.add_argument("--beam-size", type=int, default=5)
     ap.add_argument("--max-new-tokens", type=int, default=256)
+    ap.add_argument("--batch-size", type=int, default=1, help="qwen3-asr: số câu mỗi lô giải mã (faster-whisper luôn 1)")
     ap.add_argument("--ids", help="file id (mỗi dòng một id): chỉ giải mã các câu này (tầng ASR thứ hai)")
     ap.add_argument("--chunk-size", type=int, default=0, help="số câu mỗi chunk (0 = một chunk)")
     ap.add_argument("--hf-repo", help="tải audio thiếu từ repo dataset HF theo từng chunk, vd thanhnew2001/VietSuperSpeech")
@@ -89,7 +92,11 @@ def main():
     if out.exists():
         for l in open(out, encoding="utf-8"):
             if l.strip():
-                h = json.loads(l)
+                try:
+                    h = json.loads(l)
+                except json.JSONDecodeError:  # dòng cuối bị cắt khi tiến trình bị dừng giữa lúc ghi: giải mã lại
+                    print("  bỏ qua một dòng hyps hỏng")
+                    continue
                 done_ids.add(h["id"])
                 done_keys.add((h["id"], h.get("audio_sha256")))
     index = HashIndex(args.hash_index) if args.hash_index else None
@@ -143,19 +150,27 @@ def main():
                     log["load_s"] = time.time() - t1
                     print(f"  nạp model {log['load_s']:.1f} s")
                 t1 = time.time()
-                for r in part:
-                    if r["id"] not in paths:
-                        continue
-                    sha = file_sha256(paths[r["id"]])
-                    if index is not None:
-                        if index.get(rel[r["id"]]) not in (None, sha):
-                            n_mismatch += 1
-                        index.put(rel[r["id"]], sha)
-                    hyp = run(paths[r["id"]])
-                    log["audio_s"] += float(r["duration"])
-                    log["n"] += 1
-                    f.write(json.dumps({"id": r["id"], "hyp": hyp, "engine": args.engine, "model": args.model,
-                                        "audio_sha256": sha, "audio_rel": rel[r["id"]]}, ensure_ascii=False) + "\n")
+                ready = [r for r in part if r["id"] in paths]
+                bs = args.batch_size if args.engine == "qwen3-asr" else 1
+                if bs > 1:  # xếp theo độ dài trước khi chia lô: câu trong một lô dài gần bằng nhau, ít padding
+                    ready.sort(key=lambda r: float(r["duration"]))
+                for b0 in range(0, len(ready), bs):
+                    batch = ready[b0:b0 + bs]
+                    shas = []
+                    for r in batch:
+                        sha = file_sha256(paths[r["id"]])
+                        if index is not None:
+                            if index.get(rel[r["id"]]) not in (None, sha):
+                                n_mismatch += 1
+                            index.put(rel[r["id"]], sha)
+                        shas.append(sha)
+                    hyps = run([paths[r["id"]] for r in batch])
+                    for r, sha, hyp in zip(batch, shas, hyps):
+                        log["audio_s"] += float(r["duration"])
+                        log["n"] += 1
+                        f.write(json.dumps({"id": r["id"], "hyp": hyp, "engine": args.engine, "model": args.model,
+                                            "batch_size": bs, "audio_sha256": sha, "audio_rel": rel[r["id"]]},
+                                           ensure_ascii=False) + "\n")
                     f.flush()
                 log["asr_s"] += time.time() - t1
                 if cdir is not None:
