@@ -1,3 +1,32 @@
+# STATUS — cập nhật 15/11/2026, 23:00 (giờ VN): ưu tiên E0/E1 trên bench NHÁP
+
+## 0. Job ASR (vss_cs) và lệnh resume
+
+- Job 6 h **đã tự dừng lúc 22:29, exit 0**: đạt **6.09 h sạch / 1 657 câu** (chunk 14; mẫu 6 000 câu, seed 1). Lúc nhận prompt "ĐỔI ƯU TIÊN" thì
+  không còn tiến trình ASR nào chạy, nên không phải kill. Log: `results/asr_hyps/vss_cs_run_s1_b8_6h.log`, `results/asr_hyps/chain6h.log`.
+- Kiểm tra cache sau khi dừng: `qwen3_asr_0.6b/vss_cs_run_s1.jsonl` 5 600 dòng, `fw_large_v3_int8/vss_cs_run_s1.jsonl` 4 334 dòng:
+  **0 dòng JSON hỏng, 0 id trùng**. `*.runs.jsonl` có id trùng, đúng thiết kế (mỗi lần chạy ghi 1 dòng).
+- Lệnh resume (WSL; đọc lại cache theo id + hash audio, chỉ giải mã câu chưa có hyp). Nâng `--target-clean-h` / `--max-new` nếu cần quá 6 h:
+
+```bash
+cd /mnt/d/code/ZAIC/gipbench && source ~/.venvs/gipbench/bin/activate && export PYTHONIOENCODING=utf-8 PYTHONUNBUFFERED=1
+nohup python tools/vss_cs_run.py --pre data/raw/vss_full/vss_cs_pre_rebuild.jsonl --catalog data/raw/_proxy/catalog_proxy.tsv \
+  --seed 1 --max-new 6000 --target-clean-h 6 --chunk 400 --qwen-batch 8 > results/asr_hyps/vss_cs_run_s1_b8_resume.log 2>&1 &
+```
+
+## 0b. Bench NHÁP v0-draft (không chờ duyệt)
+
+- Lệnh và log: `data/bench_v0_draft/build.log`. `--accept all --version v0-draft`; mỗi dòng có `bench_version: v0-draft`.
+- Nguồn: B1 G-Group · B2 consensus agreed · B3 ViMedCSS hard · B5 G-Group Việt thuần + VIVOS test + consensus product. Không lấy disputed / pending.
+- Kết quả: **4 238 câu**: B1 1 330 (1.38 h), B2 218 (0.40 h), B3 524 (1.04 h), B5 2 166 (2.37 h). Bỏ 134 câu B3 không còn span `<en>`
+  theo nhãn Spec (từ mượn như `test`, `vitamin`; validate coi là LỖI).
+- `validate.py`: **ĐẠT, 0 LỖI**, 894 CẢNH BÁO (bỏ qua theo dặn; log `data/bench_v0_draft/validate.log`).
+- Catalog nháp: `data/bench_v0_draft/catalog_v0_draft.tsv` = catalog ViMedCSS + 1 618 span B1/B2 của chính bench → hotwords E1 là
+  danh sách "biết trước" thuật ngữ của bench (cận trên lạc quan).
+- Kết quả decode / chấm: `results/v0_draft/<system>/`, bảng: `reports/v0_draft_tables.md`.
+
+---
+
 # STATUS — 15/11/2026, 19:20 (giờ VN)
 
 Chỉ kiểm tra, không sửa code, không động vào job. Nguồn đối chiếu: các prompt anh/chị đã gửi (đọc lại từ transcript các phiên), `docs/PROMPT_OPUS_IMPLEMENT.md`, `reports/*.md`, git log.

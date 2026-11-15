@@ -886,6 +886,11 @@ def test_term_decisions(cat, L):
               "--term-decisions", D / "dec.tsv", "--out", D / "bench2.jsonl", "--draft-splits", "B3")
     got2 = {r["id"]: r["review"] for r in L(D / "bench2.jsonl")}
     assert got2.get("u_b3") == "draft_unreviewed" and "u_b1" not in got2 and "bản nháp" in out, (got2, out)
+    run(G / "converters/build_bench_v0.py", "--candidates", D / "cand.jsonl", "--accept", "trusted-text",
+        "--term-decisions", D / "dec.tsv", "--out", D / "bench3.jsonl", "--catalogs", cat,
+        "--catalog-out", D / "cat3.tsv", "--catalog-from-bench")
+    c3 = {l.split("\t")[0]: l.split("\t") for l in (D / "cat3.tsv").read_text(encoding="utf-8").splitlines()[1:]}
+    assert c3["crm"][1] == "tech" and c3["deep learning"][4] == "0" and "facebook" in c3, sorted(c3)  # + catalog gốc
     # tools/term_decisions.py ask (gộp top_review) / import
     top = D / "top.csv"
     with open(top, "w", newline="", encoding="utf-8-sig") as f:

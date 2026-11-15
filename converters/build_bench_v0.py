@@ -74,12 +74,16 @@ def main():
     ap.add_argument("--reviews", nargs="*", default=[])
     ap.add_argument("--catalogs", nargs="*", default=[])
     ap.add_argument("--catalog-out", default="configs/catalog_v0.tsv")
+    ap.add_argument("--catalog-from-bench", nargs="*", default=None, metavar="SPLIT",
+                    help="thêm vào catalog gộp mọi span <en> của câu đã nhận ở các split này (mặc định B1 B2 khi chỉ ghi "
+                         "cờ); category = term_category của câu, không có thì domain (tech / edu / ...); reserved_b3 = 0")
     ap.add_argument("--accept", choices=["reviewed", "catalog", "trusted-text", "all"], default="reviewed")
     ap.add_argument("--term-decisions", default=None, help="mặc định configs/term_decisions.tsv (cho --accept trusted-text)")
     ap.add_argument("--draft-splits", nargs="*", default=[], help="split nhận cả câu chưa duyệt (bench nháp)")
     ap.add_argument("--pending-out", help="ghi thuật ngữ còn chờ (trusted-text) ra TSV: term, n_câu, giờ")
     ap.add_argument("--max-per-source", type=int, default=0, help="trần số câu mỗi source (0 = không giới hạn)")
     ap.add_argument("--out", default="data/bench_v0.jsonl")
+    ap.add_argument("--version", default=None, help="ghi bench_version vào mỗi dòng (vd v0-draft; có 'draft' = bench NHÁP)")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -116,6 +120,10 @@ def main():
                 sbt = r.get("split_by_tag")  # vd consensus: {"en": "B2", "vi": "B5"} -> split theo text đã sửa
                 if isinstance(sbt, dict):
                     r["split"] = sbt.get("en" if "<en" in fixed else "vi", r["split"])
+            if r["split"] in ("B1", "B2", "B3", "B4") and "<en" not in r["text_tagged"]:
+                # vd ViMedCSS: nhãn Spec bỏ tag từ mượn (test, vitamin…) -> câu không còn CS; validate coi là LỖI
+                why[f"bỏ: {r['split']} không còn span <en> (nhãn Spec)"] += 1
+                continue
             clean_b5 = r["split"] == "B5" and at.get("confidence", "none") == "none" and not at.get("flags")
             auto_ok = at.get("confidence") == "catalog" and not at.get("flags")
             if dec in ("ok", "fix"):
@@ -176,10 +184,14 @@ def main():
                 rows = rnd.sample(rows, args.max_per_source)
             kept += rows
     kept.sort(key=lambda r: (r["split"], r["id"]))
+    if args.version:
+        for r in kept:
+            r["bench_version"] = args.version
     with open(args.out, "w", encoding="utf-8") as f:
         for r in kept:
             f.write(json.dumps({k: v for k, v in r.items() if not k.startswith("_")}, ensure_ascii=False) + "\n")
-    print(f"Bench: {len(kept)} câu -> {args.out}")
+    draft = "draft" in (args.version or "") or args.accept == "all" or bool(args.draft_splits)
+    print(f"Bench{' NHÁP' if draft else ''}{f' {args.version}' if args.version else ''}: {len(kept)} câu -> {args.out}")
     by_split = defaultdict(lambda: [0, 0.0])
     for r in kept:
         by_split[r["split"]][0] += 1
@@ -188,8 +200,32 @@ def main():
         print(f"  {s}: {by_split[s][0]} câu, {by_split[s][1] / 3600:.2f} h")
     for k, v in sorted(why.items()):
         print(f"  {v:6d}  {k}")
-    if args.catalogs:
-        merge_catalogs(args.catalogs, args.catalog_out)
+    cats = list(args.catalogs)
+    if args.catalog_from_bench is not None:
+        splits = args.catalog_from_bench or ["B1", "B2"]
+        from lib.textnorm import Catalog, normalize_ref
+        cat_n = Counter()
+        rows_c = {}
+        for r in kept:
+            if r["split"] not in splits:
+                continue
+            _, sp = normalize_ref(r["text_tagged"], Catalog())
+            for s_ in sp:
+                t = " ".join(s_)
+                cat_n[t] += 1
+                c = (r.get("term_category") or {}).get(t) or r.get("domain") or ""
+                rows_c.setdefault(t, c if c in ("name", "brand", "tech", "finance", "edu", "business", "daily",
+                                                 "pubadmin", "entertainment", "medical") else "")
+        bp = Path(args.catalog_out).with_suffix(".from_bench.tsv")
+        bp.parent.mkdir(parents=True, exist_ok=True)
+        with open(bp, "w", encoding="utf-8") as f:
+            f.write("term\tcategory\tvariants\tphonetic\treserved_b3\n")
+            for t, _ in cat_n.most_common():
+                f.write(f"{t}\t{rows_c[t]}\t\t\t0\n")
+        print(f"Thuật ngữ lấy từ bench ({', '.join(splits)}): {len(cat_n)} -> {bp}")
+        cats.append(str(bp))
+    if cats:
+        merge_catalogs(cats, args.catalog_out)
     if args.pending_out:
         with open(args.pending_out, "w", encoding="utf-8") as f:
             f.write("term\tn_sentences\thours\n")
