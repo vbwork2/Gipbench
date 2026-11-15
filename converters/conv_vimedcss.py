@@ -40,7 +40,7 @@ def main():
                     help="audio gốc là WAV 44.1 kHz: resample về tần số này khi ghi (0 = giữ nguyên)")
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
-    vw = load_vi_words(args.vi_words, same_surface=True)  # từ mượn trùng mặt chữ (vitamin...) chỉ áp ở đây
+    vw = load_vi_words(args.vi_words)  # gồm cả same_surface (vitamin...), như mọi bộ (decisions §12)
     w = Writer(args.out, "vimedcss")
     surface = defaultdict(Counter)  # split -> dạng viết thực tế của thuật ngữ (theo nhãn Spec)
     untagged = Counter()            # thuật ngữ dataset bị bỏ tag vì là từ mượn

@@ -212,14 +212,14 @@ def build_loan(args, cat_keys, g10k, exclude):
     for s, c in surf.most_common():
         if s in viet_lc and s not in rows and s not in dropped and s not in cat_keys and all(w in en for w in s.split()):
             (dropped if s in exclude else rows)[s] = (
-                "same_surface", exclude.get(s) or "CHỜ DUYỆT (mặc định không EN, chỉ áp cho ViMedCSS)",
+                "same_surface", exclude.get(s) or "không EN ở mọi bộ (decisions §12)",
                 f"Viet74K ∩ words_alpha ∩ thuật ngữ ViMedCSS ({c} lần)")
     n_vs = sum(v[0] == "vi_spelling" for v in rows.values())
     hdr = ["# vi_loanwords.txt — từ mượn có trong từ điển tiếng Việt: auto_tag KHÔNG gắn <en> (trừ khi có trong catalog).",
            "# TRẠNG THÁI: NHÁP, chờ duyệt, chưa khoá phiên bản. Sinh bởi tools/build_wordlists.py.",
            "# kind = vi_spelling: chính tả Việt khác chính tả Anh (axit, canxi) -> không EN theo Spec; áp cho MỌI dataset.",
-           "# kind = same_surface: trùng mặt chữ tiếng Anh (vitamin, protein) -> chờ duyệt, mặc định không EN;",
-           "#   CHỈ áp trong conv_vimedcss (các bộ khác giữ quy ước B1: test, gen... là EN). Xem load_vi_words(same_surface=).",
+           "# kind = same_surface: trùng mặt chữ tiếng Anh (vitamin, protein) -> KHÔNG EN ở MỌI bộ (decisions §12).",
+           "#   Ngoại lệ theo từng thuật ngữ: configs/term_decisions.tsv (decision = en).",
            "# Muốn coi một từ là EN: xoá dòng hoặc thêm '#' đầu dòng. Dòng '#-' = bị loại (lý do ở cột status).",
            f"# Số mục: {n_vs} vi_spelling, {len(rows) - n_vs} same_surface, {len(dropped)} bị loại.",
            "word\tkind\tstatus\tsource"]

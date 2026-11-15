@@ -81,12 +81,12 @@ VI_WORD_FILES = [_ROOT / "configs" / "vi_abbrev.txt", _ROOT / "configs" / "vi_lo
 _VI_WORDS_CACHE: Dict[Tuple[str, ...], frozenset] = {}
 
 
-def load_vi_words(paths: Optional[Sequence] = None, same_surface: bool = False) -> frozenset:
+def load_vi_words(paths: Optional[Sequence] = None, same_surface: bool = True) -> frozenset:
     """Đọc cột đầu của các file danh sách (bỏ dòng '#' và dòng header), viết thường, NFC.
 
     paths = None -> các file mặc định trong configs/ (file nào chưa có thì bỏ qua); [] -> tập rỗng.
-    same_surface=False bỏ các dòng kind = same_surface của vi_loanwords.txt (vitamin, test, gen: trùng mặt chữ tiếng
-    Anh, chỉ coi là tiếng Việt trong ViMedCSS; ở các bộ khác chúng theo quy ước B1).
+    same_surface: các dòng kind = same_surface của vi_loanwords.txt (vitamin, protein: trùng mặt chữ tiếng Anh) là
+    KHÔNG EN ở MỌI bộ (decisions §12); False chỉ để so sánh / tái lập số cũ (trước §12 chỉ áp cho ViMedCSS).
     """
     paths = VI_WORD_FILES if paths is None else paths
     key = tuple(str(p) for p in paths) + (str(same_surface),)

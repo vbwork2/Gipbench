@@ -51,7 +51,8 @@ Một từ / cụm viết bằng chữ Latin được gắn `<en>` khi người 
 | Từ mượn có trong từ điển tiếng Việt | không | `axit`, `canxi`, `vitamin`, `cà phê` |
 | Không chắc người nói đọc kiểu nào | **người duyệt nghe audio rồi quyết**, ghi lý do vào cột `reading_note` của phiếu duyệt | `pc` (pê xê / pi xi), `tv` |
 
-- Bản nháp tự gắn dựa trên hai danh sách đang chờ duyệt: `configs/vi_abbrev.txt` (viết tắt / mã thường đọc kiểu Việt) và `configs/vi_loanwords.txt` (từ mượn có trong từ điển tiếng Việt). Từ nằm trong hai danh sách này không được gắn `<en>`, trừ khi nó có trong catalog. Riêng các mục `same_surface` của `vi_loanwords.txt` (trùng mặt chữ tiếng Anh: `vitamin`, `test`, `gen`) chỉ áp trong ViMedCSS; ở các bộ khác chúng vẫn theo quy ước B1.
+- Bản nháp tự gắn dựa trên hai danh sách đang chờ duyệt: `configs/vi_abbrev.txt` (viết tắt / mã thường đọc kiểu Việt) và `configs/vi_loanwords.txt` (từ mượn có trong từ điển tiếng Việt). Từ nằm trong hai danh sách này không được gắn `<en>`, trừ khi nó có trong catalog. Các mục `same_surface` của `vi_loanwords.txt` (trùng mặt chữ tiếng Anh: `vitamin`, `protein`, `insulin`) là **không EN ở MỌI bộ** (decisions §12). Ngoại lệ chốt theo từng thuật ngữ nằm ở `configs/term_decisions.tsv`.
+- Tên người nước ngoài viết bằng chữ Latin: gắn `<en>`, `term_category = name`. Tên có ít nhất một token không đọc được như âm tiết Việt (`lucas`, `tanaka`) hoặc danh xưng + tên (`mr tanaka`) thì nhận. Tên trùng âm tiết Việt (`kim`, `chen`, `sam`) chỉ nhận khi đứng cạnh một tên như vậy (`sarah kim`); đứng một mình thì chỉ gắn cờ `maybe_name:*` (decisions §12, đã duyệt).
 - Cùng một viết tắt có thể được đọc khác nhau ở hai câu (`ai` = "ây ai" hay "a i"), nên người duyệt quyết theo từng câu chứ không theo danh sách.
 - Hướng dẫn duyệt chi tiết: `docs/huong_dan_duyet_b1.md`.
 

@@ -314,7 +314,7 @@ def main():
     assert any(l.startswith("vn\t") and l.endswith("quy ước dự án, đọc kiểu Việt") for l in abp_lines)
     assert any(l.startswith("#-shs\t") and "loại tay: bỏ theo quyết định dự án" in l for l in abp_lines)
     assert any(l.startswith("#-api\t") and "catalog" in l for l in abp_lines) and "luật catalog: 1 mục" in out_ab, out_ab
-    # --- Phase 0b T3: vi_loanwords — vi_spelling (mọi bộ) / same_surface (chỉ ViMedCSS) / --exclude / google-10000
+    # --- Phase 0b T3: vi_loanwords — vi_spelling + same_surface (mọi bộ, §12) / --exclude / google-10000
     (lex / "Viet74K.txt").write_text("axit\ncanxi\nvitamin\niot\nmega\ncon\nHà Nội\na-xít\n", encoding="utf-8")
     (lex / "words_alpha.txt").write_text("vitamin\nlipid\n", encoding="utf-8")
     (lex / "google-10000-english-no-swears.txt").write_text("the\ngas\npt\nmega\n", encoding="utf-8")
@@ -327,8 +327,9 @@ def main():
     run(G / "tools/build_wordlists.py", "--src", lex, "--vimedcss-meta", vm_meta, "--out-loan", T / "vi_loan.txt",
         "--exclude", "iot:IoT trong tech")
     lo_lines = (T / "vi_loan.txt").read_text(encoding="utf-8").splitlines()
-    assert load_vi_words([T / "vi_loan.txt"]) == {"axit", "canxi"}, load_vi_words([T / "vi_loan.txt"])
-    assert load_vi_words([T / "vi_loan.txt"], same_surface=True) == {"axit", "canxi", "vitamin"}  # lipid không có trong Viet74K
+    # same_surface = không EN ở MỌI bộ (decisions §12): mặc định nạp cả nhóm này
+    assert load_vi_words([T / "vi_loan.txt"]) == {"axit", "canxi", "vitamin"}, load_vi_words([T / "vi_loan.txt"])
+    assert load_vi_words([T / "vi_loan.txt"], same_surface=False) == {"axit", "canxi"}  # lipid không có trong Viet74K
     assert any(l.startswith("#-iot\t") and "IoT trong tech" in l for l in lo_lines)
     assert any(l.startswith("#-mega\t") and "google-10000" in l for l in lo_lines)  # trùng từ Anh phổ biến -> loại
     # --- Phase 0b T4: VSS -> vss_cs_candidates (chỉ phần train, chặn rò rỉ với bench B1–B3 và reserved_b3)
