@@ -22,6 +22,9 @@ vi_abbrev, luật cho từng nhóm:
   viết tắt        mục Wiktionary có dạng đầy đủ toàn tiếng Việt, không có định nghĩa "abbreviation of|en"
 Ứng viên bị LOẠI tự động (ghi lại dưới dạng "#-" kèm lý do, người duyệt có thể bật lại):
   trùng catalog (EN), trùng từ tiếng Anh phổ biến (google-10000), hoặc đã là âm tiết tiếng Việt (không cần).
+Quyết định tay: --project-abbrev (mặc định configs/vi_abbrev_project.tsv), áp SAU các nguồn: add (thắng luật
+google-10000 / âm tiết, vd tp) và exclude (vd cdn). Luật catalog áp sau cùng: mục nào là term EN trong catalog đều bị
+loại, danh sách in ra màn hình.
 
 vi_loanwords, hai loại:
   vi_spelling   mục một chữ trong Viet74K, không phải âm tiết tiếng Việt đơn, không có trong words_alpha, không trùng
@@ -146,6 +149,23 @@ def build_abbrev(args, cat_keys, g10k):
                 e["full"].append(full)
             else:
                 book[tok] = {"group": [group], "full": [full], "src": [src], "reason": reason}
+    # quyết định tay (configs/vi_abbrev_project.tsv): add thắng luật google-10000 / âm tiết, KHÔNG thắng luật catalog
+    if args.project_abbrev and Path(args.project_abbrev).exists():
+        with open(args.project_abbrev, encoding="utf-8") as f:
+            for p in csv.DictReader((l for l in f if not l.startswith("#")), delimiter="\t"):
+                tok = nfc(p["abbr"].strip().lower())
+                e = entries.pop(tok, None) or dropped.pop(tok, None) or {"group": [], "full": [], "src": [], "reason": ""}
+                if p["action"] == "exclude":
+                    e["reason"] = f"loại tay: {p['source']}"
+                    dropped[tok] = e
+                    continue
+                for k, v in (("group", p["group"]), ("full", p["full"]), ("src", p["source"])):
+                    if v and v not in e[k]:
+                        e[k].insert(0, v)
+                e["reason"] = "trùng catalog (EN)" if tok in cat_keys else ""
+                (dropped if e["reason"] else entries)[tok] = e
+    cat_drops = sorted(k for k, e in dropped.items() if e["reason"] == "trùng catalog (EN)")
+    print(f"  luật catalog: {len(cat_drops)} mục vi_abbrev trùng term EN trong catalog bị loại: {', '.join(cat_drops)}")
     hdr = ["# vi_abbrev.txt — viết tắt / mã thường đọc kiểu Việt: auto_tag KHÔNG gắn <en> (trừ khi có trong catalog).",
            "# TRẠNG THÁI: NHÁP, chờ duyệt, chưa khoá phiên bản. Sinh bởi tools/build_wordlists.py.",
            "# Quy ước gắn <en> theo cách đọc: SCHEMA.md. Viết tắt bị đọc kiểu Anh trong một câu cụ thể vẫn được",
@@ -216,6 +236,8 @@ def main():
     ap.add_argument("--src", required=True, help="thư mục chứa các file nguồn đã tải")
     ap.add_argument("--catalog", help="catalog EN: mục trùng catalog không vào danh sách")
     ap.add_argument("--boards", nargs="+", default=["HSX", "HNX"])
+    ap.add_argument("--project-abbrev", default=str(Path(__file__).resolve().parents[1] / "configs/vi_abbrev_project.tsv"),
+                    help="quyết định tay cho vi_abbrev (add / exclude); '' = bỏ qua")
     ap.add_argument("--vimedcss-meta", help="thư mục *_set.csv của ViMedCSS (cho same_surface)")
     ap.add_argument("--out-abbrev")
     ap.add_argument("--out-loan")

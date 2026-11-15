@@ -4,7 +4,7 @@
 # người duyệt gắn <en> trong câu đó.
 # Cột (TAB): viết tắt | nhóm | dạng đầy đủ | nguồn. Dòng '#-' = ứng viên bị loại tự động (lý do ở cột cuối);
 # bỏ '#-' để bật lại, thêm '#' đầu dòng để tắt.
-# Số mục: 614 dùng, 91 bị loại.
+# Số mục: 622 dùng, 91 bị loại.
 abbr	group	full	source
 yeg	mã chứng khoán	Tập đoàn Yeah1	vietcap symbols/getAll board=HSX (2026-11-15)
 ybm	mã chứng khoán	Khoáng sản CN Yên Bái	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -402,7 +402,6 @@ hdc	mã chứng khoán	Phát triển Nhà Bà Rịa Vũng Tàu	vietcap symbols/g
 hdb	mã chứng khoán, ngân hàng	HDBank | Ngân hàng Phát triển Thành phố Hồ Chí Minh	vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Danh sách ngân hàng tại Việt Nam (2026-11-15)
 hda	mã chứng khoán	Hãng sơn Đông Á	vietcap symbols/getAll board=HNX (2026-11-15)
 hct	mã chứng khoán	TM - DV - Vận tải Xi măng Hải Phòng 	vietcap symbols/getAll board=HNX (2026-11-15)
-hcm	mã chứng khoán, tỉnh thành	Chứng khoán HSC | TP. Hồ Chí Minh	vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)
 hcd	mã chứng khoán	SX và Thương mại HCD	vietcap symbols/getAll board=HSX (2026-11-15)
 hcc	mã chứng khoán	Bê tông Hòa Cầm	vietcap symbols/getAll board=HNX (2026-11-15)
 hbs	mã chứng khoán	Chứng khoán Hòa Bình	vietcap symbols/getAll board=HNX (2026-11-15)
@@ -524,7 +523,6 @@ cjc	mã chứng khoán	Cơ điện Miền Trung	vietcap symbols/getAll board=HNX
 cii	mã chứng khoán	Hạ tầng Kỹ thuật TP.HCM	vietcap symbols/getAll board=HSX (2026-11-15)
 cig	mã chứng khoán	Xây dựng COMA 18	vietcap symbols/getAll board=HSX (2026-11-15)
 chp	mã chứng khoán	Thủy điện Miền Trung	vietcap symbols/getAll board=HSX (2026-11-15)
-cdn	mã chứng khoán	Cảng Đà Nẵng	vietcap symbols/getAll board=HNX (2026-11-15)
 cdc	mã chứng khoán	Chương Dương Corp	vietcap symbols/getAll board=HSX (2026-11-15)
 ccr	mã chứng khoán	Cảng Cam Ranh	vietcap symbols/getAll board=HNX (2026-11-15)
 ccl	mã chứng khoán	ĐT & PT Đô thị Dầu khí Cửu Long	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -614,12 +612,22 @@ nsnd	viết tắt	Nghệ sĩ Nhân dân	vi.wiktionary: NSND (2026-11-15)
 pccc	viết tắt	phòng cháy chữa cháy	vi.wiktionary: PCCC (2026-11-15)
 stt	viết tắt	Số thứ tự	vi.wiktionary: STT (2026-11-15)
 tcyttg	viết tắt	Tổ chức Y tế Thế giới	vi.wiktionary: TCYTTG (2026-11-15)
-thcs	viết tắt	trung học cơ sở	vi.wiktionary: THCS (2026-11-15)
-thpt	viết tắt	trung học phổ thông	vi.wiktionary: THPT (2026-11-15)
 tnhh	viết tắt	công ty trách nhiệm hữu hạn	vi.wiktionary: TNHH (2026-11-15)
 vac	viết tắt	Một mô hình thâm canh sinh học cao tổng hợp khép kín và hiệu	vi.wiktionary: VAC (2026-11-15)
 adn	viết tắt	Phân tử chính của nhân tế bào thực vật và động vật chứa đựng	vi.wiktionary: ADN (2026-11-15)
 chdc	viết tắt	Cộng hoà dân chủ	vi.wiktionary: CHDC (2026-11-15)
+vn	viết tắt (quy ước dự án)	Việt Nam	quy ước dự án, đọc kiểu Việt
+ubnd	viết tắt (quy ước dự án)	Ủy ban nhân dân	quy ước dự án, đọc kiểu Việt
+bhxh	viết tắt (quy ước dự án)	Bảo hiểm xã hội	quy ước dự án, đọc kiểu Việt
+bhyt	viết tắt (quy ước dự án)	Bảo hiểm y tế	quy ước dự án, đọc kiểu Việt
+cccd	viết tắt (quy ước dự án)	Căn cước công dân	quy ước dự án, đọc kiểu Việt
+cmnd	viết tắt (quy ước dự án)	Chứng minh nhân dân	quy ước dự án, đọc kiểu Việt
+thpt	viết tắt (quy ước dự án), viết tắt	Trung học phổ thông | trung học phổ thông	quy ước dự án, đọc kiểu Việt; vi.wiktionary: THPT (2026-11-15)
+thcs	viết tắt (quy ước dự án), viết tắt	Trung học cơ sở | trung học cơ sở	quy ước dự án, đọc kiểu Việt; vi.wiktionary: THCS (2026-11-15)
+csgt	viết tắt (quy ước dự án)	Cảnh sát giao thông	quy ước dự án, đọc kiểu Việt
+tphcm	viết tắt (quy ước dự án)	Thành phố Hồ Chí Minh	quy ước dự án, đọc kiểu Việt
+hcm	viết tắt (quy ước dự án), mã chứng khoán, tỉnh thành	Hồ Chí Minh | Chứng khoán HSC | TP. Hồ Chí Minh	quy ước dự án, đọc kiểu Việt; vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)
+tp	viết tắt (quy ước dự án), viết tắt	thành phố | thành phần	quy ước dự án, đọc kiểu Việt; bật lại (trước bị loại vì trùng google-10000); vi.wiktionary: tp (2026-11-15)
 
 # ---- ứng viên bị loại tự động
 #-vip	mã chứng khoán	Vận tải Xăng dầu VIPCO	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
@@ -707,9 +715,9 @@ chdc	viết tắt	Cộng hoà dân chủ	vi.wiktionary: CHDC (2026-11-15)
 #-ct	tỉnh thành	Cần Thơ	vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-ag	tỉnh thành	An Giang	vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-cm	tỉnh thành	Cà Mau	vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
-#-tp	viết tắt	thành phần	vi.wiktionary: tp (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-ak	viết tắt	Súng tiểu liên do Ca-las-nhi-cốp người Liên Xô sáng chế năm 	vi.wiktionary: AK (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-basic	viết tắt	Ngôn ngữ lập trình đơn giản	vi.wiktionary: BASIC (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-bbc	viết tắt	Công ti phát thanh Anh Quốc	vi.wiktionary: BBC (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-bs	viết tắt	Bác sĩ viết tắt	vi.wiktionary: BS (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-ch	viết tắt	Cộng hoà viết tắt	vi.wiktionary: CH (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
+#-cdn	mã chứng khoán	Cảng Đà Nẵng	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: loại tay: bỏ theo quyết định dự án: trong vi-asr-tech là CDN đọc kiểu Anh

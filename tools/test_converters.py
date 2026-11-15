@@ -212,7 +212,9 @@ def main():
         ("a", "mình [[deploy]] lên [[server]] rồi"),          # auto_tag: deploy + server (catalog) -> 2 TP
         ("b", "chấm [[gov]] chấm {{vn}} nhé"),                 # auto_tag gắn cả vn -> 1 FP (nằm trong viết tắt VN)
         ("c", "học ((ai ten)) với cái [[kit]] này")]) + "\n", encoding="utf-8")  # kit: -t không dấu -> không phải tiếng Việt
-    run(G / "tools/eval_autotag.py", "--gold", gold, "--catalog", cat, "--out", T / "reports/eval", "--spotcheck", "2")
+    # --vi-words rỗng: số liệu tính tay giả định KHÔNG có danh sách vi_abbrev (configs/vi_abbrev.txt có vn từ Phase 0d)
+    run(G / "tools/eval_autotag.py", "--gold", gold, "--catalog", cat, "--out", T / "reports/eval", "--spotcheck", "2",
+        "--vi-words")
     ev = json.loads((T / "reports/eval.json").read_text(encoding="utf-8"))
     s = ev["subset_en"]
     assert (s["gold_spans"], s["tp"], ev["phonetic_spans"], ev["vi_abbr_spans"]) == (4, 4, 1, 1), s
@@ -250,7 +252,8 @@ def main():
         "AIDS": "# [[hội chứng]] [[suy giảm]]\n# {{abbreviation of|en|acquired immune deficiency syndrome}}",
         "STT": "#[[số|Số]] [[thứ tự]]."}, ensure_ascii=False), encoding="utf-8")
     (lex / "google-10000-english-no-swears.txt").write_text("the\ngas\npt\n", encoding="utf-8")
-    run(G / "tools/build_wordlists.py", "--src", lex, "--catalog", cat, "--out-abbrev", T / "vi_abbrev.txt")
+    run(G / "tools/build_wordlists.py", "--src", lex, "--catalog", cat, "--out-abbrev", T / "vi_abbrev.txt",
+        "--project-abbrev", "")
     ab_lines = (T / "vi_abbrev.txt").read_text(encoding="utf-8").splitlines()
     from converters.common import load_vi_words
     ab = load_vi_words([T / "vi_abbrev.txt"])
@@ -261,6 +264,21 @@ def main():
     tg = auto_tag("mua fpt với bidv rồi gửi api", cat_obj, vi_words=ab)
     assert tg["spans"] == ["api"] and "vi_word:fpt" in tg["flags"], tg               # catalog vẫn thắng danh sách
     assert auto_tag("mua fpt", cat_obj, vi_words=set())["spans"] == ["fpt"]
+    # Phase 0d T7: quyết định tay (--project-abbrev): add thắng google-10000 (pt), exclude (shs); catalog vẫn thắng (api)
+    proj = T / "vi_abbrev_project.tsv"
+    proj.write_text("# chú thích\nabbr\taction\tgroup\tfull\tsource\n"
+                    "vn\tadd\tviết tắt (quy ước dự án)\tViệt Nam\tquy ước dự án, đọc kiểu Việt\n"
+                    "pt\tadd\tviết tắt (quy ước dự án)\tphú thọ\tquy ước dự án, đọc kiểu Việt; bật lại\n"
+                    "api\tadd\tviết tắt (quy ước dự án)\tx\tquy ước dự án, đọc kiểu Việt\n"
+                    "shs\texclude\tmã chứng khoán\t\tbỏ theo quyết định dự án\n", encoding="utf-8")
+    out_ab = run(G / "tools/build_wordlists.py", "--src", lex, "--catalog", cat, "--out-abbrev", T / "vi_abbrev_p.txt",
+                 "--project-abbrev", proj)
+    abp = load_vi_words([T / "vi_abbrev_p.txt"])
+    assert abp == (ab | {"vn", "pt"}) - {"shs"}, sorted(abp)
+    abp_lines = (T / "vi_abbrev_p.txt").read_text(encoding="utf-8").splitlines()
+    assert any(l.startswith("vn\t") and l.endswith("quy ước dự án, đọc kiểu Việt") for l in abp_lines)
+    assert any(l.startswith("#-shs\t") and "loại tay: bỏ theo quyết định dự án" in l for l in abp_lines)
+    assert any(l.startswith("#-api\t") and "catalog" in l for l in abp_lines) and "luật catalog: 1 mục" in out_ab, out_ab
     # --- Phase 0b T3: vi_loanwords — vi_spelling (mọi bộ) / same_surface (chỉ ViMedCSS) / --exclude / google-10000
     (lex / "Viet74K.txt").write_text("axit\ncanxi\nvitamin\niot\nmega\ncon\nHà Nội\na-xít\n", encoding="utf-8")
     (lex / "words_alpha.txt").write_text("vitamin\nlipid\n", encoding="utf-8")
