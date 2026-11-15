@@ -3,7 +3,7 @@
 
   python converters/conv_ggroup.py --names tech edu finance pubadmin --out data/raw/ggroup --catalog configs/catalog.tsv
 
-Trường gốc: id, audio, text, duration (split test). License CC-BY-NC-4.0. Không có thông tin người nói:
+Trường gốc: id, audio (MP3 16 kHz, ghi nguyên), text, duration (split test). License CC-BY-NC-4.0. Không có thông tin người nói:
 speaker và source được đặt riêng cho từng câu, nên bootstrap trên phần này thực chất là theo câu.
 Ghi: b1_candidates.jsonl + b1_candidates_review.csv, b5_ggroup.jsonl, term_candidates.tsv.
 """

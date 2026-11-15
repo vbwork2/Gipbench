@@ -18,9 +18,10 @@ T = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/gipbench_convtest")
 rng = np.random.default_rng(0)
 
 
-def wav_bytes(dur, fmt="WAV"):
+def wav_bytes(dur, fmt="WAV", sr=16000, channels=1):
     b = io.BytesIO()
-    sf.write(b, (0.05 * rng.standard_normal(int(16000 * dur))).astype("float32"), 16000, format=fmt)
+    x = (0.05 * rng.standard_normal((int(sr * dur), channels))).astype("float32")
+    sf.write(b, x if channels > 1 else x[:, 0], sr, format=fmt)
     return b.getvalue()
 
 
@@ -54,7 +55,7 @@ def main():
           "hard": [("Med_CS-4-1", "Thuốc này ức chế leukotriene trong cơ thể.", "leukotriene", "hardvid0001"),
                    ("Med_CS-4-2", "Hoạt chất quercetin giúp giảm viêm, không thấy thuật ngữ.", "prostan", "hardvid0002")]}
     for split, rows in vm.items():
-        ds = Dataset.from_dict({"segment_id": [r[0] for r in rows], "audio": [{"bytes": wav_bytes(4), "path": "audio.wav"} for _ in rows],
+        ds = Dataset.from_dict({"segment_id": [r[0] for r in rows], "audio": [{"bytes": wav_bytes(4, sr=44100, channels=2), "path": "audio.wav"} for _ in rows],  # như bản thật: 44.1 kHz
                                 "duration_seconds": [4] * len(rows), "segment_text": [r[1] for r in rows],
                                 "cs_terms_list": [r[2] for r in rows], "cs_terms_count": [len(r[2].split(";")) for r in rows],
                                 "topic": ["Medical Sciences"] * len(rows),
@@ -131,6 +132,9 @@ def main():
     assert dv["text_tagged_orig"] == "<en>methionin</en> là một axit <en>amin</en> thiết yếu.", dv["text_tagged_orig"]
     assert "<en>axit" not in dv["text_tagged"] and "<en>methionin</en>" in dv["text_tagged"], dv["text_tagged"]
     assert "lipid" not in {r["term"] for r in catv}  # từ mượn không vào catalog EN
+    # Phase 0b T5: audio 44.1 kHz (stereo) -> WAV 16 kHz mono, duration lấy từ audio thật
+    ai = sf.info(str(raw / "vimedcss" / trv["audio"]))
+    assert (ai.samplerate, ai.channels, ai.format) == (16000, 1, "WAV") and abs(trv["duration"] - 4.0) < 0.01, ai
     assert "text_tagged_orig" in next(csv.reader(open(raw / "vimedcss/b3_candidates_review.csv", encoding="utf-8-sig")))
     seab, seat = L(raw / "sea/b1_candidates_sea.jsonl"), L(raw / "sea/train_sea.jsonl")
     assert not ({r["source"] for r in seab} & {r["source"] for r in seat}) and len(seab) + len(seat) == 5

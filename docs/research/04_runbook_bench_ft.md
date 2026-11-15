@@ -37,11 +37,11 @@ python converters/conv_local.py vietsuperspeech --root data/dl/VietSuperSpeech  
 
 | Converter | Ra bench (cần duyệt) | Ra train / dev | Ghi chú |
 | --- | --- | --- | --- |
-| conv\_ggroup | b1\_candidates (câu có từ Anh), b5\_ggroup (pubadmin không có từ Anh) | — | Không có người nói: mỗi câu một speaker |
-| conv\_vimedcss | b3\_candidates (hard), ext\_vimedcss\_test (bench ngoài) | train\_vimedcss, dev\_vimedcss | Sinh catalog\_vimedcss.tsv; thuật ngữ chỉ có ở hard được đánh reserved\_b3 |
+| conv\_ggroup | b1\_candidates (câu có từ Anh), b5\_ggroup (pubadmin không có từ Anh) | — | Không có người nói: mỗi câu một speaker. Audio MP3 16 kHz, ghi nguyên |
+| conv\_vimedcss | b3\_candidates (hard), ext\_vimedcss\_test (bench ngoài) | train\_vimedcss, dev\_vimedcss | Sinh catalog\_vimedcss.tsv; thuật ngữ chỉ có ở hard được đánh reserved\_b3. Audio gốc WAV 44.1 kHz -> resample 16 kHz mono (`--target-sr`). Hai nhãn: `text_tagged` (Spec) và `text_tagged_orig` (dataset) |
 | conv\_sea | b1\_candidates\_sea (chọn theo video tới đủ số giờ) | train\_sea | Nhãn máy: mọi câu vào bench phải sửa tay |
 | conv\_local vivos / commonvoice | b5\_vivos, b5\_cv (test) | train\_vivos, train\_cv | Tải bản gốc về thư mục trước; không copy audio |
-| conv\_local vietsuperspeech | — | train\_vss, dev\_vss | Mặc định bỏ câu có từ Anh (pseudo-label hay méo) |
+| conv\_local vietsuperspeech | — | train\_vss, dev\_vss, vss\_cs\_candidates | 245 h. train/dev\_vss chỉ giữ câu không có từ Anh (~115 h); câu có từ Anh của phần train -> vss\_cs\_candidates (chỉ train; truyền `--bench` để chặn rò rỉ; lọc tiếp bằng tools/agreement\_filter.py) |
 
 Duyệt rồi ghép:
 

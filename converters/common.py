@@ -276,8 +276,12 @@ def load_hf(repo: Optional[str], split: str, parquet_glob: Optional[str] = None,
     return ds
 
 
-def save_audio(audio, out_dir: Path, stem: str) -> Tuple[str, float, int]:
-    """Ghi audio (dict {bytes, path} của datasets, hoặc đường dẫn) -> (tên file, duration, sample rate)."""
+def save_audio(audio, out_dir: Path, stem: str, target_sr: int = 0) -> Tuple[str, float, int]:
+    """Ghi audio (dict {bytes, path} của datasets, hoặc đường dẫn) -> (tên file, duration, sample rate).
+
+    target_sr > 0: audio bytes khác tần số đó (hoặc nhiều kênh) được resample (soxr HQ) + gộp mono, ghi WAV PCM16.
+    Audio dạng đường dẫn có sẵn thì giữ nguyên (không copy).
+    """
     import soundfile as sf
     out_dir.mkdir(parents=True, exist_ok=True)
     if isinstance(audio, (str, Path)):
@@ -289,6 +293,16 @@ def save_audio(audio, out_dir: Path, stem: str) -> Tuple[str, float, int]:
         info = sf.info(src)
         return src, info.frames / info.samplerate, info.samplerate
     info = sf.info(io.BytesIO(data))
+    if target_sr and (info.samplerate != target_sr or info.channels != 1):
+        # đổi tần số lấy mẫu (vd ViMedCSS 44.1 kHz -> 16 kHz) và gộp kênh, ghi WAV PCM16
+        import soxr
+        wav, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
+        wav = wav.mean(axis=1)
+        if sr != target_sr:
+            wav = soxr.resample(wav, sr, target_sr, quality="HQ")
+        path = out_dir / f"{stem}.wav"
+        sf.write(str(path), wav, target_sr, subtype="PCM_16")
+        return str(path), len(wav) / target_sr, target_sr
     ext = {"WAV": ".wav", "FLAC": ".flac", "MP3": ".mp3", "OGG": ".ogg"}.get(info.format, Path(src).suffix or ".wav")
     path = out_dir / f"{stem}{ext}"
     path.write_bytes(data)

@@ -36,6 +36,8 @@ Tiêu chí toàn bộ B1–B4: ≥ 4.000 span tiếng Anh, ≥ 1.000 thuật ng�
 
 Ngoài 5 split, báo cáo thêm **ViMedCSS test** (1.615 câu) làm bench ngoài để so với số liệu đã công bố trong paper ViMedCSS; không dùng nó cho luật chọn.
 
+Định dạng audio thật (kiểm tra ở Phase 0): G-Group là MP3 16 kHz; ViMedCSS là WAV 44.1 kHz, `duration_seconds` làm tròn theo giây (converter resample về 16 kHz và lấy duration từ audio thật); VIVOS, Common Voice, VietSuperSpeech 16 kHz.
+
 Giới hạn của v0: thiếu B2 và B4; nguồn G-Group không có trường người nói (bootstrap phải theo `source` hoặc theo câu); nhãn ViMedCSS do Gemini tạo (κ = 0.65); các bộ vi-asr-\* do chính nhóm làm Gipformer tạo ra. Vì vậy kết luận trên v0 chỉ là định hướng; quyết định cuối dựa trên v1.
 
 ## 3. Manifest, catalog, transcript & chuẩn hoá
@@ -102,10 +104,10 @@ Dữ liệu train được phép nhiễu hơn bench, nhưng tuyệt đối khôn
 
 | Nguồn | Vai trò | Nhãn | Xử lý trước khi dùng |
 | --- | --- | --- | --- |
-| ViMedCSS train (24.3 h) | CS thật, y tế | Gemini, kiểm tra mẫu | Dùng trực tiếp; split hard đã loại sẵn thuật ngữ của nó khỏi train |
+| ViMedCSS train (24.3 h) | CS thật, y tế | Gemini, kiểm tra mẫu | Dùng trực tiếp; split hard đã loại sẵn thuật ngữ của nó khỏi train. Audio gốc WAV 44.1 kHz: converter resample về 16 kHz mono |
 | ViMedCSS validation | Dev CS | Như trên | Chỉ dùng để chọn siêu tham số |
 | SEA Code-Switching en-vi (45.3 h) | CS thật, đa domain | Máy, chưa kiểm tra | Giữ câu khi span Anh của nhãn gốc được ít nhất 1 trong 2 model đa ngôn ngữ (faster-whisper large-v3, Qwen3-ASR) xác nhận, tức 2 nguồn đồng thuận (tham số --min-agree); không dùng Gipformer để xác nhận vì nó hiếm khi ra chính tả Anh; bỏ câu có video trùng bench |
-| VietSuperSpeech (267 h) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Kiểm tra cách viết từ Anh trước; nếu bị phiên âm thì chỉ dùng câu không có từ Anh |
+| VietSuperSpeech (245 h: 60 656 + 6 749 câu, theo `manifest.json`) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Đã kiểm tra (Phase 0): 52.5% câu có từ Anh, viết chính tả Anh. Replay / chưng cất chỉ dùng câu không có từ Anh (~115 h); câu có từ Anh của phần train ghi riêng `vss_cs_candidates.jsonl` (chỉ train, nhóm tổng hợp / nhãn giả 0.10, phải lọc đồng thuận như SEA) |
 | vivos / Common Voice train | Replay tiếng Việt đọc | Người | Không dùng phần test (đã thuộc B5) |
 | TTS tổng hợp (E4) | CS có kiểm soát, thuật ngữ hiếm | Chính xác theo kịch bản | Cấm thuật ngữ `reserved_b3`; speaker = ID giọng TTS |
 

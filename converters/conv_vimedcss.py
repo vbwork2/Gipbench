@@ -14,6 +14,8 @@ Mỗi câu có HAI nhãn:
 Câu không dò ra thuật ngữ nào của dataset bị gắn cờ `term_not_found`. Chấm B3 với score.py --label-field
 text_tagged (số chính) và --label-field text_tagged_orig (số phụ, so được với paper ViMedCSS).
 Thuật ngữ CHỈ có ở split hard (theo nhãn Spec) được ghi reserved_b3=1 trong catalog_vimedcss.tsv.
+Audio gốc: WAV 44.1 kHz, cột duration_seconds làm tròn theo giây (lệch audio thật tới ~1 s) -> audio được resample về
+16 kHz mono (--target-sr) và duration lấy từ audio thật.
 Người nói không có trong dataset: speaker = video (yt_<id>), source = youtube:<id>.
 Ghi: b3_candidates.jsonl (+_review.csv), ext_vimedcss_test.jsonl (+_review.csv, split ghi B1 để chấm độc lập),
      train_vimedcss.jsonl, dev_vimedcss.jsonl, catalog_vimedcss.tsv.
@@ -34,6 +36,8 @@ PLAN = {"hard": ("b3_candidates", "B3"), "test": ("ext_vimedcss_test", "B1"),
 def main():
     ap = base_parser(__doc__)
     ap.add_argument("--splits", nargs="+", default=list(PLAN))
+    ap.add_argument("--target-sr", type=int, default=16000,
+                    help="audio gốc là WAV 44.1 kHz: resample về tần số này khi ghi (0 = giữ nguyên)")
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
     vw = load_vi_words(args.vi_words, same_surface=True)  # từ mượn trùng mặt chữ (vitamin...) chỉ áp ở đây
@@ -62,7 +66,7 @@ def main():
                 if k == "C":
                     surface[split][s] += 1
             vid = youtube_id(ex.get("original_video_link") or "")
-            path, dur, _ = save_audio(ex["audio"], Path(args.out) / "audio" / split, uid)
+            path, dur, _ = save_audio(ex["audio"], Path(args.out) / "audio" / split, uid, args.target_sr)
             w.add(name, {"id": uid, "split": bsplit, "audio": path, "duration": dur, "speaker": f"yt_{vid}",
                          "source": f"youtube:{vid}", "region": "unk", "gender": "u", "channel": "wideband",
                          "domain": "medical", "topic": ex.get("topic"), "dataset": f"ViMedCSS:{split}",

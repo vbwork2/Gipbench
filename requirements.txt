@@ -12,4 +12,5 @@ lilcom
 urllib3  # lhotse 1.33 import urllib3 nhưng không khai báo phụ thuộc
 # converter
 datasets>=2.19
+soxr  # resample audio khi convert (ViMedCSS 44.1 kHz -> 16 kHz)
 # bộ lọc đồng thuận (tools/asr_hyps.py): venv riêng, xem requirements-asr.txt
