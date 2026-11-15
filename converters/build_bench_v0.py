@@ -19,7 +19,8 @@
   all                  nhận hết — CHỈ để chạy thử pipeline (bench nháp, không dùng để kết luận)
 --draft-splits B3 ...: nhận câu CHƯA duyệt của các split này (review = "draft_unreviewed") — chỉ cho bench nháp.
   Dòng có review_required = true (vd consensus disputed / pending) chỉ được nhận khi decision = ok / fix, ở mọi chế độ.
-Phiếu duyệt: decision = ok | fix (dùng text_tagged_fixed) | drop; viet_levels = "strong,mid" theo thứ tự span;
+Câu trùng audio với câu đã nhận (theo thứ tự --candidates) bị bỏ.
+Phiếu duyệt: decision = ok | fix (dùng text_tagged_fixed) | drop (phiếu confusable: cột "nghĩa Việt? y/n", y = ok, n = drop); viet_levels = "strong,mid" theo thứ tự span;
 reading_note = cách đọc nghe được của từ mơ hồ (được chép sang bench); region / gender điền nếu nghe ra.
 Quy ước gắn <en> theo cách đọc: SCHEMA.md và docs/huong_dan_duyet_b1.md.
 """
@@ -90,7 +91,7 @@ def main():
     out_dir = Path(args.out).resolve().parent
     out_dir.mkdir(parents=True, exist_ok=True)
     kept, why = [], Counter()
-    seen = set()
+    seen, seen_audio = set(), set()
     tdec = load_term_decisions(args.term_decisions) if args.accept == "trusted-text" else {}
     pend = defaultdict(lambda: [0, 0.0])
     for cp in args.candidates:
@@ -101,6 +102,8 @@ def main():
             at = r.get("auto_tag", {})
             rv = review.get(r["id"], {})
             dec = (rv.get("decision") or "").strip().lower()
+            if not dec:  # phiếu chỉ đọc text (make_confusables): y = nghĩa Việt -> ok, n = thực ra là từ Anh -> drop
+                dec = {"y": "ok", "n": "drop"}.get((rv.get("nghĩa Việt? y/n") or "").strip().lower(), "")
             if dec == "drop":
                 why["bỏ: người duyệt loại"] += 1
                 continue
@@ -153,6 +156,11 @@ def main():
                 if (rv.get(k) or "").strip():
                     r[k] = rv[k].strip()
             r["review"] = dec or "none"
+            akey = os.path.normpath(os.path.abspath(r["_audio_path"]))
+            if akey in seen_audio:  # vd clip consensus vừa là B5 product vừa là B5 confusable
+                why["bỏ: audio trùng câu đã nhận"] += 1
+                continue
+            seen_audio.add(akey)
             r["audio"] = os.path.relpath(r["_audio_path"], out_dir)
             seen.add(r["id"])
             kept.append(r)

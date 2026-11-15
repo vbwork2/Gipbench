@@ -578,8 +578,37 @@ def main():
     assert mt["confusable"] == {"form": "mít tinh", "term": "meeting", "from": "catalog phonetic"}, mt
     assert next(r for r in cb + ct if r["id"] == "cf_v3")["confusable"]["term"] == "gas"  # từ configs/confusables.tsv
     rv = list(csv.DictReader(open(cf / "out/b5_confusable_review.csv", encoding="utf-8-sig")))
-    from converters.common import REVIEW_COLS
-    assert len(rv) == len(cb) and list(rv[0]) == REVIEW_COLS and "phải = 0" in out_cf
+    assert len(rv) == len(cb) and "nghĩa Việt? y/n" in rv[0] and rv[0]["text"] and "phải = 0" in out_cf  # chỉ đọc text
+    # §12.6: --train-from: train CHỈ từ nguồn cho phép; nguồn khác (vd consensus, chung source) chỉ vào bench, duyệt trước
+    cons = [dict(id=f"c{k}", split="B5", audio=f"a/c{k}.wav", duration=2.0, text_tagged=t, speaker=f"consensus:p{k}",
+                 speaker_cluster=f"consensus:spk{k % 2}", source="consensus", dataset="consensus", license="test_only")
+            for k, t in enumerate(["tìm quán ăn gần đây", "tim tôi đau quá", "ra ga lúc mấy giờ", "tìm lại ví"], 1)]
+    cf_c = cf / "cons.jsonl"
+    cf_c.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in cons), encoding="utf-8")
+    out_cf2 = run(G / "tools/make_confusables.py", "--manifest", cf_in, cf_c, "--train-from", cf_in, "--catalog", cat,
+                  "--out-dir", cf / "out2", "--bench-n", "3", "--max-per-group-bench", "2")
+    cb2, ct2 = L(cf / "out2/b5_confusable.jsonl"), L(cf / "out2/train_confusable.jsonl")
+    assert {r["dataset"] for r in ct2} == {"confusable:vivos:train"}, ct2  # consensus không bao giờ vào train
+    assert [r["dataset"] for r in cb2] == ["confusable:consensus"] * 3, cb2  # bench lấy nguồn không-train trước
+    assert max(Counter(r["speaker_cluster"] for r in cb2).values()) <= 2  # nhóm theo speaker_cluster, không theo source
+    assert len(ct2) == 7 and "phải = 0" in out_cf2, (ct2, out_cf2)
+    out_cf3 = run(G / "tools/make_confusables.py", "--manifest", cf_in, cf_c, "--train-from", cf_in, "--catalog", cat,
+                  "--out-dir", cf / "out3", "--bench-n", "10", "--bench-not-from-train")
+    assert {r["dataset"] for r in L(cf / "out3/b5_confusable.jsonl")} == {"confusable:consensus"}  # nguồn train giữ cho train
+    assert len(L(cf / "out3/train_confusable.jsonl")) == 7, out_cf3
+    # build_bench_v0: cột "nghĩa Việt? y/n" (y = ok, n = drop); clip trùng audio với câu đã nhận bị bỏ
+    rv2 = list(csv.DictReader(open(cf / "out2/b5_confusable_review.csv", encoding="utf-8-sig")))
+    for k, r in enumerate(rv2):
+        r["nghĩa Việt? y/n"] = "y" if k else "n"
+    with open(cf / "out2/rv.csv", "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=list(rv2[0]))
+        w.writeheader()
+        w.writerows(rv2)
+    out_b = run(G / "converters/build_bench_v0.py", "--candidates", cf / "out2/b5_confusable.jsonl", cf_c,
+                "--reviews", cf / "out2/rv.csv", "--out", cf / "out2/bench.jsonl")
+    bb = L(cf / "out2/bench.jsonl")
+    assert sum(r["id"].startswith("cf_") for r in bb) == 2 and "người duyệt loại" in out_b, out_b
+    assert "audio trùng câu đã nhận" in out_b and len(bb) == 4, (out_b, [r["id"] for r in bb])
     # --- Phase 1 T1.2: ft/make_distill.py — chỉ giữ câu greedy == beam, lọc độ dài / từ mỗi giây / logprob
     ds = T / "distill"
     ds.mkdir(parents=True, exist_ok=True)
@@ -831,8 +860,8 @@ def test_term_decisions(cat, L):
     (D / "a.wav").write_bytes(wav_bytes(1.0))
 
     def row(i, split, text, flags, trusted=True, **kw):
-        return dict({"id": i, "split": split, "audio": "a.wav", "duration": 1.0, "speaker": i, "source": i,
-                     "domain": "tech", "dataset": "x", "text_tagged": text, "_audio_path": str(D / "a.wav"),
+        return dict({"id": i, "split": split, "audio": f"{i}.wav", "duration": 1.0, "speaker": i, "source": i,
+                     "domain": "tech", "dataset": "x", "text_tagged": text, "_audio_path": str(D / f"{i}.wav"),
                      "auto_tag": {"confidence": "heuristic" if "<en>" in text else "none", "flags": flags}},
                     **({"trusted_text": True} if trusted else {}), **kw)
     rows = [row("t_ok", "B1", "mở <en>crm</en> nhé", ["abbr_reading:crm", "heuristic_span"]),
