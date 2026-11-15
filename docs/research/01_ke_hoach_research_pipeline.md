@@ -31,7 +31,7 @@ Mỗi split trả lời một câu hỏi riêng; chỉ cần B2 và B4 là đã 
 
 | Split | Trả lời câu hỏi | Nguồn | Mục tiêu | Ưu tiên |
 | --- | --- | --- | --- | --- |
-| B1 Real-CS-General | Model có nhận đúng từ Anh trong lời nói tự nhiên không? | YouTube/podcast tech, finance, edu, vlog; lọc thêm CS từ VietPrism và cặp en-vi của SEA Code-Switching | 3 h, ≥ 150 người nói | Cao |
+| B1 Real-CS-General | Model có nhận đúng từ Anh trong lời nói tự nhiên không? | G-Group (vi-asr-tech/edu/finance/pubadmin-test) + dữ liệu tự thu (YouTube/podcast tech, finance, edu, vlog). SEA Code-Switching: tùy chọn, không dùng | 3 h, ≥ 150 người nói | Cao |
 | B2 Real-CS-Domain | Có tốt trên đúng sản phẩm của mình không? | Audio thật của bạn (call, meeting, app) có từ Anh | 2 h | Cao nhất |
 | B3 Unseen-Terms (Hard) | Có tổng quát sang thuật ngữ chưa thấy khi FT không? | Tách từ B1/B4 các thuật ngữ xuất hiện ≤ 2 lần, cấm mọi lần xuất hiện trong train | 1.5 h | Cao |
 | B4 Read-CS Controlled | Lỗi nằm ở loại từ, kiểu phát âm, vùng miền nào? | Câu kịch bản chứa \~600 thuật ngữ, 40–60 người đọc, 3 miền, 2 loại mic | 2.5 h | Cao |
@@ -46,7 +46,7 @@ Mỗi utterance mang metadata để cắt lát kết quả: miền (Bắc/Trung/
 | Dataset | Quy mô | Dùng làm gì | Lưu ý |
 | --- | --- | --- | --- |
 | [VietPrism](https://arxiv.org/pdf/2609.30005) | 993 h, 1.262 người nói, CS gần nửa thời lượng, 5 nhóm phương ngữ | Nguồn lớn nhất cho B1 và cho train | Preprint 2026; kiểm tra license, tách theo video/người nói để không rò rỉ |
-| [SEA Code-Switching (gijs/sea\_speech)](https://huggingface.co/datasets/gijs/sea_speech) | cặp en-vi: 10.306 clip, 45.3 h | B1, có sẵn span + vị trí switch | Gated; transcript tự động, phải kiểm tra lại trước khi làm test |
+| [SEA Code-Switching (gijs/sea\_speech)](https://huggingface.co/datasets/gijs/sea_speech) | cặp en-vi: 10.306 clip, 45.3 h | **Tùy chọn, không dùng** (quyết định sau Phase 0b) | Gated; transcript tự động, phải kiểm tra lại trước khi làm test |
 | [ViMedCSS](https://huggingface.co/datasets/tensorxt/ViMedCSS) | 34.6 h; test 3.38 h, hard 1.38 h | Bench ngoài để so với paper; mẫu tham khảo cho B3 | CC-BY-4.0; chỉ y tế |
 | [g-group vi-asr-tech/edu/finance](https://huggingface.co/datasets/g-group-ai-lab/vi-asr-tech-test) | test domain của chính Gipformer | Lọc utterance có từ Anh → bổ sung B1 | Không dùng để train |
 | [CS-FLEURS](https://huggingface.co/datasets/byan/cs-fleurs) | 113 cặp ngôn ngữ, 52 ngôn ngữ | Không dùng được: không có cặp Việt–Anh (kiểm tra 14/11) | Phần lớn audio tổng hợp hoặc đọc |
@@ -165,7 +165,7 @@ Bằng chứng mạnh nhất cho tiếng Việt (ViMedCSS) cho thấy fine-tune 
 | E0 | Baseline: greedy và modified beam search, int8 và fp32 | Không | Mốc so sánh |
 | E1 | Hotwords Aho-Corasick với danh mục thuật ngữ; quét hotwords-score 1.0–3.0 | Không | Bias lúc decode được bao nhiêu, chèn sai bao nhiêu trên B5? |
 | E2 | E1 + LM n-gram trên text CS (shallow fusion/LODR của icefall) | Chỉ LM | Text CS rẻ có thay được audio không? |
-| E3 | FT trên CS thật (VietPrism CS, SEA en-vi, crawl đã gán nhãn, trừ bench) trộn \~50% dữ liệu tiếng Việt để chống quên | Có | Phương án chính, đúng kết luận ViMedCSS |
+| E3 | FT trên CS thật (ViMedCSS train, vss_cs đã lọc đồng thuận, dữ liệu tự có; trừ bench) trộn \~50% dữ liệu tiếng Việt để chống quên | Có | Phương án chính, đúng kết luận ViMedCSS |
 | E4 | E3 + speech TTS tổng hợp; quét tỉ lệ tổng hợp 0 / 20 / 50% | Có | TTS có cứu được thuật ngữ hiếm (B3) không? |
 | E5 | E3 + ghép cụm/thuật ngữ vào câu tiếng Việt | Có | Augmentation rẻ có bằng TTS không? |
 | E6 | Mở rộng BPE bằng subword tiếng Anh (chỉ khi E3 chững lại và token Anh bị xé vụn) | Có, lớn | Vocab có phải nút thắt không? |
@@ -189,7 +189,7 @@ Tuần 1–2 dành hết cho dataset bench; FT chỉ bắt đầu khi bench v1.0
 - [ ] Kiểm tra `tokens.txt`/`bpe.model` của Gipformer 1.5: đếm số token/từ trên 200 thuật ngữ tiếng Anh
 - [ ] Chốt quy ước transcript và bản đầu `canonical_map.tsv`
 - [ ] Dựng danh mục 1.500–2.000 thuật ngữ, tách sẵn nhóm dành riêng cho B3
-- [ ] Xin quyền truy cập VietPrism, SEA Code-Switching; tải ViMedCSS và test vi-asr-\*
+- [ ] Xin quyền truy cập VietPrism; tải ViMedCSS và test vi-asr-\* (SEA Code-Switching: tùy chọn, không dùng)
 - [ ] Viết kịch bản B4, tuyển người đọc, bắt đầu thu âm
 - [ ] Chạy luồng A (crawl → VAD → nhãn nháp) và lấy mẫu luồng C
 

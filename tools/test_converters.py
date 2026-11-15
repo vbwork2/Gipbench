@@ -319,6 +319,57 @@ def main():
         "--catalog", cat, "--out", T / "vss_cs_agreed.jsonl")
     ag = L(T / "vss_cs_agreed.jsonl")
     assert [r["id"] for r in ag] == ["vss_0000001"] and ag[0]["agreement"]["confirmed"] == [1], ag
+    # --- Phase 0c: gán lại TỪNG span (lib.agreement.relabel_spans, agreement_filter --relabel-spans)
+    from lib.agreement import relabel_spans
+    lab = "với cái <en>netword</en> của dương thì mọi người sẽ đi tìm dương cho nên là dương cũng sẽ mau được tìm thấy"
+    h1 = "Với cái network của Dương, thì mọi người sẽ đi tìm Dương. Cho nên là Dương cũng sẽ mau được tìm thấy."
+    h2 = "với cái network của dương thì mọi người sẽ đi tìm dương cho nên là dương cũng sẽ mau được tìm thấy"
+    rl = relabel_spans(lab, [h1, h2], cat_obj)
+    assert rl["changed"] == [(0, "netword", "network")] and "<en>network</en> của dương" in rl["text_tagged"], rl
+    assert rl["vi_wer"] == [0.0, 0.0]
+    assert relabel_spans(lab, [h1, h2.replace("network", "nét")], cat_obj)["reason"] == "các ASR không cho cùng chữ"
+    noisy = "với cái network của dương thì ai cũng đi kiếm dương nên là dương mau được thấy"  # lệch nhiều từ tiếng Việt
+    assert relabel_spans(lab, [h1, noisy], cat_obj)["reason"] == "WER tiếng Việt vượt ngưỡng"
+    assert relabel_spans(lab, [h1], cat_obj)["reason"] == "thiếu hyp" and relabel_spans(lab, [h1, ""], cat_obj)["reason"] == "thiếu hyp"
+    rl2 = relabel_spans("mở <en>facebook</en> rồi <en>chếch</en> mail", ["mở facebook rồi check mail"] * 2, cat_obj)
+    assert rl2["changed"] == [(1, "chếch", "check")] and rl2["text_tagged"] == "mở <en>facebook</en> rồi <en>check</en> mail", rl2
+    rel_m = T / "relabel_in.jsonl"
+    base = {"split": "train", "audio": "audio/x.wav", "duration": 3.0, "speaker": "vss_ep7", "source": "vss:ep7", "dataset": "vss_cs"}
+    rel_rows = [dict(base, id="r1", text_tagged=lab),
+                dict(base, id="r2", text_tagged="bên đó dùng <en>cu bơ nét</en> cho cả hệ thống của công ty mình")]
+    rel_m.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rel_rows), encoding="utf-8")
+    k8s = "bên đó dùng kubernetes cho cả hệ thống của công ty mình"  # kubernetes = reserved_b3 trong catalog mẫu
+    for name, hy_ in (("rq", [h1, k8s]), ("rw", [h2, k8s])):
+        (T / f"{name}.jsonl").write_text("".join(json.dumps({"id": i, "hyp": h}, ensure_ascii=False) + "\n"
+                                                 for i, h in zip(["r1", "r2"], hy_)), encoding="utf-8")
+    run(G / "tools/agreement_filter.py", "--manifest", rel_m, "--hyps", T / "rq.jsonl", T / "rw.jsonl", "--catalog", cat,
+        "--out", T / "rel_filter.jsonl", "--write-unconfirmed-ids", T / "rel_unconf.txt")
+    assert L(T / "rel_filter.jsonl") == [] and (T / "rel_unconf.txt").read_text(encoding="utf-8").split() == ["r1", "r2"]
+    out_rl = run(G / "tools/agreement_filter.py", "--manifest", rel_m, "--hyps", T / "rq.jsonl", T / "rw.jsonl", "--catalog", cat,
+                 "--relabel-spans", "--listen-csv", T / "listen.csv", "--out", T / "rel_relabel.jsonl")
+    rr = L(T / "rel_relabel.jsonl")
+    assert [r["id"] for r in rr] == ["r1"] and rr[0]["relabeled"] and rr[0]["text_orig"] == lab, rr  # r2: rò rỉ sau khi gán lại
+    assert rr[0]["text"].startswith("với cái network của dương") and "<en>" not in rr[0]["text"]
+    assert "rò rỉ sau khi gán lại: có thuật ngữ reserved_b3 | 1" in (T / "rel_relabel.jsonl.report.md").read_text(encoding="utf-8")
+    lis = list(csv.DictReader(open(T / "listen.csv", encoding="utf-8-sig")))
+    assert len(lis) == 1 and lis[0]["span_cu_moi"] == "netword -> network" and lis[0]["audio_url"].endswith("audio/x.wav"), lis
+    assert "gán lại thêm 1 câu" in out_rl
+    # --- Phase 0c: lọc rẻ trước ASR (tools/vss_cs_prefilter.py)
+    pre_rows = [dict(base, id="p0", text_tagged="<en>you build a factory not only one year</en> nha"),  # en_frac 8/9 -> bỏ
+                dict(base, id="p1", duration=25.0, text_tagged="dài quá <en>zoom</en> nhé"),           # > 20 s -> bỏ
+                dict(base, id="p2", text_tagged="mở <en>zoom</en> lên đi em"),
+                dict(base, id="p3", text_tagged="cái <en>zoom</en> hôm nay lag quá"),
+                dict(base, id="p4", text_tagged="vào <en>zoom</en> họp nha mọi người"),
+                dict(base, id="p5", text_tagged="bảng <en>kanban</en> trên <en>zoom</en> đó"),            # thuật ngữ hiếm -> ưu tiên
+                dict(base, id="p6", text_tagged="cụm <en>kubernetes</en> bên mình mới dựng")]             # reserved_b3 -> bỏ
+    pre_m = T / "pre_in.jsonl"
+    pre_m.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in pre_rows), encoding="utf-8")
+    out_p = run(G / "tools/vss_cs_prefilter.py", "--manifest", pre_m, "--catalog", cat, "--term-cap", "2",
+                "--out", T / "pre_out.jsonl", "--sample", "1", "--sample-out", T / "pre_pilot.jsonl")
+    po = L(T / "pre_out.jsonl")
+    assert len(po) == 2 and "p5" in [r["id"] for r in po] and all(r["id"] in ("p2", "p3", "p4", "p5") for r in po), po
+    assert "--max-en-frac 0.5: 5 câu" in out_p and "rò rỉ B1–B3 + reserved_b3: 4 câu" in out_p, out_p
+    assert len(L(T / "pre_pilot.jsonl")) == 1 and po[0]["prefilter"]["en_frac"] <= 0.5
     # --- Phase 0b T4: cấu hình trộn: vss_cs thuộc nhóm tổng hợp / nhãn giả, không thuộc CS thật
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
                                                    if not l.startswith("#")), delimiter="\t")}

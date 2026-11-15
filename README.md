@@ -7,6 +7,12 @@ pip install -r requirements.txt
 bash tools/selftest.sh            # chạy thử toàn bộ trên dữ liệu giả lập (~10 s)
 ```
 
+**Nguồn dữ liệu** (quyết định sau Phase 0b, 15/11/2026):
+
+- B1 = G-Group (vi-asr-tech/edu/finance/pubadmin-test) + dữ liệu tự thu.
+- Nguồn CS thật cho train = ViMedCSS train + `vss_cs` (VietSuperSpeech, lọc đồng thuận) + dữ liệu tự có.
+- SEA Code-Switching (`gijs/sea_speech`): **tùy chọn, không dùng**. `conv_sea.py` còn giữ để dùng sau nếu cần.
+
 | File | Việc |
 | --- | --- |
 | `SCHEMA.md` | Định dạng manifest JSONL, catalog thuật ngữ, file hyp |
@@ -18,7 +24,7 @@ bash tools/selftest.sh            # chạy thử toàn bộ trên dữ liệu gi
 | `leaderboard.py` | So cặp với baseline, áp luật chọn, xuất `.md/.csv/.html` |
 | `converters/conv_ggroup.py` | G-Group vi-asr-*-test → ứng viên B1 + B5 |
 | `converters/conv_vimedcss.py` | ViMedCSS → B3 (hard), bench ngoài (test), train, dev, catalog y tế |
-| `converters/conv_sea.py` | SEA Code-Switching en-vi → train + ứng viên B1 (chia theo video) |
+| `converters/conv_sea.py` | SEA Code-Switching en-vi → train + ứng viên B1. **Tùy chọn, không dùng** (không có trong lệnh mặc định) |
 | `converters/conv_local.py` | VIVOS, Common Voice, VietSuperSpeech từ thư mục đã tải → B5 + train replay |
 | `converters/build_bench_v0.py` | Ghép bench từ ứng viên + phiếu duyệt, gộp catalog |
 | `tools/test_converters.py` | Kiểm thử converter bằng dataset giả đúng schema |

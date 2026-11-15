@@ -26,7 +26,7 @@ Bench gồm 5 split, mỗi split trả lời một câu hỏi. Bản v0 ghép t�
 
 | Split | Câu hỏi | Nguồn v0 (công khai) | Nguồn v1 (bổ sung) | Tiêu chí chấp nhận v1 |
 | --- | --- | --- | --- | --- |
-| B1 Real-CS General | Nhận từ Anh trong lời nói tự nhiên? | Câu có từ Anh trong vi-asr-tech/edu/finance-test; 1–2 h từ SEA en-vi đã sửa nhãn tay | Thêm nguồn ngoài domain của G-Group | ≥ 3 h, ≥ 150 người nói, người nói lớn nhất ≤ 10% số giờ, mỗi miền ≥ 20% |
+| B1 Real-CS General | Nhận từ Anh trong lời nói tự nhiên? | G-Group: câu có từ Anh trong vi-asr-tech/edu/finance/pubadmin-test + dữ liệu tự thu (SEA en-vi: tùy chọn, không dùng) | Dữ liệu tự thu bù domain và người nói ngoài G-Group | ≥ 3 h, ≥ 150 người nói, người nói lớn nhất ≤ 10% số giờ, mỗi miền ≥ 20% |
 | B2 Real-CS Domain | Tốt trên đúng sản phẩm? | Không có nguồn công khai thay thế | Audio sản phẩm, đã ẩn PII, gõ transcript từ đầu | ≥ 2 h; ≥ 20% mẫu lấy ngẫu nhiên (không chọn theo model) |
 | B3 Unseen Terms | Tổng quát sang thuật ngữ chưa thấy? | ViMedCSS split hard (658 câu, 1.38 h) | Câu chứa thuật ngữ `reserved_b3` từ B1/B4 | ≥ 1.5 h; 100% thuật ngữ B3 xuất hiện 0 lần trong mọi dữ liệu train |
 | B4 Read-CS Controlled | Lỗi nằm ở loại từ, miền, mức Việt hoá nào? | Không có | 40–60 người đọc kịch bản \~600 thuật ngữ, 2 loại mic | ≥ 2.5 h; mỗi miền ≥ 20%; 100% span có mức Việt hoá |
@@ -57,7 +57,7 @@ Ba hợp đồng này được version cùng bench; đổi một trong ba là đ
 | `region`, `gender`, `channel`, `domain` | nên có | Giá trị trong danh sách cố định; thiếu ghi `unk` |
 | `en_meta[i].viet_level` | nên có | `strong` / `mid` / `native`, theo thứ tự span |
 
-**Bộ giá trị `domain` chung** (mọi converter phải map về đây): tech, finance, edu, medical, pubadmin, business, daily, entertainment, product, callcenter, conversation, read, confusable, other. Dữ liệu train không có nhãn domain (SEA, VietSuperSpeech, crawl) được suy ra từ text: từ khoá theo domain trong `configs/domain_keywords.tsv` cộng category của thuật ngữ catalog trong câu; không chắc thì ghi other, kèm `domain_source: inferred`.
+**Bộ giá trị `domain` chung** (mọi converter phải map về đây): tech, finance, edu, medical, pubadmin, business, daily, entertainment, product, callcenter, conversation, read, confusable, other. Dữ liệu train không có nhãn domain (VietSuperSpeech / vss_cs, dữ liệu tự có, crawl) được suy ra từ text: từ khoá theo domain trong `configs/domain_keywords.tsv` cộng category của thuật ngữ catalog trong câu; không chắc thì ghi other, kèm `domain_source: inferred`.
 
 **Catalog** (TSV): `term`, `category`, `variants` (biến thể chính tả được coi là đúng), `phonetic` (phiên âm Việt, chỉ dùng cho lenient), `reserved_b3`. Không đưa vào `variants` một từ tiếng Việt có nghĩa riêng (vd “tim” cho team) — nó sẽ sửa nhầm cả câu không liên quan.
 
@@ -102,18 +102,27 @@ Mỗi utterance ghi `annotator` và `reviewer` để truy vết khi cần sửa.
 
 Dữ liệu train được phép nhiễu hơn bench, nhưng tuyệt đối không được chạm vào bench: cùng người nói, cùng video, cùng audio, cùng câu hoặc thuật ngữ B3 đều bị loại.
 
+**Nguồn dùng** (quyết định sau Phase 0b):
+
+- Nguồn CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `vss_cs` là câu có từ Anh của VietSuperSpeech, xử lý theo các bước sau:
+  1. lọc rẻ trước ASR bằng `tools/vss_cs_prefilter.py`;
+  2. lọc đồng thuận theo tầng (Qwen3-ASR-0.6B, rồi faster-whisper cho câu chưa xác nhận), bằng `tools/vss_cs_pilot.sh`;
+  3. tùy chọn gán lại từng span (`--relabel-spans`).
+- B1 = G-Group + dữ liệu tự thu.
+- SEA Code-Switching: **tùy chọn, không dùng**.
+
 | Nguồn | Vai trò | Nhãn | Xử lý trước khi dùng |
 | --- | --- | --- | --- |
 | ViMedCSS train (24.3 h) | CS thật, y tế | Gemini, kiểm tra mẫu | Dùng trực tiếp; split hard đã loại sẵn thuật ngữ của nó khỏi train. Audio gốc WAV 44.1 kHz: converter resample về 16 kHz mono |
 | ViMedCSS validation | Dev CS | Như trên | Chỉ dùng để chọn siêu tham số |
-| SEA Code-Switching en-vi (45.3 h) | CS thật, đa domain | Máy, chưa kiểm tra | Giữ câu khi span Anh của nhãn gốc được ít nhất 1 trong 2 model đa ngôn ngữ (faster-whisper large-v3, Qwen3-ASR) xác nhận, tức 2 nguồn đồng thuận (tham số --min-agree); không dùng Gipformer để xác nhận vì nó hiếm khi ra chính tả Anh; bỏ câu có video trùng bench |
-| VietSuperSpeech (245 h: 60 656 + 6 749 câu, theo `manifest.json`) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Đã kiểm tra (Phase 0): 52.5% câu có từ Anh, viết chính tả Anh. Replay / chưng cất chỉ dùng câu không có từ Anh (~115 h); câu có từ Anh của phần train ghi riêng `vss_cs_candidates.jsonl` (chỉ train, nhóm tổng hợp / nhãn giả 0.10, phải lọc đồng thuận như SEA) |
+| SEA Code-Switching en-vi (45.3 h) — **tùy chọn, không dùng** (quyết định sau Phase 0b) | CS thật, đa domain | Máy, chưa kiểm tra | Nếu dùng lại: giữ câu khi span Anh của nhãn gốc được ít nhất 1 trong 2 model đa ngôn ngữ (faster-whisper large-v3, Qwen3-ASR) xác nhận, tức 2 nguồn đồng thuận (tham số --min-agree); không dùng Gipformer để xác nhận vì nó hiếm khi ra chính tả Anh; bỏ câu có video trùng bench |
+| VietSuperSpeech (245 h: 60 656 + 6 749 câu, theo `manifest.json`) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Đã kiểm tra (Phase 0): 52.5% câu có từ Anh, viết chính tả Anh. Replay / chưng cất chỉ dùng câu không có từ Anh (~115 h); câu có từ Anh của phần train ghi riêng `vss_cs_candidates.jsonl` (chỉ train, nhóm tổng hợp / nhãn giả 0.10; lọc rẻ trước ASR rồi lọc đồng thuận theo tầng, xem "Nguồn dùng" ở trên) |
 | vivos / Common Voice train | Replay tiếng Việt đọc | Người | Không dùng phần test (đã thuộc B5) |
 | TTS tổng hợp (E4) | CS có kiểm soát, thuật ngữ hiếm | Chính xác theo kịch bản | Cấm thuật ngữ `reserved_b3`; speaker = ID giọng TTS |
 
 Quy tắc chống rò rỉ (validate.py kiểm tra, to\_lhotse.py tự loại khi tạo dữ liệu train):
 
-1. `source` dùng một quy ước chung cho mọi dataset: `youtube:<video_id>`, `call:<id>`, `read:<phiên>`. Nhờ đó một video xuất hiện ở cả SEA và ViMedCSS vẫn bị phát hiện.
+1. `source` dùng một quy ước chung cho mọi dataset: `youtube:<video_id>`, `call:<id>`, `read:<phiên>`. Nhờ đó một video xuất hiện ở hai dataset (vd ViMedCSS và VietSuperSpeech) vẫn bị phát hiện.
 2. Không người nói, video, hash audio hay câu (sau chuẩn hoá) nào của bench có trong train/dev.
 3. Thuật ngữ `reserved_b3` không có trong mọi text train, kể cả text dùng cho LM (E2) và câu TTS (E4).
 4. Dev dùng chọn siêu tham số tách theo `source`, không trùng bench.
@@ -263,7 +272,7 @@ Model có thể overfit theo 5 kiểu, mỗi kiểu cần một phép đo riêng
 
 | Thành phần | Tỉ trọng trong batch | Lý do |
 | --- | --- | --- |
-| CS thật đa domain (SEA đã lọc, ViMedCSS giảm tỉ trọng, dữ liệu sản phẩm nếu có) | 35–40% | Nguồn tín hiệu chính |
+| CS thật (ViMedCSS train giảm tỉ trọng, `vss_cs` đã lọc đồng thuận, dữ liệu tự có) | 35–40% | Nguồn tín hiệu chính. `vss_cs` có nhãn giả nên trong `configs/train_mix.tsv` hiện nằm ở nhóm `synth_pseudo` |
 | CS tổng hợp (TTS, ghép) cho thuật ngữ hiếm | ≤ 10% | Phủ đuôi dài mà không để giọng TTS chi phối |
 | Replay tiếng Việt có nhãn người (vivos, Common Voice, dữ liệu call center của bạn) | 25–30% | Giữ năng lực gốc |
 | Replay tự chưng cất: audio tiếng Việt không nhãn, nhãn do chính Gipformer gốc sinh ra, chỉ giữ câu mà greedy và beam search cho kết quả giống hệt | 20–25% | Dữ liệu train gốc của Gipformer không công bố; dạy model FT lặp lại đúng hành vi cũ trên tiếng Việt là cách thay thế trực tiếp nhất |

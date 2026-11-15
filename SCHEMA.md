@@ -25,7 +25,7 @@
 | `channel` | nên có | `wideband` / `phone8k` |
 | `domain` | nên có | `tech` / `finance` / `edu` / `daily` / `product` / … |
 | `text_tagged_orig` | tuỳ chọn | nhãn `<en>` theo quy ước của dataset gốc khi quy ước đó khác Spec (ViMedCSS: gắn cả từ mượn như `vitamin`, `axit`). Chỉ dùng để chấm số phụ: `score.py --label-field text_tagged_orig` |
-| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`…). Cột `datasets` của `configs/train_mix.tsv` map trường này vào nhóm trộn |
+| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Cột `datasets` của `configs/train_mix.tsv` map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
 | `train_only` | tuỳ chọn | `true` = dòng chỉ được dùng cho train, không bao giờ vào bench (vd `dataset: vss_cs`) |
 | `label_source` | tuỳ chọn | nguồn nhãn máy, vd `pseudo:Zipformer-30M-RNNT-6000h` |
 | `agreement` | tuỳ chọn | do `tools/agreement_filter.py` ghi: `{"confirmed": [số hyp xác nhận từng span], "n_hyps", "min_agree"}` |

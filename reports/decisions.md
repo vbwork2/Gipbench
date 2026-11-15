@@ -32,8 +32,20 @@ Ngày 14/11/2026. Các quyết định này thay cho phần tương ứng trong 
 
 - Giá trị: `tech, finance, edu, medical, pubadmin, business, daily, entertainment, product, callcenter, conversation, read, confusable, other`. Đưa vào `lib/manifest.py` và `SCHEMA.md`.
 - Mỗi converter phải map domain gốc về bộ này.
-- Dữ liệu train không có nhãn domain (SEA, VietSuperSpeech, crawl) thì suy ra từ text: từ khoá theo domain (`configs/domain_keywords.tsv`) cộng category của thuật ngữ catalog trong câu; không chắc thì `other`. Ghi `domain_source: inferred`.
+- Dữ liệu train không có nhãn domain (VietSuperSpeech / vss_cs, dữ liệu tự có, crawl; SEA nếu dùng lại) thì suy ra từ text: từ khoá theo domain (`configs/domain_keywords.tsv`) cộng category của thuật ngữ catalog trong câu; không chắc thì `other`. Ghi `domain_source: inferred`.
 - `--holdout-domain finance` loại các câu train có domain finance (gán sẵn hoặc suy ra). Báo cáo số câu bị loại và 20 câu mẫu để người dùng kiểm tra bộ suy luận.
+
+## 11. Sau Phase 0b (15/11/2026)
+
+- **Bỏ SEA**: SEA Code-Switching là tùy chọn, không dùng; không có trong lệnh mặc định. Mục 7 chỉ còn áp cho vss_cs. Nguồn CS thật cho train = ViMedCSS train + vss_cs + dữ liệu tự có; B1 = G-Group + dữ liệu tự thu.
+- vss_cs mặc định **chỉ lọc**. `--relabel-spans` (mặc định tắt) chỉ thay từng span EN khi cả hai ASR cho cùng chữ sau chuẩn hoá và WER phần tiếng Việt so với mỗi ASR ≤ 0.10; không gán lại cả câu. Câu gán lại: `relabeled: true`, text gốc ở `text_orig`, kiểm tra rò rỉ lại.
+- `--max-en-frac 0.5` áp dụng trước ASR.
+- Không chạy hết 31 949 câu. Trình tự:
+  1. lọc rẻ trước ASR (max-en-frac, độ dài 1–20 s, rò rỉ B1–B3 + reserved_b3, trần thuật ngữ ≤ 50, ưu tiên thuật ngữ hiếm, có seed);
+  2. chạy ASR theo tầng: Qwen3-ASR-0.6B trước, faster-whisper chỉ cho câu Qwen chưa xác nhận;
+  3. chạy theo chunk, có resume, xoá audio tạm sau mỗi chunk, dừng nếu D: < 3 GB;
+  4. pilot 1 000 câu, rồi dừng chờ duyệt. Mục tiêu sau đó: tối đa ~10k câu, 5–10 h sạch.
+- vi_abbrev, vi_loanwords: vẫn chờ duyệt.
 
 ## Ghi nhận khi dựng môi trường (Claude, chờ người dùng xem lại)
 

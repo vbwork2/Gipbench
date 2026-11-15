@@ -3,7 +3,7 @@
 
   python converters/build_bench_v0.py \
       --candidates data/raw/ggroup/b1_candidates.jsonl data/raw/ggroup/b5_ggroup.jsonl \
-                   data/raw/vimedcss/b3_candidates.jsonl data/raw/sea/b1_candidates_sea.jsonl \
+                   data/raw/vimedcss/b3_candidates.jsonl \
                    data/raw/vivos/b5_vivos.jsonl data/raw/cv/b5_cv.jsonl \
       --reviews data/raw/ggroup/b1_candidates_review.csv data/raw/vimedcss/b3_candidates_review.csv \
       --catalogs configs/catalog.tsv data/raw/vimedcss/catalog_vimedcss.tsv \
