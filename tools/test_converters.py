@@ -7,6 +7,8 @@ import csv
 import io
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -172,6 +174,38 @@ def main():
     fixed = next(r for r in bench if r["review"] == "fix")
     assert fixed["en_meta"] == [{"viet_level": "mid"}] and fixed["region"] == "south"
     assert fixed["reading_note"] == "google: gu gồ -> EN"  # Phase 0b: cột ghi chú cách đọc đi vào bench
+    # --- Phase 0d T8: tools/review_bench.html — lõi JS (parseCSV / applyReview / toCSV) chạy bằng Node (chương trình
+    #     đưa qua stdin: `node -`); CSV xuất ra phải được build_bench_v0.py đọc đúng
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        print("BỎ QUA test review_bench.html: không tìm thấy node")
+    else:
+        core = re.search(r'<script id="core">(.*?)</script>', (G / "tools/review_bench.html").read_text(encoding="utf-8"),
+                         re.S).group(1)
+        src_rows = list(csv.DictReader(open(rp, encoding="utf-8-sig")))
+        ids = [r["id"] for r in src_rows[:3]]
+        fix_text = 'đây là, "thử" <en>google</en> nhé'  # có dấu phẩy và ngoặc kép: kiểm tra quote CSV
+        revs = {r["id"]: {"decision": ""} for r in src_rows[3:]}
+        revs.update({ids[0]: {"decision": "ok", "region": "north"}, ids[1]: {"decision": "drop"},
+                     ids[2]: {"decision": "fix", "fixed": fix_text, "viet_levels": "strong", "gender": "f"}})
+        drv = (core + "\nconst {header, rows} = parseCSV(" + json.dumps(open(rp, encoding="utf-8").read()) + ");\n"
+               "const R = " + json.dumps(revs, ensure_ascii=False) + ";\n"
+               "process.stdout.write(toCSV(ensureCols(header), rows.map(r => applyReview(r, R[r.id]))));\n"
+               "console.error(tagError('<en>a</en> <en>b') + '|' + tagError('<en>a</en>') + '|' + tagHtml('x <en>a&b</en>'));\n")
+        p = subprocess.run([node, "-"], input=drv.encode("utf-8"), capture_output=True)
+        assert p.returncode == 0, p.stderr.decode("utf-8", "replace")
+        assert p.stderr.decode("utf-8").strip() == 'số <en> (2) khác số </en> (1)||x <b class="en">a&amp;b</b>', p.stderr
+        out_csv = T / "review_html_out.csv"
+        out_csv.write_bytes(p.stdout)
+        out_rows = list(csv.DictReader(open(out_csv, encoding="utf-8-sig")))
+        assert list(out_rows[0]) == list(src_rows[0]) and len(out_rows) == len(src_rows)  # giữ nguyên cột, số dòng
+        assert out_rows[2]["text_tagged_fixed"] == fix_text and out_rows[1]["decision"] == "drop"
+        run(G / "converters/build_bench_v0.py", "--candidates", raw / "ggroup/b1_candidates.jsonl", "--reviews", out_csv,
+            "--catalogs", cat, "--out", T / "data/bench_html.jsonl", "--catalog-out", T / "configs/catalog_html.tsv")
+        bh = {r["id"]: r for r in L(T / "data/bench_html.jsonl")}
+        assert set(bh) == {ids[0], ids[2]}, sorted(bh)
+        assert bh[ids[2]]["text_tagged"] == fix_text and bh[ids[2]]["en_meta"] == [{"viet_level": "strong"}]
+        assert bh[ids[2]]["gender"] == "f" and bh[ids[0]]["region"] == "north" and bh[ids[0]]["review"] == "ok"
     # --- bench đi tiếp được vào validate (phải bắt video y578jWB56QE có ở cả train ViMedCSS và SEA nếu rơi vào bench) và eda
     run(G / "validate.py", "--bench", T / "data/bench_v0.jsonl", "--catalog", T / "configs/catalog_v0.tsv", "--check-audio",
         "--train", raw / "vimedcss/train_vimedcss.jsonl", raw / "sea/train_sea.jsonl", raw / "vss/train_vss.jsonl", ok=(0, 1))
