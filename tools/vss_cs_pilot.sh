@@ -40,7 +40,10 @@ NAME=$(basename "$M" .jsonl)
 OUT=$(dirname "$M")
 HQ=results/asr_hyps/qwen3_asr_0.6b/$NAME.jsonl
 HW=results/asr_hyps/fw_large_v3_int8/$NAME.jsonl
-FETCH=(--chunk-size "$CHUNK" --hf-repo "$REPO" --audio-root "$ROOT" --tmp-dir "$TMP_AUDIO" --min-free-gb "$MIN_FREE_GB")
+IDX=${IDX:-results/asr_hyps/vss_audio_sha256.tsv}  # cache hyps theo id + hash audio (lib/hyp_cache.py)
+FETCH=(--chunk-size "$CHUNK" --hf-repo "$REPO" --audio-root "$ROOT" --tmp-dir "$TMP_AUDIO" --min-free-gb "$MIN_FREE_GB"
+       --hash-index "$IDX")
+CACHE=(--hash-index "$IDX" --audio-root "$ROOT" --tiered)
 
 echo "== tầng 1: Qwen3-ASR-0.6B ($M)"
 "$ASR_PY" tools/asr_hyps.py --engine qwen3-asr --model Qwen/Qwen3-ASR-0.6B --device cuda:0 \
@@ -48,7 +51,7 @@ echo "== tầng 1: Qwen3-ASR-0.6B ($M)"
 test "${PIPESTATUS[0]}" -eq 0
 
 echo "== câu còn span Qwen chưa xác nhận"
-"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" --catalog "$CAT" \
+"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" --catalog "$CAT" --hash-index "$IDX" --audio-root "$ROOT" \
   --write-unconfirmed-ids "$OUT/${NAME}_need_fw.txt" --out "$OUT/${NAME}_agreed_qwen.jsonl"
 
 echo "== tầng 2: faster-whisper large-v3 int8 ($(wc -l < "$OUT/${NAME}_need_fw.txt") câu)"
@@ -56,11 +59,11 @@ echo "== tầng 2: faster-whisper large-v3 int8 ($(wc -l < "$OUT/${NAME}_need_fw
   --manifest "$M" --ids "$OUT/${NAME}_need_fw.txt" --out "$HW" "${FETCH[@]}"
 
 echo "== lọc: chỉ lọc"
-"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" "$HW" --catalog "$CAT" \
+"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" "$HW" --catalog "$CAT" "${CACHE[@]}" \
   --out "$OUT/${NAME}_agreed.jsonl"
 
 echo "== lọc + --relabel-spans"
-"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" "$HW" --catalog "$CAT" --bench "$BENCH" \
+"$PY" tools/agreement_filter.py --manifest "$M" --hyps "$HQ" "$HW" --catalog "$CAT" --bench "$BENCH" "${CACHE[@]}" \
   --relabel-spans --audio-root "$ROOT" --listen-csv "$LISTEN_CSV" --listen-n 30 --seed 0 \
   --out "$OUT/${NAME}_agreed_relabel.jsonl"
 rm -rf "$TMP_AUDIO/py"  # file tạm của python/torch (torchinductor)

@@ -25,6 +25,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.hyp_cache import HashIndex, audio_rel, file_sha256  # noqa: E402
 from lib.manifest import read_jsonl  # noqa: E402
 
 
@@ -71,6 +72,7 @@ def main():
     ap.add_argument("--workers", type=int, default=8, help="số luồng tải audio")
     ap.add_argument("--disk-path", help="ổ cần kiểm tra dung lượng trước mỗi chunk (mặc định --tmp-dir)")
     ap.add_argument("--min-free-gb", type=float, default=3.0, help="dừng (exit 3) nếu dung lượng trống thấp hơn")
+    ap.add_argument("--hash-index", help="chỉ mục audio_rel -> sha256 (lib/hyp_cache.py): resume theo id + hash audio")
     args = ap.parse_args()
     if args.hf_repo and not (args.audio_root and args.tmp_dir):
         sys.exit("--hf-repo cần --audio-root và --tmp-dir")
@@ -83,13 +85,33 @@ def main():
         rows = rows[:args.limit]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = set()
+    done_ids, done_keys = set(), set()
     if out.exists():
-        done = {json.loads(l)["id"] for l in open(out, encoding="utf-8") if l.strip()}
-    todo = [r for r in rows if r["id"] not in done]
-    print(f"{args.engine} {args.model}: {len(todo)} câu cần giải mã ({len(done)} đã có)")
+        for l in open(out, encoding="utf-8"):
+            if l.strip():
+                h = json.loads(l)
+                done_ids.add(h["id"])
+                done_keys.add((h["id"], h.get("audio_sha256")))
+    index = HashIndex(args.hash_index) if args.hash_index else None
+    rel = {r["id"]: audio_rel(r, args.audio_root) for r in rows}
+    if index is not None:
+        # hash audio TRƯỚC khi giải mã: file cục bộ thì tính, còn lại lấy sha256 LFS từ HF (không tải audio)
+        for r in rows:
+            if index.get(rel[r["id"]]) is None and Path(r["_audio_path"]).exists():
+                index.put(rel[r["id"]], file_sha256(r["_audio_path"]))
+        if args.hf_repo:
+            n_new, no_lfs = index.fill_from_hf(args.hf_repo, (rel[r["id"]] for r in rows))
+            if n_new or no_lfs:
+                print(f"  chỉ mục hash: +{n_new} mục từ HF, {len(no_lfs)} file không có sha256 LFS")
+        index.save()
+        todo = [r for r in rows if (r["id"], index.get(rel[r["id"]])) not in done_keys]
+    else:
+        todo = [r for r in rows if r["id"] not in done_ids]
+    print(f"{args.engine} {args.model}: {len(todo)} câu cần giải mã ({len(rows) - len(todo)} đã có trong cache"
+          f"{', tra theo id + hash audio' if index is not None else ', tra theo id'})")
     if not todo:
         return
+    n_mismatch = 0
     disk = args.disk_path or args.tmp_dir or str(out.parent)
     tmp = Path(args.tmp_dir) if args.tmp_dir else None
     log = {"engine": args.engine, "model": args.model, "n": 0, "audio_s": 0.0, "load_s": 0.0, "asr_s": 0.0,
@@ -124,11 +146,16 @@ def main():
                 for r in part:
                     if r["id"] not in paths:
                         continue
+                    sha = file_sha256(paths[r["id"]])
+                    if index is not None:
+                        if index.get(rel[r["id"]]) not in (None, sha):
+                            n_mismatch += 1
+                        index.put(rel[r["id"]], sha)
                     hyp = run(paths[r["id"]])
                     log["audio_s"] += float(r["duration"])
                     log["n"] += 1
-                    f.write(json.dumps({"id": r["id"], "hyp": hyp, "engine": args.engine, "model": args.model},
-                                       ensure_ascii=False) + "\n")
+                    f.write(json.dumps({"id": r["id"], "hyp": hyp, "engine": args.engine, "model": args.model,
+                                        "audio_sha256": sha, "audio_rel": rel[r["id"]]}, ensure_ascii=False) + "\n")
                     f.flush()
                 log["asr_s"] += time.time() - t1
                 if cdir is not None:
@@ -136,6 +163,10 @@ def main():
                 print(f"  {min(c0 + chunk, len(todo))}/{len(todo)} câu, RTF {log['asr_s'] / max(log['audio_s'], 1e-6):.3f}, "
                       f"{shutil.disk_usage(disk).free / 1e9:.1f} GB trống ở {disk}")
     finally:
+        if index is not None:
+            index.save()
+        if n_mismatch:
+            print(f"  CẢNH BÁO: {n_mismatch} file audio có sha256 khác chỉ mục (đã cập nhật theo file thật)")
         log["ended"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         with open(str(out) + ".runs.jsonl", "a", encoding="utf-8") as lf:
             lf.write(json.dumps(log, ensure_ascii=False) + "\n")
@@ -150,14 +181,13 @@ def fetch_chunk(part, args, cdir):
     Đường dẫn trong repo = đường dẫn audio tương đối với --audio-root."""
     from concurrent.futures import ThreadPoolExecutor
     from huggingface_hub import hf_hub_download
-    root = Path(args.audio_root).resolve()
     paths, bad, need = {}, [], []
     for r in part:
         p = Path(r["_audio_path"])
         if p.exists():
             paths[r["id"]] = str(p)
         else:
-            need.append((r["id"], p.resolve().relative_to(root).as_posix()))
+            need.append((r["id"], audio_rel(r, args.audio_root)))
     cdir.mkdir(parents=True, exist_ok=True)
 
     def get(item):

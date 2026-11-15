@@ -68,3 +68,7 @@ Một từ / cụm viết bằng chữ Latin được gắn `<en>` khi người 
 
 Bất kỳ hệ thống nào (sherpa-onnx, icefall PyTorch, Whisper, API) chỉ cần xuất đúng định dạng này là chấm được.
 Hoa/thường, dấu câu, số không cần chuẩn hoá trước — `score.py` tự làm.
+
+Hyps của ASR dùng để lọc đồng thuận (`tools/asr_hyps.py`) có thêm `engine`, `model`, `audio_sha256` (sha256 của file
+audio đã giải mã) và `audio_rel` (đường dẫn audio tương đối với gốc dataset = đường dẫn trong repo HF). Cache tra theo
+**id + audio_sha256** (`lib/hyp_cache.py`, chỉ mục `audio_rel → sha256` ở `results/asr_hyps/vss_audio_sha256.tsv`).

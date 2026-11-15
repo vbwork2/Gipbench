@@ -6,6 +6,7 @@
 import csv
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -383,6 +384,46 @@ def main():
     run(G / "tools/agreement_filter.py", "--manifest", vm, "--hyps", T / "vq.jsonl", T / "vw.jsonl", "--catalog", cat,
         "--max-vi-wer", "0.10", "--out", T / "viwer_010.jsonl")
     assert L(T / "viwer_010.jsonl") == []
+    # --- Phase 0d T4: cache hyps theo id + hash audio, backfill hyps cũ, rebuild_vss_cs.sh chỉ từ cache
+    from lib.hyp_cache import HashIndex, HypLookup, file_sha256
+    c4 = T / "cache4"
+    (c4 / "root/audio/p0").mkdir(parents=True, exist_ok=True)
+    for k, d in (("a1", 2), ("a2", 3), ("a3", 4), ("a4", 5), ("d9", 6)):
+        (c4 / f"root/audio/p0/{k}.wav").write_bytes(wav_bytes(d))
+    c_rows = [("a1", "mở <en>zoom</en> lên đi em nhé"), ("a2", "cái <en>zoom</en> hôm nay lag quá"),
+              ("a3", "vào <en>zoom</en> họp nha mọi người"), ("a4", "bật <en>zoom</en> lên giúp anh nha")]
+    c_m = c4 / "cand.jsonl"
+    c_m.write_text("".join(json.dumps(dict(base, id=i, text_tagged=t, audio=str(c4 / f"root/audio/p0/{i}.wav")),
+                                      ensure_ascii=False) + "\n" for i, t in c_rows), encoding="utf-8")
+    (c4 / "hq").mkdir(exist_ok=True)
+    (c4 / "hw").mkdir(exist_ok=True)
+    (c4 / "hq/x.jsonl").write_text("".join(json.dumps({"id": i, "hyp": h}, ensure_ascii=False) + "\n" for i, h in [
+        ("a1", "mở zoom lên đi em nhé"), ("a2", "cái dum hôm nay lag quá"), ("a4", "bật dum lên giúp anh nha")]),
+        encoding="utf-8")  # a3: chưa chạy tầng 1; a2: chưa chạy tầng 2
+    (c4 / "hw/x.jsonl").write_text(json.dumps({"id": "a4", "hyp": "bật zoom lên giúp anh nha"}, ensure_ascii=False) + "\n",
+                                   encoding="utf-8")
+    idx = c4 / "sha.tsv"
+    out_bf = run(G / "tools/hyp_cache.py", "backfill", "--manifest", c_m, "--hyps", c4 / "hq", c4 / "hw",
+                 "--hash-index", idx, "--audio-root", c4 / "root")
+    assert "thêm hash: 4" in out_bf and (c4 / "hq/x.jsonl.bak").exists(), out_bf
+    hq_rows = L(c4 / "hq/x.jsonl")
+    assert all(h["audio_sha256"] == file_sha256(c4 / f"root/audio/p0/{h['id']}.wav") for h in hq_rows)
+    assert hq_rows[0]["audio_rel"] == "audio/p0/a1.wav"
+    hi = HashIndex(str(idx))
+    look = HypLookup([str(c4 / "hq"), str(c4 / "hw")], hi, str(c4 / "root"))
+    assert look.get({"id": "a1", "audio": str(c4 / "root/audio/p0/a1.wav")}) == ["mở zoom lên đi em nhé", None]
+    hi.put("audio/p0/d9.wav", file_sha256(c4 / "root/audio/p0/d9.wav"))
+    # cùng id a1 nhưng audio khác (vd converter đánh lại id): hash không khớp -> không dùng lại hyp cũ
+    assert look.get({"id": "a1", "audio": str(c4 / "root/audio/p0/d9.wav")}) == [None, None]
+    out_rb = subprocess.run(["bash", str(G / "tools/rebuild_vss_cs.sh"), "--bench", str(bench_proxy), "--catalog", str(cat),
+                             "--candidates", str(c_m), "--out-dir", str(c4 / "rb"), "--hyps", f"{c4 / 'hq'} {c4 / 'hw'}",
+                             "--hash-index", str(idx), "--audio-root", str(c4 / "root")],
+                            capture_output=True, text=True, env={**os.environ, "PY": sys.executable})
+    assert out_rb.returncode == 0, out_rb.stdout + out_rb.stderr
+    assert sorted(r["id"] for r in L(c4 / "rb/vss_cs_clean.jsonl")) == ["a1", "a4"], out_rb.stdout
+    rb_md = (c4 / "rb/vss_cs_clean.jsonl.report.md").read_text(encoding="utf-8")
+    assert "chưa có hyp tầng 1: 1" in rb_md and "chờ tầng 2 (còn span chưa xác nhận, thiếu hyp tầng sau): 1" in rb_md, rb_md
+    assert "Giữ **2 / 2**" in rb_md
     # --- Phase 0c: lọc rẻ trước ASR (tools/vss_cs_prefilter.py)
     pre_rows = [dict(base, id="p0", text_tagged="<en>you build a factory not only one year</en> nha"),  # en_frac 8/9 -> bỏ
                 dict(base, id="p1", duration=25.0, text_tagged="dài quá <en>zoom</en> nhé"),           # > 20 s -> bỏ

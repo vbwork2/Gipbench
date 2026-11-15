@@ -63,7 +63,37 @@ python converters/build_bench_v0.py \
   --out data/bench_v0.jsonl --catalog-out configs/catalog_v0.tsv
 ```
 
-`--accept all` nhận cả câu chưa duyệt, chỉ để chạy thử pipeline; kết quả trên bench nháp đó không dùng để kết luận. Manifest train cho Bước 5: `train_vimedcss` + `train_sea` (CS), `train_vivos` + `train_cv` + `train_vss` (replay tiếng Việt), `dev_vimedcss` (dev).
+`--accept all` nhận cả câu chưa duyệt, chỉ để chạy thử pipeline; kết quả trên bench nháp đó không dùng để kết luận. Manifest train cho Bước 5:
+
+- CS thật (`cs_real`): `train_vimedcss`;
+- CS nhãn giả (`cs_pseudo`): `vss_cs_clean`, xem mục dưới;
+- replay tiếng Việt: `train_vivos` + `train_cv` + `train_vss`;
+- dev: `dev_vimedcss`.
+
+### vss_cs: lọc câu có từ Anh của VietSuperSpeech (nhãn giả)
+
+Nhãn `<en>` của VSS do Zipformer-30M sinh ra, sai nhiều, nên mặc định **chỉ lọc**, không gán lại. Chuỗi xử lý:
+
+1. lọc rẻ trước ASR (`tools/vss_cs_prefilter.py`): độ dài 1–20 s, `--max-en-frac 0.5`, rò rỉ B1–B3 + reserved_b3, bỏ câu mà mọi thuật ngữ chỉ có trong 1 câu (giữ 10%), trần thuật ngữ 50;
+2. ASR theo tầng: Qwen3-ASR-0.6B, rồi faster-whisper chỉ cho câu Qwen chưa xác nhận hết span;
+3. đồng thuận span;
+4. WER phần tiếng Việt ≤ 0.15 (lấy thấp nhất theo các ASR);
+5. (tùy chọn) `--relabel-spans`.
+
+Hyps ASR được cache theo **id + hash audio** (`results/asr_hyps/`, chỉ mục `results/asr_hyps/vss_audio_sha256.tsv`), nên đổi bench hay catalog thì không phải chạy lại GPU.
+
+```bash
+# dựng lại vss_cs sạch CHỈ TỪ CACHE (không GPU, không tải audio)
+bash tools/rebuild_vss_cs.sh --bench data/raw/_proxy/bench_proxy.jsonl --catalog data/raw/_proxy/catalog_proxy.tsv
+```
+
+**Khi đã có `data/bench_v0.jsonl` thật** (sau bước ghép ở trên), chạy lại lệnh này với bench thật để thay bench tạm `data/raw/_proxy`:
+
+```bash
+bash tools/rebuild_vss_cs.sh --bench data/bench_v0.jsonl --catalog configs/catalog_v0.tsv
+```
+
+Lệnh này kiểm lại rò rỉ với bench thật và reserved_b3 của catalog v0. Câu chưa có hyp trong cache được đếm riêng ("chưa xét"), không bị coi là bị loại. Kết quả nằm ở `data/raw/vss_full/vss_cs_clean.jsonl` và `vss_cs_clean.jsonl.report.md`.
 
 ## Bước 1 — Catalog thuật ngữ & manifest
 

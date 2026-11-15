@@ -27,22 +27,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lib.agreement import agree, plain, relabel_spans, vi_wer  # noqa: E402
+from lib.hyp_cache import HashIndex, HypLookup, audio_rel  # noqa: E402
 from lib.leak import LeakGuard  # noqa: E402
 from lib.manifest import read_jsonl, write_jsonl  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
 
 HF_URL = "https://huggingface.co/datasets/thanhnew2001/VietSuperSpeech/resolve/main/"
-
-
-def audio_rel(r, audio_root):
-    p = Path(r.get("_audio_path") or r["audio"])
-    if audio_root:
-        try:
-            return p.resolve().relative_to(Path(audio_root).resolve()).as_posix()
-        except ValueError:
-            pass
-    s = p.as_posix()
-    return s[s.index("audio/"):] if "audio/" in s else s
 
 
 def main():
@@ -65,15 +55,20 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--audio-root", help="thư mục gốc audio (đường dẫn tương đối trong repo HF), cho cột audio_url")
     ap.add_argument("--audio-url-prefix", default=HF_URL)
+    ap.add_argument("--hash-index", help="chỉ mục audio_rel -> sha256 (lib/hyp_cache.py): tra hyps theo id + hash audio")
+    ap.add_argument("--tiered", action="store_true",
+                    help="file hyps đầu là tầng 1 (bắt buộc); câu chưa có hyp tầng 1, hoặc còn span chưa xác nhận mà "
+                         "thiếu hyp tầng sau, được đếm riêng là 'chưa chạy' thay vì 'bỏ'")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     if args.relabel_spans and len(args.hyps) < 2:
         sys.exit("--relabel-spans cần ít nhất 2 file hyps (mọi ASR phải cho cùng chữ)")
     cat = Catalog.load(args.catalog)
-    hyps = [{h["id"]: h.get("hyp", "") for h in read_jsonl(p)} for p in args.hyps]
+    look = HypLookup(args.hyps, HashIndex(args.hash_index) if args.hash_index else None, args.audio_root)
     rows = read_jsonl(args.manifest)
     if args.only_with_hyps:
-        rows = [r for r in rows if all(r["id"] in h for h in hyps)]
+        rows = [r for r in rows if all(h is not None for h in look.get(r))]
+    pending = Counter()
     guard = None
     if args.relabel_spans:
         if args.bench:
@@ -88,15 +83,21 @@ def main():
     vw_all, n_vi_drop = [], 0  # WER tiếng Việt (min theo ASR) của câu đã qua lọc span
     examples = {"giữ": [], "bỏ": []}
     for r in rows:
-        hs = [h.get(r["id"]) for h in hyps]
+        hs = look.get(r)
+        if args.tiered and hs[0] is None:
+            pending["chưa có hyp tầng 1"] += 1
+            continue
         res = agree(r["text_tagged"], [h or "" for h in hs], cat, args.min_agree, args.min_span_frac)
+        if any(v < args.min_agree for v in res["confirmed"]):
+            unconfirmed.append(r["id"])
+        if args.tiered and not res["keep"] and any(h is None for h in hs[1:]):
+            pending["chờ tầng 2 (còn span chưa xác nhận, thiếu hyp tầng sau)"] += 1
+            continue
         dur = float(r["duration"]) / 3600
         hours["tổng"] += dur
         for s, v in zip(res["spans"], res["confirmed"]):
             span_tot[s] += 1
             span_ok[s] += v >= args.min_agree
-        if any(v < args.min_agree for v in res["confirmed"]):
-            unconfirmed.append(r["id"])
         key = "giữ" if res["keep"] else "bỏ"
         if len(examples[key]) < 8:
             examples[key].append((r["id"], r["text_tagged"], [h or "" for h in hs], res["confirmed"]))
@@ -108,7 +109,7 @@ def main():
                 hours["bỏ: WER tiếng Việt"] += dur
                 n_vi_drop += 1
                 continue
-            r["agreement"] = {"confirmed": res["confirmed"], "n_hyps": len(hyps), "min_agree": args.min_agree,
+            r["agreement"] = {"confirmed": res["confirmed"], "n_hyps": len(args.hyps), "min_agree": args.min_agree,
                               "vi_wer": round(vw, 4)}
             kept.append(r)
             hours["giữ: lọc"] += dur
@@ -133,7 +134,7 @@ def main():
             continue
         new.update(relabeled=True, relabel={"changed": rl["changed"], "vi_wer": rl["vi_wer"],
                                             "max_vi_wer": args.relabel_max_vi_wer},
-                   agreement={"confirmed": res2["confirmed"], "n_hyps": len(hyps), "min_agree": args.min_agree})
+                   agreement={"confirmed": res2["confirmed"], "n_hyps": len(args.hyps), "min_agree": args.min_agree})
         rl_reason["gán lại"] += 1
         n_spans_changed += len(rl["changed"])
         kept.append(new)
@@ -143,13 +144,16 @@ def main():
     if args.write_unconfirmed_ids:
         Path(args.write_unconfirmed_ids).write_text("".join(i + "\n" for i in unconfirmed), encoding="utf-8")
     n_filter = sum(1 for r in kept if not r.get("relabeled"))
+    n_eval = len(rows) - sum(pending.values())
     pct = lambda a, b: 100 * a / max(b, 1e-9)  # noqa: E731
     md = [f"# Lọc đồng thuận — {args.manifest}", "",
           f"Hyps: {', '.join(f'`{p}`' for p in args.hyps)}. --min-agree {args.min_agree}, --min-span-frac {args.min_span_frac}"
-          + (f", --relabel-spans (WER tiếng Việt <= {args.relabel_max_vi_wer})" if args.relabel_spans else "") + ".", "",
-          f"Giữ **{len(kept)} / {len(rows)}** câu ({hours['giữ: lọc'] + hours['giữ: gán lại']:.2f} / {hours['tổng']:.2f} h, "
-          f"{pct(len(kept), len(rows)):.1f}%).", "",
-          f"- chỉ lọc: {n_filter} câu, {hours['giữ: lọc']:.2f} h ({pct(n_filter, len(rows)):.1f}% số câu, "
+          f", --max-vi-wer {args.max_vi_wer:g}"
+          + (f", --relabel-spans (WER tiếng Việt <= {args.relabel_max_vi_wer})" if args.relabel_spans else "")
+          + (", tra cache theo id + hash audio" if args.hash_index else "") + ".", "",
+          f"Giữ **{len(kept)} / {n_eval}** câu ({hours['giữ: lọc'] + hours['giữ: gán lại']:.2f} / {hours['tổng']:.2f} h, "
+          f"{pct(len(kept), n_eval):.1f}%).", "",
+          f"- chỉ lọc: {n_filter} câu, {hours['giữ: lọc']:.2f} h ({pct(n_filter, n_eval):.1f}% số câu, "
           f"{pct(hours['giữ: lọc'], hours['tổng']):.1f}% số giờ)"]
     if vw_all:
         edges = [0.05, 0.10, 0.15, 0.20, 0.30, float("inf")]
@@ -170,6 +174,9 @@ def main():
             cnt = Counter(next(e for e in edges if w <= e) for w in vi_wers)
             md += ["", "WER tiếng Việt (max theo các hyp) của câu xét gán lại:", "", "| <= | Số câu |", "| --- | --- |"]
             md += [f"| {'∞' if e == float('inf') else e} | {cnt[e]} |" for e in edges]
+    if pending:
+        md += ["", f"Chưa xét (thiếu hyp trong cache, không tính vào mẫu số): "
+               + "; ".join(f"{k}: {v}" for k, v in pending.items()) + "."]
     md += ["", f"Câu còn span chưa được xác nhận: {len(unconfirmed)}.", "",
            "## Tỉ lệ xác nhận theo thuật ngữ (20 thuật ngữ nhiều nhất)", "", "| Thuật ngữ | Số span | Được xác nhận |",
            "| --- | --- | --- |"]
@@ -192,7 +199,8 @@ def main():
         with open(args.listen_csv, "w", encoding="utf-8-sig", newline="") as f:
             w = csv.writer(f)
             w.writerow(["id", "audio_url", "audio_rel", "duration", "span_cu_moi", "text_orig", "text_tagged_moi"]
-                       + [f"hyp_{Path(p).parent.name}" for p in args.hyps] + ["vi_wer", "decision", "note"])
+                       + [f"hyp_{Path(p).name if Path(p).is_dir() else Path(p).parent.name}" for p in args.hyps]
+                       + ["vi_wer", "decision", "note"])
             for r, hs in sorted(pick, key=lambda x: x[0]["id"]):
                 rel = audio_rel(r, args.audio_root)
                 w.writerow([r["id"], args.audio_url_prefix + rel, rel, r["duration"],
@@ -200,8 +208,9 @@ def main():
                            + [h or "" for h in hs] + [r["relabel"]["vi_wer"], "", ""])
         print(f"Phiếu nghe: {len(pick)} câu -> {args.listen_csv} (decision = ok / sai)")
     extra = f"; gán lại thêm {len(relabeled)} câu ({hours['giữ: gán lại']:.2f} h)" if args.relabel_spans else ""
-    print(f"Giữ {len(kept)}/{len(rows)} câu ({hours['giữ: lọc'] + hours['giữ: gán lại']:.2f}/{hours['tổng']:.2f} h); "
-          f"chỉ lọc {n_filter} câu ({hours['giữ: lọc']:.2f} h){extra} -> {args.out}; báo cáo {args.out}.report.md")
+    pend = f"; chưa xét {sum(pending.values())} câu (thiếu hyp)" if pending else ""
+    print(f"Giữ {len(kept)}/{n_eval} câu ({hours['giữ: lọc'] + hours['giữ: gán lại']:.2f}/{hours['tổng']:.2f} h); "
+          f"chỉ lọc {n_filter} câu ({hours['giữ: lọc']:.2f} h){extra}{pend} -> {args.out}; báo cáo {args.out}.report.md")
 
 
 if __name__ == "__main__":
