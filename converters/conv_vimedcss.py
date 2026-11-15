@@ -38,6 +38,8 @@ def main():
     ap.add_argument("--splits", nargs="+", default=list(PLAN))
     ap.add_argument("--target-sr", type=int, default=16000,
                     help="audio gốc là WAV 44.1 kHz: resample về tần số này khi ghi (0 = giữ nguyên)")
+    ap.add_argument("--streaming", action="store_true",
+                    help="đọc HF dạng streaming (không cache ~14 GB parquet train; dùng khi ổ đĩa không đủ chỗ)")
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
     vw = load_vi_words(args.vi_words)  # gồm cả same_surface (vitamin...), như mọi bộ (decisions §12)
@@ -48,7 +50,7 @@ def main():
         name, bsplit = PLAN[split]
         # có --limit thì chỉ đọc N dòng đầu, không tải cả split (train ~24 h audio, ~14 GB)
         ds = load_hf("tensorxt/ViMedCSS", split, args.parquet.replace("{split}", split) if args.parquet else None,
-                     limit=args.limit)
+                     streaming=args.streaming, limit=args.limit)
         for i, ex in enumerate(ds):
             if args.limit and i >= args.limit:
                 break

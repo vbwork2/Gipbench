@@ -62,6 +62,78 @@ def term_errors(bench, hyps, cat):
     return pairs, by_split
 
 
+LEX = Path(__file__).resolve().parents[1] / "data/dl/lexicons"
+TYPES = {"a": "chuẩn hoá / biến thể", "b": "phiên âm Việt", "c": "xoá", "d": "sai từ khác"}
+
+
+def load_lexicons():
+    import unicodedata
+    vi, en = set(), set()
+    p = LEX / "Viet74K.txt"
+    if p.exists():
+        for l in open(p, encoding="utf-8"):
+            vi.update(unicodedata.normalize("NFC", l.strip().lower()).split())
+    p = LEX / "google-10000-english-no-swears.txt"
+    if p.exists():
+        en = {l.strip().lower() for l in open(p, encoding="utf-8") if l.strip()}
+    return vi, en
+
+
+def error_type(ref, hyp, vi, en):
+    """a) chuẩn hoá / biến thể · b) phiên âm Việt · c) xoá · d) sai từ khác (luật ghi dưới bảng phân loại)."""
+    if hyp == "∅":
+        return "c"
+    sq = lambda s: s.replace(" ", "").replace("-", "").replace("'", "")  # noqa: E731
+    r, h = sq(ref), sq(hyp)
+    last = ref.split()[-1] if ref.split() else ref
+    plural = h == r + "s" or (r == h + "s" and not r.endswith("ss") and len(last) > 5)  # ielts -> ielt: lỗi thật
+    if r == h or plural or any(ch.isdigit() for ch in ref + hyp):
+        return "a"
+    toks = hyp.split()
+    if any(not t.isascii() for t in toks):  # chữ có dấu tiếng Việt (kể cả đ)
+        return "b"
+    if toks and all(t in vi for t in toks) and not all(t in en for t in toks):
+        return "b"
+    return "d"
+
+
+def classify_section(name, pairs, by_split, vi, en, n_ex=5):
+    groups = defaultdict(Counter)
+    for (t, h), c in pairs.items():
+        groups[error_type(t, h, vi, en)][(t, h)] += c
+    tot = sum(pairs.values())
+    L = [f"### Phân loại lỗi thuật ngữ — {name} (B1–B3, strict)", "",
+         "| Loại | Span sai | % | B1 | B2 | B3 | 5 ví dụ hay gặp nhất (ref → hyp ×lần) |", "| --- | --- | --- | --- | --- | --- | --- |"]
+    for k in "abcd":
+        g = groups[k]
+        n = sum(g.values())
+        sp = Counter()
+        for key, c in g.items():
+            for s, v in by_split[key].items():
+                sp[s] += v
+        ex = "; ".join(f"`{t}` → `{h}` ×{c}" for (t, h), c in g.most_common(n_ex))
+        L.append(f"| ({k}) {TYPES[k]} | {n} | {100 * n / max(tot, 1):.1f} | {sp['B1']} | {sp['B2']} | {sp['B3']} | {ex} |")
+    L += ["", "Luật: (c) hyp rỗng ở span; (a) giống ref sau khi bỏ dấu cách / gạch nối / nháy, hoặc số ít / số nhiều "
+          "(hyp thêm `s`; hoặc ref bỏ `s` khi từ cuối > 5 chữ và không tận cùng `ss`: `ielts` → `ielt` là lỗi thật), hoặc có "
+          "chữ số; (b) hyp có chữ có dấu tiếng Việt, hoặc mọi âm tiết có trong Viet74K và không phải từ tiếng Anh thông "
+          "dụng (google-10000); (d) còn lại (từ Anh khác, chính tả sai kiểu Anh).", ""]
+    prop = defaultdict(Counter)
+    for (t, h), c in groups["a"].items():
+        if not any(ch.isdigit() for ch in t + h):
+            prop[t][h] += c
+    if prop:
+        L += [f"#### ĐỀ XUẤT thêm `variants` vào catalog (loại a, CHƯA áp dụng; {len(prop)} thuật ngữ)", "",
+              "| term | variants đề xuất (hyp ×lần) |", "| --- | --- |"]
+        for t, hs in sorted(prop.items(), key=lambda x: -sum(x[1].values())):
+            L.append(f"| {t} | {' · '.join(f'`{h}` ×{c}' for h, c in hs.most_common())} |")
+        L.append("")
+    num = Counter({k: c for k, c in groups["a"].items() if any(ch.isdigit() for ch in k[0] + k[1])})
+    if num:
+        L += ["Loại (a) có chữ số (để chuẩn hoá số, không đề xuất variants): "
+              + "; ".join(f"`{t}` → `{h}` ×{c}" for (t, h), c in num.most_common(8)), ""]
+    return L
+
+
 def f(x, d=2):
     return "–" if x is None else f"{x:.{d}f}"
 
@@ -99,6 +171,8 @@ def main():
     ap.add_argument("--baseline", help="tên hệ thống (thư mục) để ghi delta trong ngoặc")
     ap.add_argument("--title", default="")
     ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--classify", nargs="*", default=[], help="hệ thống cần phân loại lỗi thuật ngữ (vd e0_baseline)")
+    ap.add_argument("--compare", nargs=2, metavar=("A", "B"), help="bảng so sánh theo split giữa hai hệ thống")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -127,6 +201,29 @@ def main():
                      f"{d('main_B1+B2', 'n_wer')} | {d('main_B1+B2', 'term_recall')} | {d('main_B1+B2', 'term_precision')} | "
                      f"{d('B3', 'cs_wer')} | {d('B5', 'wer')} | {d('B5', 'false_terms_per_100utt')} | {f(rtf, 3)} |")
         L.append("")
+    if args.compare:
+        a_, b_ = (S[x][1]["groups"] for x in args.compare)
+        L += [f"## So sánh theo split: {args.compare[0]} → {args.compare[1]}", "",
+              "Hotwords của E1 = thuật ngữ B1/B2 (catalog nháp, bỏ reserved_b3): thuật ngữ B3 KHÔNG có trong hotwords, "
+              "nên term recall B3 đo khả năng tổng quát và mức chèn nhầm.", "",
+              "| Split | Utt | Đơn vị bootstrap | WER | CS-WER strict | CS-WER lenient | N-WER | Term recall | Term precision | Chèn sai /100 utt |",
+              "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+
+        def ab(g, k):
+            x, y = a_.get(g, {}).get(k), b_.get(g, {}).get(k)
+            if x is None or y is None:
+                return "–"
+            return f"{x:.2f} → {y:.2f} ({y - x:+.2f})"
+        for g in SPLITS + ["main_B1+B2"]:
+            if g not in a_:
+                continue
+            cs = g != "B5"
+            L.append(f"| {g} | {a_[g]['utt']} | {a_[g].get('boot_units', '–')} | {ab(g, 'wer')} | "
+                     f"{ab(g, 'cs_wer') if cs else '–'} | {ab(g, 'cs_wer_lenient') if cs else '–'} | {ab(g, 'n_wer')} | "
+                     f"{ab(g, 'term_recall') if cs else '–'} | {ab(g, 'term_precision') if cs else '–'} | "
+                     f"{ab(g, 'false_terms_per_100utt')} |")
+        L.append("")
+    vi, en = load_lexicons() if args.classify else (set(), set())
     for name, (p, s) in S.items():
         hyps = {h["id"]: h.get("hyp", "") for h in read_jsonl(str(p / "hyps.jsonl"))}
         L += [f"## {name}", ""] + system_table(s, base if name != args.baseline else None) + [""]
@@ -143,6 +240,8 @@ def main():
             sp = ", ".join(f"{k} {v}" for k, v in sorted(by_split[(t, h)].items()) if k in ("B1", "B2"))
             L.append(f"| {i} | `{t}` → `{h}` | {c} | {sp} |")
         L.append("")
+        if name in args.classify:
+            L += classify_section(name, pairs, by_split, vi, en)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
