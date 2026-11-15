@@ -363,6 +363,26 @@ def main():
     lis = list(csv.DictReader(open(T / "listen.csv", encoding="utf-8-sig")))
     assert len(lis) == 1 and lis[0]["span_cu_moi"] == "netword -> network" and lis[0]["audio_url"].endswith("audio/x.wav"), lis
     assert "gán lại thêm 1 câu" in out_rl
+    # --- Phase 0d T3: ngưỡng WER tiếng Việt cho nhánh chỉ lọc (min theo các ASR có hyp, mặc định 0.15)
+    from lib.agreement import vi_wer
+    lab_ok = lab.replace("netword", "network")
+    h3 = "với cái network của dương thì ai sẽ đi tìm dương cho nên là dương cũng sẽ mau được thấy"  # 3 lỗi / 21 từ Việt
+    assert vi_wer(lab_ok, h2, cat_obj) == 0.0 and abs(vi_wer(lab_ok, h3, cat_obj) - 3 / 21) < 1e-9
+    assert vi_wer(lab_ok, noisy, cat_obj) > 0.15 and vi_wer("<en>hello world</en>", "hello world", cat_obj) == float("inf")
+    vm = T / "viwer_in.jsonl"
+    vm.write_text(json.dumps(dict(base, id="v1", text_tagged=lab_ok), ensure_ascii=False) + "\n"
+                  + json.dumps(dict(base, id="v2", text_tagged=lab_ok), ensure_ascii=False) + "\n", encoding="utf-8")
+    (T / "vq.jsonl").write_text(json.dumps({"id": "v1", "hyp": h3}, ensure_ascii=False) + "\n"
+                                + json.dumps({"id": "v2", "hyp": noisy}, ensure_ascii=False) + "\n", encoding="utf-8")
+    (T / "vw.jsonl").write_text(json.dumps({"id": "v2", "hyp": noisy}, ensure_ascii=False) + "\n", encoding="utf-8")
+    run(G / "tools/agreement_filter.py", "--manifest", vm, "--hyps", T / "vq.jsonl", T / "vw.jsonl", "--catalog", cat,
+        "--out", T / "viwer_015.jsonl")
+    v15 = L(T / "viwer_015.jsonl")
+    assert [r["id"] for r in v15] == ["v1"] and abs(v15[0]["agreement"]["vi_wer"] - 0.1429) < 1e-4, v15  # v2: 0.38 > 0.15
+    assert "1 câu trong khoảng 0.10–0.15" in (T / "viwer_015.jsonl.report.md").read_text(encoding="utf-8")
+    run(G / "tools/agreement_filter.py", "--manifest", vm, "--hyps", T / "vq.jsonl", T / "vw.jsonl", "--catalog", cat,
+        "--max-vi-wer", "0.10", "--out", T / "viwer_010.jsonl")
+    assert L(T / "viwer_010.jsonl") == []
     # --- Phase 0c: lọc rẻ trước ASR (tools/vss_cs_prefilter.py)
     pre_rows = [dict(base, id="p0", text_tagged="<en>you build a factory not only one year</en> nha"),  # en_frac 8/9 -> bỏ
                 dict(base, id="p1", duration=25.0, text_tagged="dài quá <en>zoom</en> nhé"),           # > 20 s -> bỏ

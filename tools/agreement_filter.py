@@ -7,8 +7,9 @@
 
 Dùng cho vss_cs (SEA: tùy chọn, không dùng). Hyps do tools/asr_hyps.py ghi (định dạng SCHEMA.md mục 3).
 Một span <en> của nhãn được xác nhận khi nó xuất hiện (sau normalize_hyp, strict) trong >= --min-agree file hyps.
-Giữ câu khi tỉ lệ span được xác nhận >= --min-span-frac (mặc định 1.0: mọi span). Câu thiếu hyp ở một file thì
-coi file đó là hyp rỗng. Ghi: <out> (câu giữ lại, thêm trường agreement) và <out>.report.md.
+Giữ câu khi tỉ lệ span được xác nhận >= --min-span-frac (mặc định 1.0: mọi span) VÀ WER phần tiếng Việt của nhãn,
+lấy thấp nhất so với các ASR có hyp (lib.agreement.vi_wer, cùng cách tính với relabel_spans), <= --max-vi-wer (0.15).
+Câu thiếu hyp ở một file thì coi file đó là hyp rỗng. Ghi: <out> (câu giữ lại, thêm trường agreement) và <out>.report.md.
 
 --relabel-spans (mặc định TẮT): câu không qua lọc được gán lại TỪNG span chưa xác nhận khi MỌI file hyps (>= 2) cho
 cùng một chữ ở vị trí span đó sau chuẩn hoá VÀ WER phần tiếng Việt của nhãn so với từng hyp <= --relabel-max-vi-wer
@@ -25,7 +26,7 @@ from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from lib.agreement import agree, plain, relabel_spans  # noqa: E402
+from lib.agreement import agree, plain, relabel_spans, vi_wer  # noqa: E402
 from lib.leak import LeakGuard  # noqa: E402
 from lib.manifest import read_jsonl, write_jsonl  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
@@ -52,6 +53,8 @@ def main():
     ap.add_argument("--min-agree", type=int, default=1, help="số file hyps tối thiểu phải chứa một span")
     ap.add_argument("--min-span-frac", type=float, default=1.0, help="tỉ lệ span tối thiểu phải được xác nhận")
     ap.add_argument("--only-with-hyps", action="store_true", help="chỉ xét câu có hyp ở mọi file (chạy thử một phần)")
+    ap.add_argument("--max-vi-wer", type=float, default=0.15,
+                    help="nhánh chỉ lọc: WER tiếng Việt thấp nhất so với các ASR có hyp phải <= ngưỡng (inf = tắt)")
     ap.add_argument("--relabel-spans", action="store_true", help="gán lại span chưa xác nhận (mặc định tắt)")
     ap.add_argument("--relabel-max-vi-wer", type=float, default=0.10)
     ap.add_argument("--bench", nargs="*", default=[], help="manifest bench để kiểm tra rò rỉ lại sau khi gán lại")
@@ -82,6 +85,7 @@ def main():
     hours = Counter()
     span_tot, span_ok = Counter(), Counter()
     rl_reason, n_spans_changed, vi_wers, rule_rejected = Counter(), 0, [], []
+    vw_all, n_vi_drop = [], 0  # WER tiếng Việt (min theo ASR) của câu đã qua lọc span
     examples = {"giữ": [], "bỏ": []}
     for r in rows:
         hs = [h.get(r["id"]) for h in hyps]
@@ -97,7 +101,15 @@ def main():
         if len(examples[key]) < 8:
             examples[key].append((r["id"], r["text_tagged"], [h or "" for h in hs], res["confirmed"]))
         if res["keep"]:
-            r["agreement"] = {"confirmed": res["confirmed"], "n_hyps": len(hyps), "min_agree": args.min_agree}
+            avail = [h for h in hs if (h or "").strip()]
+            vw = min((vi_wer(r["text_tagged"], h, cat) for h in avail), default=float("inf"))
+            vw_all.append(vw)
+            if vw > args.max_vi_wer:
+                hours["bỏ: WER tiếng Việt"] += dur
+                n_vi_drop += 1
+                continue
+            r["agreement"] = {"confirmed": res["confirmed"], "n_hyps": len(hyps), "min_agree": args.min_agree,
+                              "vi_wer": round(vw, 4)}
             kept.append(r)
             hours["giữ: lọc"] += dur
             continue
@@ -139,6 +151,16 @@ def main():
           f"{pct(len(kept), len(rows)):.1f}%).", "",
           f"- chỉ lọc: {n_filter} câu, {hours['giữ: lọc']:.2f} h ({pct(n_filter, len(rows)):.1f}% số câu, "
           f"{pct(hours['giữ: lọc'], hours['tổng']):.1f}% số giờ)"]
+    if vw_all:
+        edges = [0.05, 0.10, 0.15, 0.20, 0.30, float("inf")]
+        cnt = Counter(next(e for e in edges if w <= e) for w in vw_all)
+        mid = sum(1 for w in vw_all if 0.10 < w <= 0.15)
+        md += [f"- qua lọc span nhưng bị loại vì WER tiếng Việt > {args.max_vi_wer:g}: {n_vi_drop} câu, "
+               f"{hours['bỏ: WER tiếng Việt']:.2f} h", "",
+               f"WER tiếng Việt (thấp nhất theo các ASR có hyp) của {len(vw_all)} câu qua lọc span "
+               f"({mid} câu trong khoảng 0.10–0.15):", "", "| <= | Số câu |", "| --- | --- |"]
+        md += [f"| {'∞' if e == float('inf') else e} | {cnt[e]} |" for e in edges]
+        md += [""]
     if args.relabel_spans:
         md += [f"- thêm nhờ gán lại: {len(relabeled)} câu, {hours['giữ: gán lại']:.2f} h, {n_spans_changed} span được thay", "",
                "Câu không qua lọc, kết quả gán lại:", "", "| Kết quả | Số câu |", "| --- | --- |"]

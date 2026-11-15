@@ -78,6 +78,14 @@ def span_segments(ref_tok: List[str], ref_span: List[int], hyp: List[str]
     return seg, errs.get(-1, 0), n_vi
 
 
+def vi_wer(text_tagged: str, hyp: str, cat: Catalog) -> float:
+    """WER phần tiếng Việt của nhãn so với một hyp, cùng cách tính với relabel_spans (span_segments).
+    Nhãn không có token tiếng Việt: inf."""
+    toks, _ = normalize_ref(text_tagged, cat, "strict")
+    _, e_vi, n_vi = span_segments([t.tok for t in toks], [t.span for t in toks], normalize_hyp(hyp or "", cat, "strict"))
+    return e_vi / n_vi if n_vi else float("inf")
+
+
 _EN = re.compile(r"(<en(?:\s[^>]*)?>)(.*?)(</en>)", re.S)
 # chữ có dấu tiếng Việt (kể cả đ): span tiếng Anh mới không được chứa token nào có các chữ này
 VI_DIACRITIC = re.compile("[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]")
