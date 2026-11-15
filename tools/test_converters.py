@@ -667,6 +667,7 @@ def main():
     test_consensus(cat, L)
     test_term_decisions(cat, L)
     test_domain(cat, L)
+    test_backup()
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 
 
@@ -974,6 +975,28 @@ def test_domain(cat, L):
     mj = json.loads((D / "mix.json").read_text(encoding="utf-8"))
     assert mj["feasible"] and abs(mj["target_share"]["medical"] - 0.5) < 1e-6, mj
     assert abs(sum(mj["target_share"].values()) - 1) < 1e-6 and "Domain bị cắt: medical" in out, out
+
+
+
+def test_backup():
+    """tools/backup.sh: nén manifest / phiếu duyệt / configs / cache hyps, KHÔNG nén audio."""
+    import tarfile
+    R = T / "bk_root"
+    shutil.rmtree(R, ignore_errors=True)
+    for f in ["data/raw/x/a.jsonl", "data/raw/x/a_review.csv", "data/raw/consensus/leak_block.txt",
+              "data/raw/consensus/speaker_clusters.tsv", "data/raw/x/audio/a.jsonl", "data/raw/x/a.wav",
+              "configs/c.tsv", "results/asr_hyps/q/h.jsonl", "results/other/z.jsonl", "data/dl/big.wav"]:
+        (R / f).parent.mkdir(parents=True, exist_ok=True)
+        (R / f).write_text("x", encoding="utf-8")
+    p = subprocess.run(["bash", str(G / "tools/backup.sh"), "--root", str(R), "--dest", str(T / "bk_dest")],
+                       capture_output=True, text=True)
+    out = p.stdout
+    assert p.returncode == 0, (p.stdout, p.stderr)
+    tars = sorted((T / "bk_dest").glob("*.tar.gz"))
+    names = set(tarfile.open(tars[-1]).getnames())
+    assert names == {"data/raw/x/a.jsonl", "data/raw/x/a_review.csv", "data/raw/consensus/leak_block.txt",
+                     "data/raw/consensus/speaker_clusters.tsv", "configs/c.tsv", "results/asr_hyps/q/h.jsonl"}, names
+    assert "Đã sao lưu 6 file" in out, out
 
 
 if __name__ == "__main__":
