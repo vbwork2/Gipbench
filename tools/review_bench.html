@@ -8,6 +8,7 @@
   Công cụ duyệt phiếu *_review.csv của converter (gipbench). Mở trực tiếp bằng trình duyệt, KHÔNG cần server/mạng
   (trừ khi audio là link HF). Xuất CSV đúng định dạng converters/build_bench_v0.py đọc:
   decision (ok/fix/drop), text_tagged_fixed, viet_levels, reading_note, region, gender, note — các cột khác giữ nguyên.
+  Cột hint (nếu có; vd listener_texts "A: ... || B: ..." của bộ consensus) được hiện làm gợi ý dưới câu.
   Phím tắt: 1 = ok, 2 = drop, 3 = fix (sửa text_tagged; Enter lưu, Esc huỷ), Space = phát/dừng, R = phát lại,
   ← / → = câu trước / sau, S / M / N = thêm mức Việt hoá strong / mid / native, Backspace = xoá mức cuối,
   U = bỏ quyết định, Ctrl+S = xuất CSV. Sau 1 / 2 / lưu fix: tự sang câu chưa duyệt kế tiếp và phát audio.
@@ -234,6 +235,8 @@ function render(play) {
     <div class="text">${tagHtml(tagged)}</div>
     ${r.text_tagged_orig && r.text_tagged_orig !== r.text_tagged ? `<div class="orig">nhãn gốc dataset: ${tagHtml(r.text_tagged_orig)}</div>` : ""}
     ${d === "fix" ? `<div class="orig">nhãn máy: ${tagHtml(r.text_tagged)}</div>` : ""}
+    ${r.hint ? `<div class="orig">gợi ý (người nghe${r.status ? ", " + escapeHtml(r.status) : ""}):${String(r.hint).split("||")
+        .map(x => x.trim()).filter(Boolean).map(x => `<br>· ${escapeHtml(x)}`).join("")}</div>` : ""}
     <div class="flags">${flags.map(f => `<span>${escapeHtml(f)}</span>`).join("")}</div>
     <div id="fixbox"><textarea id="fixText"></textarea><div id="fixerr"></div>
       <button id="fixSave">Lưu fix (Enter)</button> <button id="fixCancel">Huỷ (Esc)</button></div>

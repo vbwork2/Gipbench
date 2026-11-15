@@ -2,13 +2,15 @@
 """Kiểm tra manifest bench trước khi đóng băng. Thoát mã 1 nếu có LỖI.
 
   python validate.py --bench data/bench.jsonl --catalog configs/catalog.tsv \
-      [--train data/train_cs.jsonl data/train_vi.jsonl] [--check-audio]
+      [--train data/train_cs.jsonl data/train_vi.jsonl] [--dev data/dev_cs.jsonl] [--check-audio]
 
 LỖI (phải sửa): thiếu trường, id trùng, tag hỏng, B1–B4 không có span tiếng Anh,
-  speaker/source của bench xuất hiện trong train, thuật ngữ dành riêng B3 có trong train,
-  audio không đọc được / sai thời lượng, audio trùng hash giữa bench và train.
+  speaker/source của bench xuất hiện trong train / dev, thuật ngữ dành riêng B3 có trong train / dev,
+  dòng test_only (license test_only, hoặc source / dataset của bộ chỉ được test như consensus) trong train / dev,
+  audio không đọc được / sai thời lượng, audio trùng hash giữa bench và train / dev.
 CẢNH BÁO: span không có trong catalog, B5 có span tiếng Anh, thời lượng ngoài 1–30 s,
-  text còn chữ số, thuật ngữ B3 xuất hiện > 2 lần, cùng speaker/source ở nhiều split bench.
+  text còn chữ số, thuật ngữ B3 xuất hiện > 2 lần, cùng speaker/source ở nhiều split bench,
+  câu train / dev trùng text danh sách chặn --block-text (text chuẩn hoá của bộ test_only).
 """
 import argparse
 import hashlib
@@ -17,6 +19,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib.leak import TEST_ONLY_LICENSE, add_block_arg, is_test_only, load_block_texts, norm_text  # noqa: E402
 from lib.manifest import BENCH_SPLITS, CS_SPLITS, REQUIRED, read_jsonl  # noqa: E402
 from lib.textnorm import Catalog, basic_tokens, normalize_ref, plain_text, tagged_well_formed  # noqa: E402
 
@@ -34,6 +37,8 @@ def main():
     ap.add_argument("--bench", required=True)
     ap.add_argument("--catalog")
     ap.add_argument("--train", nargs="*", default=[], help="manifest train (JSONL cùng định dạng, split tuỳ ý)")
+    ap.add_argument("--dev", nargs="*", default=[], help="manifest dev: kiểm rò rỉ như --train")
+    add_block_arg(ap)
     ap.add_argument("--check-audio", action="store_true", help="mở từng file audio (chậm hơn)")
     ap.add_argument("--max-show", type=int, default=15)
     args = ap.parse_args()
@@ -70,7 +75,7 @@ def main():
             warns["B5 có span <en> (nên là tiếng Việt thuần)"].append(f"{rid}: {[' '.join(s) for s in spans]}")
         if cat.terms:
             for s in spans:
-                if s not in cat.terms:
+                if s not in cat.terms and " ".join(s) not in (r.get("term_category") or {}):  # vd tên người: category name
                     warns["span không có trong catalog"].append(f"{rid}: {' '.join(s)}")
         if r["split"] == "B3":
             for s in spans:
@@ -107,7 +112,20 @@ def main():
         if len(ss) > 1:
             warns["source có mặt ở nhiều split bench"].append(f"{src}: {sorted(ss)}")
 
-    # ---- rò rỉ sang train
+    # ---- rò rỉ sang train / dev
+    # dữ liệu chỉ được test: kiểm mọi manifest train / dev, kể cả khi bench không chứa bộ đó
+    test_src = {r.get("source") for r in bench
+                if str(r.get("license") or "").strip().lower() == TEST_ONLY_LICENSE and r.get("source")}
+    block = load_block_texts(args.block_text, cat) if args.train or args.dev else set()
+    for tp in args.train + args.dev:
+        for r in read_jsonl(tp):
+            rid = f"{Path(tp).name}:{r.get('id')}"
+            why = is_test_only(r, test_src)
+            if why:
+                errors["RÒ RỈ: dữ liệu test_only có trong train / dev"].append(f"{rid} ({why})")
+            elif block and norm_text(r.get("text_tagged") or r.get("text"), cat) in block:
+                warns["câu train / dev trùng text danh sách chặn (bộ test_only)"].append(rid)
+    args.train = args.train + args.dev
     if args.train:
         bench_spk = {r["speaker"] for r in bench if "speaker" in r}
         bench_src = {r["source"] for r in bench if "source" in r}

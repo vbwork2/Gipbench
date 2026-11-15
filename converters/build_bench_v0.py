@@ -13,6 +13,7 @@
   reviewed (mặc định)  chỉ nhận câu người duyệt ghi decision = ok hoặc fix; B5 không có cờ thì nhận thẳng
   catalog              thêm câu chưa duyệt mà mọi span đều khớp catalog và không có cờ
   all                  nhận hết — CHỈ để chạy thử pipeline (bench nháp, không dùng để kết luận)
+  Dòng có review_required = true (vd consensus disputed / pending) chỉ được nhận khi decision = ok / fix, ở mọi chế độ.
 Phiếu duyệt: decision = ok | fix (dùng text_tagged_fixed) | drop; viet_levels = "strong,mid" theo thứ tự span;
 reading_note = cách đọc nghe được của từ mơ hồ (được chép sang bench); region / gender điền nếu nghe ra.
 Quy ước gắn <en> theo cách đọc: SCHEMA.md và docs/huong_dan_duyet_b1.md.
@@ -98,10 +99,16 @@ def main():
                     why["bỏ: fix nhưng text_tagged_fixed trống / tag hỏng"] += 1
                     continue
                 r["text_tagged"] = fixed
+                sbt = r.get("split_by_tag")  # vd consensus: {"en": "B2", "vi": "B5"} -> split theo text đã sửa
+                if isinstance(sbt, dict):
+                    r["split"] = sbt.get("en" if "<en" in fixed else "vi", r["split"])
             clean_b5 = r["split"] == "B5" and at.get("confidence", "none") == "none" and not at.get("flags")
             auto_ok = at.get("confidence") == "catalog" and not at.get("flags")
             if dec in ("ok", "fix"):
                 why[f"nhận: đã duyệt ({r['split']})"] += 1
+            elif r.get("review_required"):  # vd consensus disputed / pending: text chưa thống nhất, kể cả --accept all
+                why[f"chờ duyệt: review_required ({r['split']})"] += 1
+                continue
             elif clean_b5:
                 why["nhận: B5 không có từ Anh"] += 1
             elif args.accept == "all" or (args.accept == "catalog" and auto_ok):

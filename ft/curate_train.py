@@ -5,7 +5,11 @@
       data/raw/vivos/train_vivos.jsonl --catalog configs/catalog_v0.tsv --out data/train_curated.jsonl
 
 "Câu CS" = câu có ít nhất một span <en>; các phần (giờ CS) dưới đây tính trên câu CS. Câu không phải CS chỉ chịu
-luật --holdout-domain. Mỗi luật tắt được độc lập (0 / bỏ trống) và áp theo thứ tự:
+luật --holdout-domain và bước 0. Bước 0 luôn chạy trên MỌI câu:
+  0. chặn dữ liệu chỉ được test: loại câu license / source / dataset test_only (lib.leak.is_test_only, KHÔNG tắt
+     được) và câu có text (chuẩn hoá) trùng danh sách chặn --block-text (mặc định data/raw/consensus/leak_block.txt
+     do converters/conv_consensus.py ghi; truyền --block-text không kèm file để tắt riêng phần text)
+Mỗi luật sau tắt được độc lập (0 / bỏ trống) và áp theo thứ tự:
   1. --holdout-domain D        loại MỌI câu thuộc domain D (domain CS hoàn toàn ngoài train)
   2. --agreement-hyps A B      câu CS có nhãn máy (label_source bắt đầu bằng pseudo/machine, hoặc dataset thuộc
                                --agreement-datasets) chỉ được giữ khi mọi span <en> có trong >= --min-agree hyp
@@ -29,6 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lib.agreement import agree  # noqa: E402
 from lib.hyp_cache import HashIndex, HypLookup  # noqa: E402
+from lib.leak import add_block_arg, is_test_only, load_block_texts, norm_text  # noqa: E402
 from lib.manifest import read_jsonl, write_jsonl  # noqa: E402
 from lib.textnorm import Catalog, basic_tokens, plain_text  # noqa: E402
 
@@ -160,6 +165,7 @@ def main():
     ap.add_argument("--max-speaker-share", type=float, default=0.02, help="0 = tắt")
     ap.add_argument("--max-domain-share", type=float, default=0.35, help="0 = tắt")
     ap.add_argument("--max-synthetic-share", type=float, default=0.2, help="0 = tắt")
+    add_block_arg(ap)
     args = ap.parse_args()
     rnd = random.Random(args.seed)
     cat = Catalog.load(args.catalog)
@@ -177,6 +183,21 @@ def main():
 
     step("đầu vào")
     notes = []
+    block = load_block_texts(args.block_text, cat)
+    why0 = Counter()
+    kept0 = []
+    for r in rows:
+        w = is_test_only(r)
+        if not w and block and norm_text(r.get("text_tagged") or r.get("text"), cat) in block:
+            w = "text trùng danh sách chặn"
+        if w:
+            why0[w.split(" (")[0]] += 1
+            continue
+        kept0.append(r)
+    rows = kept0
+    step("chặn dữ liệu test_only")
+    notes.append(f"chặn dữ liệu test_only (danh sách chặn {len(block)} câu): "
+                 + (", ".join(f"{k}: {v} câu" for k, v in why0.most_common()) if why0 else "không câu nào bị loại"))
     if args.holdout_domain:
         rows = [r for r in rows if (r.get("domain") or "other") not in set(args.holdout_domain)]
         step(f"--holdout-domain {' '.join(args.holdout_domain)}")

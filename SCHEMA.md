@@ -27,6 +27,11 @@
 | `text_tagged_orig` | tuỳ chọn | nhãn `<en>` theo quy ước của dataset gốc khi quy ước đó khác Spec (ViMedCSS: gắn cả từ mượn như `vitamin`, `axit`). Chỉ dùng để chấm số phụ: `score.py --label-field text_tagged_orig` |
 | `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Cột `datasets` của `configs/train_mix.tsv` map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
 | `train_only` | tuỳ chọn | `true` = dòng chỉ được dùng cho train, không bao giờ vào bench (vd `dataset: vss_cs`) |
+| `license` | tuỳ chọn | `test_only` = CHỈ được dùng để test (vd bộ `consensus`). `validate.py --train/--dev` báo LỖI nếu dòng test_only (hoặc source / dataset `consensus`) có trong train / dev; `curate_train.py`, `vss_cs_prefilter.py` loại các dòng này và câu trùng text trong `data/raw/consensus/leak_block.txt` |
+| `term_category` | tuỳ chọn | `{"<span sau chuẩn hoá>": "<category>"}` cho span không lấy category từ catalog, vd tên người nước ngoài `{"hugo lambert": "name"}`; `score.py` ưu tiên trường này khi cắt lát theo category |
+| `speaker_cluster` | tuỳ chọn | cụm người nói ước lượng bằng speaker embedding khi bộ không có speaker id (vd `consensus:spk003`). CHỈ dùng làm đơn vị bootstrap CI trong `score.py` / `leaderboard.py`, không dùng để tách split |
+| `review_required` | tuỳ chọn | `true` = `build_bench_v0.py` chỉ nhận khi người duyệt ghi `decision` = ok / fix (kể cả `--accept all`); vd consensus disputed / pending |
+| `split_by_tag` | tuỳ chọn | `{"en": "B2", "vi": "B5"}`: khi người duyệt `fix`, split đặt lại theo text đã sửa còn `<en>` hay không |
 | `label_source` | tuỳ chọn | nguồn nhãn máy, vd `pseudo:Zipformer-30M-RNNT-6000h` |
 | `agreement` | tuỳ chọn | do `tools/agreement_filter.py` ghi: `{"confirmed": [số hyp xác nhận từng span], "n_hyps", "min_agree"}` |
 | `en_meta` | nên có | danh sách theo thứ tự span `<en>`; mỗi phần tử `{"viet_level": "strong" \| "mid" \| "native"}` (mức Việt hoá cách phát âm) |

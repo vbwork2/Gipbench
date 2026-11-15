@@ -58,7 +58,7 @@ def paired_ci(base, other, splits, m, iters, seed=0):
     ids = [i for i, r in base.items() if r["split"] in splits and i in other]
     by = defaultdict(list)
     for i in ids:
-        by[base[i]["speaker"]].append(i)
+        by[base[i].get("boot_unit") or base[i]["speaker"]].append(i)  # speaker_cluster nếu bench có (score.py)
     spk = list(by)
     if len(spk) < 2:
         return None

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Dựng lại vss_cs sạch CHỈ TỪ CACHE (không GPU, không tải audio, không mạng):
-#   lọc rẻ (độ dài, --max-en-frac, câu chỉ có thuật ngữ 1 lần, trần thuật ngữ) -> rò rỉ (bench + reserved_b3)
+#   lọc rẻ (độ dài, --max-en-frac, câu chỉ có thuật ngữ 1 lần, trần thuật ngữ) -> rò rỉ (bench + reserved_b3
+#   + dữ liệu test_only + danh sách chặn data/raw/consensus/leak_block.txt của bộ consensus chỉ được test)
 #   -> đồng thuận span (hyps đã có, tra theo id + hash audio) -> WER tiếng Việt <= 0.15 -> (gán lại nếu --relabel)
 #
 #   bash tools/rebuild_vss_cs.sh --bench data/bench_v0.jsonl --catalog configs/catalog_v0.tsv
@@ -10,10 +11,11 @@
 #
 # Tuỳ chọn: --relabel (thêm nhánh --relabel-spans, mặc định tắt)  --candidates FILE  --out-dir DIR  --seed N
 #   --hyps "DIR_TẦNG1 DIR_TẦNG2"  --hash-index FILE  --audio-root DIR  --max-vi-wer X
+#   --block-text "FILE..." (danh sách chặn thay cho mặc định; "" = tắt)
 #   Biến môi trường PY: python dùng để chạy (mặc định: python).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-BENCH="" CAT="" RELABEL=0 SEED=0 MAXVI=0.15
+BENCH="" CAT="" RELABEL=0 SEED=0 MAXVI=0.15 BLOCK_SET=0 BLOCK=""
 CAND=data/raw/vss_full/vss_cs_candidates.jsonl
 OUT=data/raw/vss_full
 HYPS="results/asr_hyps/qwen3_asr_0.6b results/asr_hyps/fw_large_v3_int8"
@@ -32,6 +34,7 @@ while [ $# -gt 0 ]; do
     --hash-index) IDX=$2; shift 2 ;;
     --audio-root) ROOT=$2; shift 2 ;;
     --max-vi-wer) MAXVI=$2; shift 2 ;;
+    --block-text) BLOCK=$2; BLOCK_SET=1; shift 2 ;;
     *) echo "tham số lạ: $1" >&2; exit 2 ;;
   esac
 done
@@ -42,10 +45,15 @@ export PYTHONIOENCODING=utf-8
 mkdir -p "$OUT"
 # shellcheck disable=SC2206
 HY=($HYPS)
+BLK=()
+if [ "$BLOCK_SET" = 1 ]; then
+  # shellcheck disable=SC2206
+  BLK=(--block-text $BLOCK)
+fi
 
 echo "== lọc rẻ + rò rỉ ($CAND, bench $BENCH)"
 "$PY" tools/vss_cs_prefilter.py --manifest "$CAND" --catalog "$CAT" --bench "$BENCH" --seed "$SEED" \
-  --out "$OUT/vss_cs_pre_rebuild.jsonl"
+  ${BLK[@]+"${BLK[@]}"} --out "$OUT/vss_cs_pre_rebuild.jsonl"
 
 echo "== đồng thuận + WER tiếng Việt (chỉ lọc, từ cache)"
 "$PY" tools/agreement_filter.py --manifest "$OUT/vss_cs_pre_rebuild.jsonl" --hyps "${HY[@]}" --catalog "$CAT" \

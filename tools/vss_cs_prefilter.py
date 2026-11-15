@@ -10,7 +10,8 @@ Thứ tự các bước (mỗi bước báo số câu và số giờ còn lại 
   2. --max-en-frac (0.5): tỉ lệ token nằm trong <en> trên tổng token (sau chuẩn hoá strict) phải <= ngưỡng; bỏ câu
      tiếng Anh nguyên câu / gần nguyên câu (lời bài hát, câu nhận dạng sai) trước khi tốn GPU;
   3. rò rỉ: speaker / source / text trùng bench (--bench, split --bench-splits B1 B2 B3) và thuật ngữ reserved_b3
-     của --catalog (lib/leak.py, cùng luật với converter);
+     của --catalog (lib/leak.py, cùng luật với converter), dữ liệu test_only và text trùng danh sách chặn --block-text
+     (mặc định data/raw/consensus/leak_block.txt: bộ consensus chỉ được test);
   4. bỏ câu mà MỌI thuật ngữ chỉ có trong đúng 1 câu của toàn bộ manifest đầu vào (thường là span nhận dạng sai:
      pilot Phase 0c giữ được 7.7% so với 27.9% chung), nhưng giữ ngẫu nhiên --hapax-keep-frac (10%, --seed);
   5. trần thuật ngữ --term-cap (50): mỗi thuật ngữ (span <en> sau chuẩn hoá) có mặt trong tối đa 50 câu. Câu được xét
@@ -25,7 +26,7 @@ from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from lib.leak import LeakGuard  # noqa: E402
+from lib.leak import LeakGuard, add_block_arg  # noqa: E402
 from lib.manifest import read_jsonl, write_jsonl  # noqa: E402
 from lib.textnorm import Catalog, normalize_ref, plain_text  # noqa: E402
 
@@ -66,16 +67,18 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--sample", type=int, default=0)
     ap.add_argument("--sample-out")
+    add_block_arg(ap)
     args = ap.parse_args()
     if args.sample and not args.sample_out:
         sys.exit("--sample cần --sample-out")
     cat = Catalog.load(args.catalog)
     if args.bench:
-        guard = LeakGuard((r for b in args.bench for r in read_jsonl(b)), cat, args.bench_splits)
+        guard = LeakGuard((r for b in args.bench for r in read_jsonl(b)), cat, args.bench_splits, args.block_text)
         bench_note = f"{guard.n_bench} câu bench ({' '.join(args.bench_splits)}), {len(guard.reserved)} thuật ngữ reserved_b3"
     else:
-        guard = LeakGuard([], cat)
+        guard = LeakGuard([], cat, block_files=args.block_text)
         bench_note = f"KHÔNG có --bench (chỉ kiểm reserved_b3: {len(guard.reserved)} thuật ngữ)"
+    bench_note += f", danh sách chặn test_only {len(guard.block)} câu"
     rows = read_jsonl(args.manifest)
     n_input = len(rows)
     freq_all = Counter(t for r in rows for t in en_frac_and_terms(r["text_tagged"], cat)[1])

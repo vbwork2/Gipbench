@@ -622,7 +622,144 @@ def main():
     assert s_orig["n_en"] == 2 and s_orig["cs_wer"] > 0, s_orig            # theo dataset: vitamin là span EN bị sai
     assert json.loads((sb / "text_tagged_orig/summary.json").read_text(encoding="utf-8"))["groups"]["B1"]["cs_wer"] == 0.0
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
+    test_consensus(cat, L)
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
+
+
+def test_consensus(cat, L):
+    """converters/conv_consensus.py (bộ CHỈ ĐƯỢC TEST) + chặn rò rỉ test_only ở curate / prefilter / validate,
+    review_required ở build_bench_v0, category name + bootstrap theo speaker_cluster ở score.py. CSV giả cùng schema."""
+    from converters.common import REVIEW_COLS as REVIEW_COLS_
+    zr = T / "dl/zac_fake"
+    shutil.rmtree(zr, ignore_errors=True)
+    cols = ["id", "turn", "hist_pos", "tier", "need", "n_blind", "status", "share", "numbers_majority", "source",
+            "consensus_text", "reviewers", "confirmed_after_prompt", "listener_texts"]
+    Z = [("public_t01", "final", "agreed", "Nhắn cho Hugo Lambert lúc 9 giờ nhé.", "True", "", True),
+         ("public_t10", "final", "agreed", "Zalo hết pin rồi.", "True", "", True),
+         ("public_t01", "u1", "agreed", "Mai mà mưa thì huỷ đá bóng, gọi báo Lan nhé.", "True", "", True),
+         ("public_t02", "final", "agreed", "nhắn zalo cho mẹ là con về muộn", "True", "", True),
+         ("public_t03", "final", "agreed", "mở zalo gọi cho anh tuấn", "True", "", True),
+         ("public_t04", "final", "agreed", "zalo của chị lan bị khoá rồi", "True", "", True),
+         ("public_t05", "final", "disputed", "", "True", "A: Gọi cho Sarah nhé || B: gọi cho sa ra nhé", True),
+         ("public_t05", "u1", "pending", "tắt đèn phòng khách", "True", "E: Tắt đèn phòng khách. || Q: tắt đèn phòng khách", True),
+         ("public_t06", "final", "escalate", "", "", "P: câu bị đẩy lên cấp trên", True),
+         ("public_t07", "final", "agreed", "câu này không có audio", "True", "", False),
+         ("public_t08", "final", "agreed", "bật quạt phòng ngủ giúp mình", "True", "", "44k"),
+         ("public_t09", "u1", "agreed", "chuyển ba trăm nghìn cho bố", "False", "", True)]
+    rows = []
+    for sid, turn, st, text, nm, lt, audio in Z:
+        rows.append(dict(zip(cols, [sid, turn, "", "confirm", "1", "1", st, "1.0" if st == "agreed" else "0.5", nm,
+                                    "blind", text, "A; B", "", lt])))
+        if audio:
+            d = zr / "audio" / sid
+            d.mkdir(parents=True, exist_ok=True)
+            stem = sid if turn == "final" else f"{sid}_{turn}"
+            (d / f"{stem}.wav").write_bytes(wav_bytes(2.0, sr=44100, channels=2) if audio == "44k" else wav_bytes(2.0))
+    (zr / "audio/public_t99").mkdir(parents=True, exist_ok=True)
+    (zr / "audio/public_t99/public_t99.wav").write_bytes(wav_bytes(1.5))  # file không có trong CSV
+    with open(zr / "consensus_clips_anon.csv", "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+    co = T / "raw/consensus"
+    shutil.rmtree(co, ignore_errors=True)
+    out = run(G / "converters/conv_consensus.py", "--root", zr, "--out", co, "--catalog", cat, "--max-per-term", "2",
+              "--spk-model", T / "khong_co_model.onnx")
+    assert "luật final = <id>, luật turn = <id>_<turn>; ghép 11/12 clip" in out and "file không dùng: 1" in out, out
+    assert "speaker embedding: BỎ QUA" in out, out  # tuỳ chọn: thiếu model thì bỏ qua, không dừng
+    b2 = {r["id"]: r for r in L(co / "b2_consensus_candidates.jsonl")}
+    cut = L(co / "b2_consensus_overcap.jsonl")
+    b5 = {r["id"]: r for r in L(co / "b5_consensus_product.jsonl")}
+    dis = {r["id"]: r for r in L(co / "disputed_candidates.jsonl")}
+    assert len(b2) == 3 and len(cut) == 2 and all(r["overcap"] for r in cut), (b2, cut)  # zalo ×4, trần 2
+    h = b2["cons_public_t01_final"]
+    assert h["text_tagged"] == "nhắn cho <en>hugo lambert</en> lúc chín giờ nhé", h
+    assert h["term_category"] == {"hugo lambert": "name"} and "name:hugo lambert" in h["auto_tag"]["flags"]
+    assert b5["cons_public_t01_u1"]["text_tagged"] == "mai mà mưa thì huỷ đá bóng gọi báo lan nhé"
+    assert "numbers_disagree" in b5["cons_public_t09_u1"]["auto_tag"]["flags"]
+    allr = list(b2.values()) + cut + list(b5.values()) + list(dis.values())
+    assert all(r["speaker"] == f"consensus:{r['id'][5:15]}" and r["source"] == "consensus" and r["domain"] == "product"
+               and r["license"] == "test_only" for r in allr), allr
+    assert not any("t06" in r["id"] or "t07" in r["id"] for r in allr)  # escalate bỏ, thiếu audio bỏ
+    assert not list(co.glob("dev*")) and not any(r["split"] not in ("B2", "B5") for r in allr)  # KHÔNG tách dev
+    r8 = b5["cons_public_t08_final"]
+    i8 = sf.info(str(co / r8["audio"]))
+    assert r8["audio"].startswith("audio/") and (i8.samplerate, i8.channels) == (16000, 1)  # 44.1 kHz stereo -> 16 kHz mono
+    assert b5["cons_public_t01_u1"]["audio"].startswith("../")  # đã đúng định dạng: trỏ thẳng file gốc
+    d5 = dis["cons_public_t05_final"]
+    assert d5["split"] == "B2" and d5["review_required"] and "<en>sarah</en>" in d5["text_tagged"], d5
+    assert dis["cons_public_t05_u1"]["split"] == "B5" and "consensus:pending" in dis["cons_public_t05_u1"]["auto_tag"]["flags"]
+    rv = list(csv.DictReader(open(co / "disputed_candidates_review.csv", encoding="utf-8-sig")))
+    assert list(rv[0])[:len(REVIEW_COLS_)] == REVIEW_COLS_ and rv[0]["hint"].startswith("A: Gọi cho Sarah nhé"), rv[0]
+    assert rv[0]["audio"] == "audio/public_t05/public_t05.wav" and rv[0]["status"] == "disputed"
+    b5rv = list(csv.DictReader(open(co / "b5_consensus_product_review.csv", encoding="utf-8-sig")))
+    assert [r["id"] for r in b5rv] == ["cons_public_t09_u1"]  # chỉ câu B5 có cờ
+    block = (co / "leak_block.txt").read_text(encoding="utf-8")
+    for t in ("nhắn cho hugo lambert lúc chín giờ nhé", "câu bị đẩy lên cấp trên", "gọi cho sa ra nhé"):
+        assert f"\n{t}\n" in block, t  # mọi trạng thái, cả listener_texts
+    rep = (co / "consensus_report.md").read_text(encoding="utf-8")
+    assert "| bị cắt bởi --max-per-term 2 | 2 |" in rep and "| zalo | 4 | 2 |" in rep and "| name | 1 |" in rep, rep
+    # build_bench_v0: disputed (review_required) không vào bench khi chưa duyệt, kể cả --accept all; fix bỏ <en> -> B5
+    rvp = T / "cons_review.csv"
+    with open(rvp, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=list(rv[0]))
+        w.writeheader()
+        for r in rv:
+            if r["id"] == "cons_public_t05_final":
+                r.update(decision="fix", text_tagged_fixed="gọi cho sa ra nhé")
+            w.writerow(r)
+    for name, reviews in (("noreview", []), ("reviewed", [rvp])):
+        run(G / "converters/build_bench_v0.py", "--candidates", co / "b2_consensus_candidates.jsonl", co / "disputed_candidates.jsonl",
+            co / "b5_consensus_product.jsonl", "--reviews", *reviews, "--accept", "all", "--out", T / f"data/bench_cons_{name}.jsonl")
+    bn = {r["id"]: r for r in L(T / "data/bench_cons_noreview.jsonl")}
+    br = {r["id"]: r for r in L(T / "data/bench_cons_reviewed.jsonl")}
+    assert not any(k in bn for k in dis) and "cons_public_t05_u1" not in br, sorted(bn)
+    assert br["cons_public_t05_final"]["split"] == "B5" and br["cons_public_t05_final"]["text_tagged"] == "gọi cho sa ra nhé"
+    # chặn rò rỉ: curate_train (license / source test_only + text trùng danh sách chặn), prefilter, validate
+    tr = T / "cons_train.jsonl"
+    trows = [dict(id="x1", split="train", audio="a.wav", duration=3.0, text_tagged="nhắn <en>zalo</en> cho mẹ là con về muộn",
+                  speaker="vss_a", source="vss:a", dataset="vss_cs", domain="conversation"),   # text trùng consensus
+             dict(id="x2", split="train", audio="b.wav", duration=3.0, text_tagged="mở <en>meeting</en> đi",
+                  speaker="consensus:public_t02", source="consensus", dataset="consensus", license="test_only"),
+             dict(id="x3", split="train", audio="c.wav", duration=3.0, text_tagged="bật <en>wifi</en> lên giúp anh",
+                  speaker="vss_b", source="vss:b", dataset="vss_cs", domain="conversation", license="cc-by")]
+    tr.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in trows), encoding="utf-8")
+    OFF = ["--max-per-term", "0", "--max-speaker-share", "0", "--max-domain-share", "0", "--max-synthetic-share", "0"]
+    run(G / "ft/curate_train.py", "--manifest", tr, "--catalog", cat, "--out", T / "cons_cur.jsonl", *OFF,
+        "--block-text", co / "leak_block.txt")
+    assert [r["id"] for r in L(T / "cons_cur.jsonl")] == ["x3"]
+    cur_md = (T / "cons_cur.jsonl.report.md").read_text(encoding="utf-8")
+    assert "license test_only: 1 câu" in cur_md and "text trùng danh sách chặn: 1 câu" in cur_md, cur_md
+    run(G / "ft/curate_train.py", "--manifest", tr, "--catalog", cat, "--out", T / "cons_cur2.jsonl", *OFF, "--block-text")
+    assert [r["id"] for r in L(T / "cons_cur2.jsonl")] == ["x1", "x3"]  # tắt danh sách text; test_only vẫn bị chặn
+    out_pf = run(G / "tools/vss_cs_prefilter.py", "--manifest", tr, "--catalog", cat, "--term-cap", "0", "--hapax-keep-frac", "1",
+                 "--block-text", co / "leak_block.txt", "--out", T / "cons_pf.jsonl")
+    assert [r["id"] for r in L(T / "cons_pf.jsonl")] == ["x3"], out_pf
+    assert "danh sách chặn test_only" in (T / "cons_pf.jsonl.report.md").read_text(encoding="utf-8")
+    dev = T / "cons_dev.jsonl"
+    dev.write_text(json.dumps(dict(trows[2], id="d1", source="consensus"), ensure_ascii=False) + "\n", encoding="utf-8")
+    ok_train = T / "cons_train_ok.jsonl"
+    ok_train.write_text(json.dumps(trows[2], ensure_ascii=False) + "\n", encoding="utf-8")
+    vb = T / "data/bench_cons_reviewed.jsonl"
+    v_bad = run(G / "validate.py", "--bench", vb, "--catalog", cat, "--train", tr, "--block-text", co / "leak_block.txt", ok=(1,))
+    assert "RÒ RỈ: dữ liệu test_only có trong train / dev" in v_bad and "cons_train.jsonl:x2 (license test_only)" in v_bad, v_bad
+    assert "trùng text danh sách chặn" in v_bad, v_bad
+    v_dev = run(G / "validate.py", "--bench", vb, "--catalog", cat, "--train", ok_train, "--dev", dev, ok=(1,))
+    assert "cons_dev.jsonl:d1 (source consensus (test_only))" in v_dev, v_dev
+    run(G / "validate.py", "--bench", vb, "--catalog", cat, "--train", ok_train, ok=(0,))
+    # score.py: category từ term_category (name), bootstrap theo speaker_cluster
+    sc = T / "score_cons"
+    sc.mkdir(parents=True, exist_ok=True)
+    sb = [dict(r, speaker_cluster=f"consensus:spk{k % 2:03d}") for k, r in enumerate(L(T / "data/bench_cons_noreview.jsonl"))]
+    (sc / "bench.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in sb), encoding="utf-8")
+    (sc / "hyps.jsonl").write_text("".join(json.dumps({"id": r["id"], "hyp": re.sub(r"</?en>", "", r["text_tagged"])},
+                                                      ensure_ascii=False) + "\n" for r in sb), encoding="utf-8")
+    run(G / "score.py", "--bench", sc / "bench.jsonl", "--catalog", cat, "--hyps", sc / "hyps.jsonl", "--out", sc, "--iters", "20")
+    sl = (sc / "slices.md").read_text(encoding="utf-8")
+    assert "## Category thuật ngữ (B2, theo span)" in sl and "| name | 1 | 0.00 |" in sl and "| brand |" in sl, sl
+    sm = json.loads((sc / "summary.json").read_text(encoding="utf-8"))["groups"]
+    assert sm["B2"]["boot_units"] == 2 and sm["B5"]["boot_units"] == 2, sm  # 2 cụm, không phải số phiên
+    assert {json.loads(l)["boot_unit"] for l in open(sc / "utt_scores.jsonl", encoding="utf-8")} == {"consensus:spk000", "consensus:spk001"}
 
 
 if __name__ == "__main__":
