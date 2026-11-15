@@ -18,6 +18,9 @@ EXP=${EXP:-exp/e3_ft}
 SYSTEM=${SYSTEM:-e3_ft}
 GPUS=${GPUS:-1}; MAXDUR=${MAXDUR:-600}; EPOCHS=${EPOCHS:-8}; AVG=${AVG:-3}; LR=${LR:-0.0045}
 CS_W=${CS_W:-0.5}; VI_W=${VI_W:-0.5}              # tỉ lệ trộn CS : tiếng Việt
+MODEL_ARGS=${MODEL_ARGS:-"--use-transducer 1 --use-ctc 0"}  # Gipformer 1.5 có head CTC: FT fp16 với CTC làm grad_scale tụt về 0 -> bỏ CTC (WRAP_ARGS), decode chỉ dùng transducer
+WRAP_ARGS=${WRAP_ARGS:-"--drop-ctc"}                       # giữ CTC: WRAP_ARGS="" MODEL_ARGS="--use-transducer 1 --use-ctc 1"
+USE_AVG_MODEL=${USE_AVG_MODEL:-1}                         # export: 0 khi AVG=1 (icefall assert interval > 0)
 
 if [ $stage -le 0 ] && [ $stop -ge 0 ]; then
   echo "== 0. Kiểm tra bench + rò rỉ"
@@ -37,14 +40,14 @@ if [ $stage -le 2 ] && [ $stop -ge 2 ]; then
 fi
 if [ $stage -le 3 ] && [ $stop -ge 3 ]; then
   echo "== 3. Chuẩn bị checkpoint + script finetune"
-  python $GIPBENCH/ft/wrap_ckpt.py $MODEL/model.pt $MODEL/init_ft.pt
+  python $GIPBENCH/ft/wrap_ckpt.py $MODEL/model.pt $MODEL/init_ft.pt $WRAP_ARGS
   python $GIPBENCH/ft/patch_finetune.py --icefall $ICEFALL
 fi
 if [ $stage -le 4 ] && [ $stop -ge 4 ]; then
   echo "== 4. Fine-tune"
   export PYTHONPATH=$ICEFALL:${PYTHONPATH:-}
   ( cd $ICEFALL/egs/librispeech/ASR && python ./zipformer/finetune_cs.py \
-      --world-size $GPUS --num-epochs $EPOCHS --start-epoch 1 --use-fp16 1 \
+      --world-size $GPUS --num-epochs $EPOCHS --start-epoch 1 --use-fp16 1 $MODEL_ARGS \
       --exp-dir $(abs $EXP) \
       --bpe-model $(abs $MODEL)/bpe.model \
       --do-finetune 1 --finetune-ckpt $(abs $MODEL)/init_ft.pt \
@@ -58,8 +61,8 @@ if [ $stage -le 5 ] && [ $stop -ge 5 ]; then
   echo "== 5. Export ONNX (fp32 + int8), trung bình $AVG epoch cuối"
   export PYTHONPATH=$ICEFALL:${PYTHONPATH:-}
   ( cd $ICEFALL/egs/librispeech/ASR && python ./zipformer/export-onnx.py \
-      --tokens $(abs $MODEL)/tokens.txt --exp-dir $(abs $EXP) \
-      --epoch $EPOCHS --avg $AVG --use-averaged-model 1 --enable-int8-quantization 1 )
+      --tokens $(abs $MODEL)/tokens.txt --exp-dir $(abs $EXP) $MODEL_ARGS \
+      --epoch $EPOCHS --avg $AVG --use-averaged-model $USE_AVG_MODEL --enable-int8-quantization 1 )
   mkdir -p $EXP/onnx
   for m in encoder decoder joiner; do
     cp $EXP/$m-epoch-$EPOCHS-avg-$AVG.onnx $EXP/onnx/$m.onnx

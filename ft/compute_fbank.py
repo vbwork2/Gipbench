@@ -23,7 +23,7 @@ def main():
 
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
-    out = Path(args.out_dir)
+    out = Path(args.out_dir).resolve()  # storage_path tuyệt đối: finetune_cs.py chạy với cwd = thư mục recipe icefall
     out.mkdir(parents=True, exist_ok=True)
     cuts = CutSet.from_file(args.cuts)
     cuts = cuts.compute_and_store_features(

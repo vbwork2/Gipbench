@@ -25,6 +25,16 @@ nohup python tools/vss_cs_run.py --pre data/raw/vss_full/vss_cs_pre_rebuild.json
   danh sách "biết trước" thuật ngữ của bench (cận trên lạc quan).
 - Kết quả decode / chấm: `results/v0_draft/<system>/`, bảng: `reports/v0_draft_tables.md`.
 
+## 0c. Phase 1 A (16/11/2026, 01:10)
+
+| Mục | Trạng thái |
+| --- | --- |
+| A1 icefall / k2 / lhotse | XONG: `~/.venvs/gipbench-ft` (torch 2.15.0+cu132, CUDA OK, k2 1.24.4, lhotse 1.33.0, scipy), icefall `f8c8578`; `tools/setup_ft_env.sh` |
+| A2 bench nháp v0-draft | XONG (mục 0b) |
+| A3 E0 / E1 hotwords 1.0 / 1.5 / 2.0 | XONG: E1 thắng E0 khoảng 10–12 điểm CS-WER B1+B2, cả ba mức đều đạt luật chọn; `reports/v0_draft_tables.md`, `reports/v0_draft_leaderboard/` |
+| A4 FT thử trên GPU | XONG: 194 step, VRAM 3.9 / 4 GB, 0.66 step/s; bị leaderboard loại (quên tiếng Việt). Xem `reports/a4_trial_report.md` |
+| Job ASR tới 6 h | Đã đạt sẵn (6.09 h, mục 0), không phải chạy tiếp |
+
 ---
 
 # STATUS — 15/11/2026, 19:20 (giờ VN)
