@@ -333,6 +333,15 @@ def main():
     assert relabel_spans(lab, [h1], cat_obj)["reason"] == "thiếu hyp" and relabel_spans(lab, [h1, ""], cat_obj)["reason"] == "thiếu hyp"
     rl2 = relabel_spans("mở <en>facebook</en> rồi <en>chếch</en> mail", ["mở facebook rồi check mail"] * 2, cat_obj)
     assert rl2["changed"] == [(1, "chếch", "check")] and rl2["text_tagged"] == "mở <en>facebook</en> rồi <en>check</en> mail", rl2
+    # Phase 0d: span mới không có chữ có dấu tiếng Việt, không dài hơn span cũ quá 1 token
+    from lib.agreement import span_rule_violation
+    assert span_rule_violation(("rocket",), ("rap", "việt")) == "span mới có chữ có dấu tiếng Việt"
+    assert span_rule_violation(("ad",), ("a", "b", "c")).startswith("span mới dài hơn span cũ")
+    assert span_rule_violation(("concep",), ("concept",)) == "" and span_rule_violation(("post",), ("host", "talk")) == ""
+    rl3 = relabel_spans("nghe <en>rocket</en> hay lắm", ["nghe rap việt hay lắm"] * 2, cat_obj)
+    assert rl3["changed"] == [] and rl3["rejected"] == [(0, "rocket", "rap việt", "span mới có chữ có dấu tiếng Việt")], rl3
+    rl4 = relabel_spans("cái <en>sho</en> hay", ["cái host talk show hay"] * 2, cat_obj)
+    assert rl4["changed"] == [] and rl4["rejected"][0][3].startswith("span mới dài hơn"), rl4
     rel_m = T / "relabel_in.jsonl"
     base = {"split": "train", "audio": "audio/x.wav", "duration": 3.0, "speaker": "vss_ep7", "source": "vss:ep7", "dataset": "vss_cs"}
     rel_rows = [dict(base, id="r1", text_tagged=lab),

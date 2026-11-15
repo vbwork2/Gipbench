@@ -79,6 +79,18 @@ def span_segments(ref_tok: List[str], ref_span: List[int], hyp: List[str]
 
 
 _EN = re.compile(r"(<en(?:\s[^>]*)?>)(.*?)(</en>)", re.S)
+# chữ có dấu tiếng Việt (kể cả đ): span tiếng Anh mới không được chứa token nào có các chữ này
+VI_DIACRITIC = re.compile("[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]")
+MAX_EXTRA_TOKENS = 1  # span mới dài hơn span cũ tối đa 1 token
+
+
+def span_rule_violation(old: Sequence[str], new: Sequence[str]) -> str:
+    """Luật chặn span gán lại (Phase 0d): trả về lý do vi phạm, chuỗi rỗng = hợp lệ."""
+    if any(VI_DIACRITIC.search(t) for t in new):
+        return "span mới có chữ có dấu tiếng Việt"
+    if len(new) > len(old) + MAX_EXTRA_TOKENS:
+        return f"span mới dài hơn span cũ quá {MAX_EXTRA_TOKENS} token"
+    return ""
 
 
 def relabel_spans(text_tagged: str, hyps: Sequence[Optional[str]], cat: Catalog, min_agree: int = 1,
@@ -87,8 +99,10 @@ def relabel_spans(text_tagged: str, hyps: Sequence[Optional[str]], cat: Catalog,
 
     Một span được thay khi: có ít nhất 2 hyp và hyp nào cũng có mặt (không rỗng); đoạn hyp ứng với span
     giống hệt nhau ở MỌI hyp sau chuẩn hoá (strict, catalog) và không rỗng; WER phần tiếng Việt của nhãn so với
-    TỪNG hyp <= max_vi_wer. Phần tiếng Việt và các span khác giữ nguyên.
-    Trả về {"text_tagged", "changed": [(span_idx, cũ, mới)], "vi_wer": [...], "reason"}.
+    TỪNG hyp <= max_vi_wer; span mới không có chữ có dấu tiếng Việt và không dài hơn span cũ quá 1 token
+    (span_rule_violation). Phần tiếng Việt và các span khác giữ nguyên.
+    Trả về {"text_tagged", "changed": [(span_idx, cũ, mới)], "rejected": [(span_idx, cũ, mới, lý do)],
+    "vi_wer": [...], "reason"}.
     """
     out = {"text_tagged": text_tagged, "changed": [], "vi_wer": [], "reason": ""}
     if len(hyps) < 2 or any(not (h or "").strip() for h in hyps):
@@ -111,13 +125,19 @@ def relabel_spans(text_tagged: str, hyps: Sequence[Optional[str]], cat: Catalog,
     if any(w > max_vi_wer for w in wers):
         out["reason"] = "WER tiếng Việt vượt ngưỡng"
         return out
-    new = {}
+    new, rejected = {}, []
     for i in todo:
         cand = [tuple(s.get(i, [])) for s in segs]
-        if cand[0] and all(c == cand[0] for c in cand) and cand[0] != spans[i]:
+        if not (cand[0] and all(c == cand[0] for c in cand) and cand[0] != spans[i]):
+            continue
+        why = span_rule_violation(spans[i], cand[0])
+        if why:
+            rejected.append((i, " ".join(spans[i]), " ".join(cand[0]), why))
+        else:
             new[i] = " ".join(cand[0])
+    out["rejected"] = rejected
     if not new:
-        out["reason"] = "các ASR không cho cùng chữ"
+        out["reason"] = rejected[0][3] if rejected else "các ASR không cho cùng chữ"
         return out
     # dựng lại text_tagged: span thứ k (đếm span có token sau chuẩn hoá, như normalize_ref) -> chữ mới
     sid = [-1]

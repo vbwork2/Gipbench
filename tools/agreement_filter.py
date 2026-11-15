@@ -81,7 +81,7 @@ def main():
     kept, unconfirmed, relabeled = [], [], []
     hours = Counter()
     span_tot, span_ok = Counter(), Counter()
-    rl_reason, n_spans_changed, vi_wers = Counter(), 0, []
+    rl_reason, n_spans_changed, vi_wers, rule_rejected = Counter(), 0, [], []
     examples = {"giữ": [], "bỏ": []}
     for r in rows:
         hs = [h.get(r["id"]) for h in hyps]
@@ -106,6 +106,7 @@ def main():
         rl = relabel_spans(r["text_tagged"], hs, cat, args.min_agree, args.relabel_max_vi_wer)
         if rl["vi_wer"]:
             vi_wers.append(max(rl["vi_wer"]))
+        rule_rejected += [(r["id"],) + tuple(x[1:]) for x in rl.get("rejected", [])]
         if not rl["changed"]:
             rl_reason[rl["reason"]] += 1
             continue
@@ -154,6 +155,10 @@ def main():
     for key, ex in examples.items():
         md += ["", f"## Ví dụ câu {key} khi chỉ lọc", "", "| id | nhãn | hyps | số hyp xác nhận từng span |", "| --- | --- | --- | --- |"]
         md += [f"| {i} | {t} | {' ‖ '.join(h)} | {c} |" for i, t, h, c in ex]
+    if args.relabel_spans:
+        md += ["", f"## Span bị luật chặn (có dấu tiếng Việt / dài hơn span cũ > 1 token): {len(rule_rejected)}", "",
+               "| id | span cũ | span ASR đề xuất | lý do |", "| --- | --- | --- | --- |"]
+        md += [f"| {i} | {a} | {b} | {w} |" for i, a, b, w in rule_rejected]
     if relabeled:
         md += ["", "## Ví dụ câu gán lại", "", "| id | span cũ → mới | WER tiếng Việt |", "| --- | --- | --- |"]
         md += [f"| {r['id']} | {'; '.join(f'{a} → {b}' for _, a, b in r['relabel']['changed'])} | {r['relabel']['vi_wer']} |"
