@@ -65,4 +65,6 @@ if [ "$RELABEL" = 1 ]; then
     --hash-index "$IDX" --audio-root "$ROOT" --tiered --max-vi-wer "$MAXVI" \
     --relabel-spans --bench "$BENCH" --out "$OUT/vss_cs_clean_relabel.jsonl"
 fi
-echo "Xong: $OUT/vss_cs_clean.jsonl$([ "$RELABEL" = 1 ] && echo ", $OUT/vss_cs_clean_relabel.jsonl")"
+echo "== suy domain từ text (decisions §10 / §12.6): domain_source = inferred"
+"$PY" tools/infer_domain.py --manifest "$OUT/vss_cs_clean.jsonl" --catalog "$CAT"   --out "$OUT/vss_cs_clean_dom.jsonl" --report "$OUT/vss_cs_clean_dom.jsonl.report.md"
+echo "Xong: $OUT/vss_cs_clean.jsonl (+ _dom có domain suy ra)$([ "$RELABEL" = 1 ] && echo ", $OUT/vss_cs_clean_relabel.jsonl")"

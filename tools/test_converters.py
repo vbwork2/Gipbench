@@ -666,6 +666,7 @@ def main():
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     test_consensus(cat, L)
     test_term_decisions(cat, L)
+    test_domain(cat, L)
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 
 
@@ -911,6 +912,68 @@ def test_term_decisions(cat, L):
     run(G / "tools/term_decisions.py", "import", "--ask", D / "ask.csv", "--decisions", D / "td.tsv", "--out", D / "td2.tsv")
     assert load_term_decisions(D / "td2.tsv") == {"crm": "en", "sjc": "vi", "xyz": "drop_tag"}
     assert load_term_decisions(D / "td.tsv") == {"crm": "en"}  # --out khác: không đụng file gốc
+
+
+
+def test_domain(cat, L):
+    """§10 / §12.6: suy domain từ text (lib/domain.py, tools/infer_domain.py), báo cáo domain, đề xuất reserved_b3
+    ngoài y khoa (tools/b3_nonmed_terms.py), mix_plan --fit-cap (trần 35% / 50%)."""
+    from lib.domain import DomainInferer, load_keywords
+    from lib.textnorm import Catalog
+    inf = DomainInferer(load_keywords(), Catalog.load(str(cat)))
+    assert inf.infer("nhà đầu tư mua cổ phiếu khi lãi suất giảm")[0] == "finance"
+    assert inf.infer("hôm nay trời đẹp quá")[0] == "other"                       # không đủ điểm
+    assert inf.infer("bác sĩ nói học sinh nên uống thuốc ở trường")[0] == "other"  # hoà điểm -> other
+    assert inf.infer("mở <en>app</en> rồi sửa <en>code</en> trên máy tính")[0] == "tech"
+    D = T / "domain"
+    shutil.rmtree(D, ignore_errors=True)
+    D.mkdir(parents=True)
+    rows = [dict(id=f"v{i}", split="train", audio=f"v{i}.wav", duration=3600.0, text_tagged=t, speaker=f"s{i % 3}",
+                 source=f"vss:s{i % 3}", domain=d, dataset="vss_cs") for i, (t, d) in enumerate([
+                     ("nhà đầu tư mua cổ phiếu và trái phiếu", "conversation"),
+                     ("mình viết <en>code</en> cho phần mềm trên máy tính", "conversation"),
+                     ("đi <en>blockchain</en> học <en>blockchain</en> với <en>docker</en>", "conversation"),
+                     ("hôm nay trời đẹp", "conversation"), ("chuyện ngân hàng tài chính", "finance")])]
+    (D / "vss.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    out = run(G / "tools/infer_domain.py", "--manifest", D / "vss.jsonl", "--out", D / "vss_dom.jsonl",
+              "--catalog", cat, "--report", D / "dom.md")
+    dom = {r["id"]: r for r in L(D / "vss_dom.jsonl")}
+    assert dom["v0"]["domain"] == "finance" and dom["v0"]["domain_source"] == "inferred" and dom["v0"]["domain_orig"] == "conversation"
+    assert dom["v1"]["domain"] == "tech" and dom["v3"]["domain"] == "other"
+    assert dom["v4"]["domain"] == "finance" and "domain_source" not in dom["v4"]  # domain thật: giữ nguyên
+    assert "câu mẫu được suy ra là finance" in (D / "dom.md").read_text(encoding="utf-8"), out
+    # báo cáo domain (manifest + meta CSV kiểu ViMedCSS)
+    with open(D / "meta.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["segment_id", "duration_seconds", "segment_text", "cs_terms_list"])
+        w.writerow(["m1", "7200", "uống aspirin mỗi ngày", "aspirin"])
+    run(G / "tools/domain_report.py", "--catalog", cat, "--out", D / "rep.md",
+        "--group", f"cs_pseudo={D / 'vss_dom.jsonl'}", f"B3={D / 'meta.csv'}")
+    rep = (D / "rep.md").read_text(encoding="utf-8")
+    assert "| cs_pseudo | 5 | 5.00 | 3 |" in rep and "| B3 | 1 | 2.00 | 1 |" in rep and "blockchain 2" in rep, rep
+    # đề xuất reserved_b3 ngoài y khoa: nguồn G-Group (không finance) + vss_cs, bỏ consensus
+    gg = [dict(id=f"g{i}", split="B1", audio="x.wav", duration=2.0, text_tagged=t, speaker=f"g{i}", source=f"g{i}", domain=d,
+               dataset=f"vi-asr-{d}-test") for i, (t, d) in enumerate([
+                   ("cài <en>docker</en> lên máy", "tech"), ("chạy <en>docker</en> nhé", "tech"),
+                   ("mở <en>zalo</en> lên", "tech"), ("mở <en>zalo</en> đi", "tech"),
+                   ("mua <en>etf</en> nhé", "finance"), ("bán <en>etf</en> đi", "finance"), ("<en>etf</en> tăng", "finance")])]
+    (D / "gg.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in gg), encoding="utf-8")
+    cons = [dict(id="c1", split="B2", audio="c.wav", duration=2.0, text_tagged="nhắn <en>zalo</en> nhé", speaker="c",
+                 source="consensus", domain="product", dataset="consensus", license="test_only")]
+    (D / "cons.jsonl").write_text(json.dumps(cons[0], ensure_ascii=False) + "\n", encoding="utf-8")
+    out = run(G / "tools/b3_nonmed_terms.py", "--ggroup", D / "gg.jsonl", "--vss-cs", D / "vss_dom.jsonl",
+              "--exclude-manifest", D / "cons.jsonl", "--catalog", cat, "--min-speakers", "2", "--common-top", "0",
+              "--out", D / "b3.csv", "--report", D / "b3.md")
+    b3 = {r["term"]: r for r in csv.DictReader(open(D / "b3.csv", encoding="utf-8-sig"))}
+    assert set(b3) == {"docker"} and b3["docker"]["selected"] == "1" and b3["docker"]["n_vss_cs"] == "1", (b3, out)
+    b3md = (D / "b3.md").read_text(encoding="utf-8")
+    assert "mất **1 câu, 1.00 h**" in b3md and "2 câu B1 chứa" in b3md, b3md  # zalo (consensus), etf (finance) bị bỏ
+    # mix_plan --fit-cap: medical (ViMedCSS) bị cắt về đúng trần, 'other' miễn trần
+    out = run(G / "tools/mix_plan.py", "--manifest", D / "vss_dom.jsonl", "--assume", "ViMedCSS:medical:20",
+              "--domain-cap", "0.5", "--fit-cap", "--out-json", D / "mix.json")
+    mj = json.loads((D / "mix.json").read_text(encoding="utf-8"))
+    assert mj["feasible"] and abs(mj["target_share"]["medical"] - 0.5) < 1e-6, mj
+    assert abs(sum(mj["target_share"].values()) - 1) < 1e-6 and "Domain bị cắt: medical" in out, out
 
 
 if __name__ == "__main__":

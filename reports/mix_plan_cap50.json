@@ -1,0 +1,57 @@
+{
+ "domain_cap": 0.5,
+ "feasible": true,
+ "target_share": {
+  "medical": 0.5,
+  "other": 0.41272,
+  "entertainment": 0.01894,
+  "business": 0.02254,
+  "tech": 0.01811,
+  "daily": 0.01236,
+  "edu": 0.00793,
+  "finance": 0.00643,
+  "pubadmin": 0.00096
+ },
+ "cells": {
+  "cs_real:medical": {
+   "hours": 24.3,
+   "target_share": 0.49886
+  },
+  "cs_pseudo:other": {
+   "hours": 3.378,
+   "target_share": 0.41272
+  },
+  "cs_pseudo:entertainment": {
+   "hours": 0.155,
+   "target_share": 0.01894
+  },
+  "cs_pseudo:business": {
+   "hours": 0.185,
+   "target_share": 0.02254
+  },
+  "cs_pseudo:tech": {
+   "hours": 0.148,
+   "target_share": 0.01811
+  },
+  "cs_pseudo:medical": {
+   "hours": 0.056,
+   "target_share": 0.00114
+  },
+  "cs_pseudo:daily": {
+   "hours": 0.101,
+   "target_share": 0.01236
+  },
+  "cs_pseudo:edu": {
+   "hours": 0.065,
+   "target_share": 0.00793
+  },
+  "cs_pseudo:finance": {
+   "hours": 0.053,
+   "target_share": 0.00643
+  },
+  "cs_pseudo:pubadmin": {
+   "hours": 0.008,
+   "target_share": 0.00096
+  }
+ }
+}

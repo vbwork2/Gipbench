@@ -1,0 +1,201 @@
+# Từ khoá suy domain từ text (decisions §10, §12.6) — lib/domain.py, tools/infer_domain.py.
+# Cột (TAB): domain | keyword (viết thường, có dấu; nhiều từ được) | note. Mỗi lần gặp keyword = 1 điểm (tối đa 3 lần
+# một keyword), cộng 1 điểm mỗi thuật ngữ catalog có category trùng domain. Domain thắng khi điểm >= --min-score (2)
+# và hơn domain thứ hai >= --margin (1); không thì 'other'. Đây là bộ khởi đầu, chưa kiểm chứng: sửa theo 20 câu mẫu.
+domain	keyword	note
+finance	chứng khoán
+finance	cổ phiếu
+finance	cổ tức
+finance	cổ đông
+finance	trái phiếu
+finance	lãi suất
+finance	tỷ giá
+finance	nhà đầu tư
+finance	đầu tư
+finance	ngân hàng
+finance	tín dụng
+finance	khoản vay
+finance	vay vốn
+finance	tài chính
+finance	lợi nhuận
+finance	doanh thu
+finance	thị trường
+finance	quỹ
+finance	vốn hoá
+finance	chỉ số
+finance	giao dịch
+finance	thanh khoản
+finance	bitcoin
+finance	crypto
+finance	coin
+finance	token
+finance	trading
+finance	trader
+finance	margin
+finance	stock
+finance	forex
+finance	vnindex
+finance	lãi
+finance	lỗ
+tech	công nghệ
+tech	phần mềm
+tech	lập trình
+tech	máy tính
+tech	dữ liệu
+tech	hệ thống
+tech	thuật toán
+tech	ứng dụng
+tech	điện thoại
+tech	mạng
+tech	code
+tech	coding
+tech	server
+tech	database
+tech	data
+tech	website
+tech	web
+tech	app
+tech	api
+tech	cloud
+tech	python
+tech	javascript
+tech	software
+tech	laptop
+tech	chip
+tech	ai
+tech	machine learning
+tech	deep learning
+tech	blockchain
+tech	internet
+tech	online
+tech	file
+tech	user
+edu	học sinh
+edu	sinh viên
+edu	giáo viên
+edu	thầy cô
+edu	trường
+edu	lớp
+edu	bài giảng
+edu	bài học
+edu	môn học
+edu	kỳ thi
+edu	điểm thi
+edu	đại học
+edu	học bổng
+edu	giáo dục
+edu	khoá học
+edu	học tập
+edu	ielts
+edu	toefl
+edu	course
+edu	homework
+edu	du học
+edu	tiếng anh
+medical	bệnh
+medical	bác sĩ
+medical	bệnh viện
+medical	bệnh nhân
+medical	thuốc
+medical	điều trị
+medical	triệu chứng
+medical	sức khoẻ
+medical	sức khỏe
+medical	xét nghiệm
+medical	ung thư
+medical	tiểu đường
+medical	huyết áp
+medical	vaccine
+medical	vắc xin
+medical	virus
+medical	vitamin
+medical	protein
+medical	cơ thể
+pubadmin	hồ sơ
+pubadmin	thủ tục
+pubadmin	căn cước
+pubadmin	công dân
+pubadmin	ubnd
+pubadmin	cơ quan
+pubadmin	nhà nước
+pubadmin	chính phủ
+pubadmin	nghị định
+pubadmin	thông tư
+pubadmin	pháp luật
+pubadmin	luật
+pubadmin	cấp phép
+pubadmin	giấy phép
+pubadmin	dịch vụ công
+pubadmin	bhxh
+pubadmin	bảo hiểm xã hội
+pubadmin	thuế
+pubadmin	hành chính
+pubadmin	xã
+pubadmin	phường
+business	doanh nghiệp
+business	công ty
+business	khách hàng
+business	kinh doanh
+business	sản phẩm
+business	thương hiệu
+business	đối tác
+business	nhân sự
+business	nhân viên
+business	chiến lược
+business	thị phần
+business	bán hàng
+business	marketing
+business	sales
+business	startup
+business	ceo
+business	kpi
+business	meeting
+business	deadline
+business	team
+business	brand
+business	project
+business	manager
+business	leader
+entertainment	phim
+entertainment	ca sĩ
+entertainment	bài hát
+entertainment	âm nhạc
+entertainment	nhạc
+entertainment	diễn viên
+entertainment	nghệ sĩ
+entertainment	sân khấu
+entertainment	game
+entertainment	show
+entertainment	concert
+entertainment	idol
+entertainment	fan
+entertainment	youtube
+entertainment	tiktok
+entertainment	rap
+entertainment	mv
+entertainment	album
+entertainment	livestream
+entertainment	vlog
+daily	nấu ăn
+daily	món ăn
+daily	món
+daily	gia đình
+daily	bố mẹ
+daily	vợ chồng
+daily	con cái
+daily	mua sắm
+daily	đi chợ
+daily	du lịch
+daily	cà phê
+daily	quán
+daily	nhà hàng
+daily	thời tiết
+daily	quần áo
+daily	thời trang
+daily	skincare
+daily	makeup
+daily	shopping
+daily	cafe
+daily	trip
+daily	tình yêu
+daily	hẹn hò

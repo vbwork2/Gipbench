@@ -1,0 +1,46 @@
+﻿term,selected,domain_gg,n_ggroup,n_ggroup_by_domain,n_ggroup_finance,n_vss_cs,n_speakers,hours_vss_cs,example_ggroup,example_vss_cs
+edu,1,edu,11,edu:8 pubadmin:3,0,0,11,0.0,gg_edu_114269: bước một thí sinh truy cập vào đường <en>link</en> xét tuyển học bạ chấm <en>hutech</en> chấm <en>edu</en> chấm vn,
+singapore,1,edu,3,edu:3,0,7,9,0.027,gg_edu_113171: khóa <en>diploma</en> ở <en>sing</en> rồi qua úc thì cái kia thì cái việc mà <en>apply</en> từ từ <en>singapore</en> qua úc,vss_0009622: trên trên thị trường của mình đang có ví dụ như là <en>singapore</en> này hay là kể cả <en>indo</en> hay là kể cả thái lan hoặc nhật bản càn
+visa,1,pubadmin,9,pubadmin:5 edu:4,0,0,9,0.0,gg_edu_113245: đậu <en>visa</en> của mỹ chắc là lớn nhất,
+background,1,edu,3,edu:2 tech:1,0,4,7,0.015,gg_tech_113713: <en>background</en> về kỹ thuật của ông này còn lớn hơn cả <en>background</en> và <en>elena</en> nữa,vss_0002842: ngoài việc giới thiệu tên nè <en>background</en> ra thì tụi mình sẽ cùng nhau đi qua bốn câu hỏi đầu tiên là giới tính sinh học nè sau đó là
+event,1,tech,3,tech:2 edu:1,0,4,7,0.014,gg_tech_114654: mà có cái <en>event</en> mà có còn <en>structure</en>,vss_0011018: là cái hồi mà em còn đang ăn nhậu ở công ty cũ gọi là hôm đấy là cái buổi tất niên công ty cũ xong rồi anh đi cũng chơi nhạc hoặc làm cái đá
+logic,1,tech,2,tech:1 edu:1,0,6,7,0.024,gg_tech_115767: thứ người ta dùng <en>transistor</en> người ta nối thành những cái cổng <en>logic</en> rồi,vss_0004950: sự thật là chín mươi phần trăm những câu nói đó đều gặp một vấn đề đó là lỗi ngụy biện ngụy biện là lỗi sai về mặt <en>logic</en> trong lập 
+scan,1,pubadmin,7,pubadmin:6 edu:1,0,0,7,0.0,gg_edu_115157: hai gửi bảng <en>scan</en> trên cổng <en>online</en> chấm niu chấm vn,
+blockchain,1,tech,4,tech:4,2,4,6,0.014,gg_tech_113975: đã xác định trở thành một <en>developer</en> và <en>blockchain</en> á,vss_0013577: ở việt nam bây giờ mọi thứ nó đang khá thuận lợi cho một công nghệ lỗi như <en>blockchain</en> phát triển bởi vì đối với những công nghệ trư
+demo,1,tech,3,tech:2 edu:1,1,3,6,0.011,gg_tech_113780: thì tí cũng sẽ <en>demo</en> về mà <en>shop</en> tim,vss_0004279: cái từ <en>demo</en> đến lúc làm <en>master</en> ấy nó có nhiều sự thay đổi không em nghĩ là khác nhiều đấy ạ <en>demo</en> thì thực ra là m
+token,1,tech,6,tech:5 pubadmin:1,3,0,6,0.0,gg_tech_113108: và tạo <en>token</en> đó về cho <en>client</en> và lưu trữ các <en>token</en> đó,
+apply,1,edu,5,edu:4 tech:1,0,0,5,0.0,gg_tech_116450: <en>apply</en> là cái gì <en>ctrl shift</en> k đưa cái ảnh vào đưa vào cái,
+bachelor,1,edu,5,edu:5,0,0,5,0.0,gg_edu_113637: thì cái <en>bachelor</en> của bạn ngay cả một người học <en>bachelor</en> thì,
+build,1,tech,5,tech:3 edu:2,0,0,5,0.0,gg_tech_114380: đưa vào trong <en>debug</en> nè trong <en>folder debug</en> nó <en>build</en>,
+chip,1,pubadmin,4,pubadmin:3 tech:1,0,1,5,0.004,gg_tech_114424: nó nó không hỗ trợ <en>chip</en> này nhá,vss_0038211: chui được vào cái phòng của chị để gắn được một cái con <en>chip</en> vào cái cửa đấy thì cứ mỗi lần nó mở ra nó giống như cái tấm thiệp mở 
+harvard,1,edu,2,edu:2,0,4,5,0.014,gg_edu_113927: khoa của chúng ta vậy các em có hiểu không nào hay trường <en>harvard</en> với lại trường trường,vss_0031957: nhưng xong cuối cùng là đã quyết tâm đi học ở <en>harvard</en> và và chỉ nhận được học bổng của <en>harvard</en> một nửa thôi còn một nửa là
+https,1,tech,5,tech:2 pubadmin:2 edu:1,0,0,5,0.0,gg_tech_113584: <en>ok</en> rồi đầu tiên thì mọi người sẽ vào cho mình cái trang <en>https</en> suộc chéo suộc chéo <en>clowd</en> chấm <en>bot</en>,
+master,1,edu,2,edu:2,0,4,5,0.014,gg_edu_113357: có thể <en>apply</en> sang các học tiếp <en>master</en> hoặc là sau sau cho đại học nữa,vss_0000094: cũng có những cuộc nói chuyện nhưng mọi người cãi nhau về về việc là cái <en>master</en> của cái nhạc <en>master</en> của nhạc sau khi làm x
+mba,1,edu,5,edu:5,0,0,5,0.0,gg_edu_113009: có cần thi ga và <en>gmat</en> để kiếm bằng <en>mba</en> không,
+set up,1,tech,2,tech:2,0,3,5,0.01,gg_tech_114671: <en>enter</en> rồi mình <en>set up</en> lại từ đầu đi cho nó dễ,vss_0030660: chào bích và chào các khán giả của chương trình <en>first lady</en> cảm ơn bích và <en>vietcetera</en> đã cho mình cái cơ hội hôm nay ngồi ở
+status,1,tech,2,tech:1 edu:1,0,4,5,0.014,gg_tech_115111: <en>status</en> <en>code</en> như thế này,vss_0009190: cái điều có cái câu chuyện gì đằng sau cái việc mà quỳnh anh không muốn trở thành người chia sẻ cảm xúc quá nhiều không cái đấy chắc một phầ
+admin,1,tech,2,tech:2,0,3,4,0.011,gg_tech_114479: ai vào cái <en>shop</en> á <en>add</en> một cái <en>admin</en>,vss_0008692: thì chính là cái chất lượng thành viên và sự trung thành của các thành viên đã yêu bếp cái sự trung thành này không phải là trung thành với 
+body,1,tech,2,tech:2,0,2,4,0.008,gg_tech_113650: mình <en>import</en> hàm <en>body</en> từ thư viện <en>express validator</en>,vss_0005605: đen trần truồng vậy đó tức là họ cực kỳ thoải mái họ lên nút cũng được và họ không sợ ai đánh giá về cái <en>body</en> cái cơ thể cái giọng 
+container,1,tech,3,tech:3,0,2,4,0.006,gg_tech_113704: nó đã bổ sung gì ạ <en>container</en> cấu trúc <en>ida</en> này,vss_0028344: và đấy là mở ra cho mình một cái chương mới là mình kết nối với được với thế giới tốt hơn thay vì là chỉ có điện thoại và anh bán được tiêu 
+gmail,1,pubadmin,4,pubadmin:3 edu:1,0,0,4,0.0,gg_edu_114982: và các em sẽ lập một cái <en>email</en> nhá ở đây bạn ấy đăng ký cái <en>gmail</en> này,
+layer,1,tech,2,tech:2,1,2,4,0.006,gg_tech_113645: thì nó là <en>layer</en> thôi nó <en>layer</en> giống như <en>layer photoshop</en> ấy,vss_0047953: từ đầu mối các tỉnh mới đến các nhà thuốc quầy thuốc rồi các quầy thuốc bệnh viện thì nó sinh ra rất là nhiều <en>layer</en> ở trong cái lĩn
+log,1,tech,3,tech:2 edu:1,0,1,4,0.003,gg_tech_114379: còn về <en>log</en> của về <en>user</en> họ <en>accept</en> với <en>contest</en> thì chúng ta hãy <en>lock</en> về <en>id</en>,vss_0011800: ví dụ như kiểu là riêng một cái <en>log</en> của điện thoại là một cái cơ bản nhất gần như là vào được cái điện thoại vào được rất là nhiều 
+module,1,tech,4,tech:3 edu:1,0,0,4,0.0,gg_tech_114492: và một cái <en>module</en> bắt cóc hay <en>cover</en>,
+podcast,1,edu,2,edu:2,0,2,4,0.007,gg_edu_113666: chuỗi <en>podcast</en> được thành lập bởi chương trình <en>college campus</en> của <en>everest education</en>,vss_0022783: như đã cái tựa đề của tập này là hành trang hẹn hò thì nam muốn là sau cái <en>podcast</en> này hành trang của mỗi người đi hẹn hò sẽ là kiế
+smart contract,1,tech,4,tech:4,0,0,4,0.0,gg_tech_113269: cái <en>smart contract</en> bằng cái lệnh là <en>npx hardhat compile</en> thì khi mà mình <en>combine</en> nó sẽ lỗi ha,
+captcha,1,pubadmin,3,pubadmin:2 tech:1,0,0,3,0.0,gg_tech_114578: giống như mã <en>captcha</en> bảo vệ chúng ta phải,
+clear,1,tech,3,tech:2 edu:1,0,0,3,0.0,gg_tech_114843: <en>cut</en> tiếp bây giờ mình sẽ <en>clear</en> cái <en>terminal</en> này đi,
+developer,1,tech,3,tech:3,0,0,3,0.0,gg_tech_113316: giống như mình xuất thân là dân làm <en>developer</en> hoặc làm <en>software</en>,
+diploma,1,edu,3,edu:3,0,0,3,0.0,gg_edu_113171: khóa <en>diploma</en> ở <en>sing</en> rồi qua úc thì cái kia thì cái việc mà <en>apply</en> từ từ <en>singapore</en> qua úc,
+docker,1,tech,3,tech:3,0,0,3,0.0,gg_tech_114426: <en>check out</en> nó về các bạn gõ <en>docker</en> <en>combo</en> các bạn,
+file xml,1,pubadmin,3,pubadmin:3,0,0,3,0.0,gg_pubadmin_113955: rồi sau ở đây thì bạn sẽ ấn nộp <en>file xml</en> này,
+hanoi,1,pubadmin,3,pubadmin:2 edu:1,0,0,3,0.0,gg_edu_115559: <en>ts</en> đầu cấp chấm <en>hanoi</en> chấm <en>gov</en> chấm vn để đăng ký tuyển sinh trực tuyến,
+hutech,1,edu,3,edu:3,0,0,3,0.0,gg_edu_113223: tuyển sinh đại học hai không hai hai chọn <en>hutech</en> chọn thành công,
+iot,1,tech,3,tech:3,0,0,3,0.0,gg_tech_113745: ê là chữ <en>electronic</en> đó dùng chữ ai là chữ <en>iot</en>,
+official,1,edu,2,edu:1 pubadmin:1,0,1,3,0.003,gg_edu_116348: đúng rồi trường sẽ gửi bảng điểm <en>official</en> cũng như là bằng đại học,vss_0025251: tức là các cái dòng treo mà được bán <en>official</en> đều là những dòng treo góc nước hết cho nên đây sẽ là một cái trải nghiệm rất là hay 
+password,1,tech,2,tech:2,0,1,3,0.003,gg_tech_113933: <en>password</en> thì mình sẽ nhấn cái nút <en>store in</en> vao để nó lưu <en>password</en> luôn,vss_0011800: ví dụ như kiểu là riêng một cái <en>log</en> của điện thoại là một cái cơ bản nhất gần như là vào được cái điện thoại vào được rất là nhiều 
+rule,1,tech,3,tech:3,0,0,3,0.0,gg_tech_113888: <en>stream</en> đấy vào trong các cái <en>rule</en> thì ngay lập tức <en>block</en>,
+stem,1,edu,3,edu:3,0,0,3,0.0,gg_edu_113676: triển khai <en>stem</en> trong năm hai nghìn không trăm hai mốt,
+toefl,1,edu,3,edu:3,0,0,3,0.0,gg_edu_113010: thi tiếng anh <en>ielts</en> hay <en>toefl</en> dạ dạ cái điểm,
+topik,1,edu,3,edu:3,0,0,3,0.0,gg_edu_113991: chứng chỉ <en>topik</en> từ năm năm đến bảy mươi tám,
+usb token,1,pubadmin,3,pubadmin:3,0,0,3,0.0,gg_pubadmin_114041: kết xuất tờ khai định dạng <en>xml</en> và nộp qua cổng thư điện tử <en>kisso</en> bằng <en>usb token</en>,

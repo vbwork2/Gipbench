@@ -10,10 +10,16 @@
 3. Phân bố domain DỰ KIẾN trong phần CS của batch (--cs-groups, mặc định cs_real + cs_pseudo): domain d chiếm
    sum_g w_g * giờ_g(d) / giờ_g  chia  sum_g w_g, chỉ tính nhóm có dữ liệu (nhóm rỗng không lấy mẫu được).
 4. Trần domain (--domain-cap 0.35): domain nào vượt trần thì CẢNH BÁO (riêng medical ghi rõ là ViMedCSS).
+5. --fit-cap (decisions §12.2, 2 biến thể E3 với trần 35% / 50%): đưa ra PHƯƠNG ÁN đạt trần bằng trọng số lấy mẫu theo
+   domain trong phần CS: domain vượt trần bị cắt về đúng trần, phần dư chia cho các domain còn lại theo tỉ lệ tự nhiên
+   (lặp tới khi không domain nào vượt; --cap-exempt mặc định 'other' không bị cắt vì không phải một domain thật).
+   Báo hệ số lặp tương đối (1 giờ audio domain d được lấy mẫu gấp bao nhiêu lần so với trung bình phần CS) và ghi
+   trọng số theo (dataset, domain) ra --out-json để pipeline train dùng sau.
 Exit 0 kể cả khi có cảnh báo; exit 1 nếu tổng tỉ trọng sai.
 """
 import argparse
 import csv
+import json
 import os
 import sys
 from collections import Counter, defaultdict
@@ -64,6 +70,27 @@ def plan(groups, rows_by_dataset, cs_groups, cap):
     return gh, share, warn, orphan
 
 
+def fit_cap(share, cap, exempt):
+    """Water-filling: -> (tỉ lệ mục tiêu theo domain, các domain bị cắt, khả thi?)."""
+    tgt = dict(share)
+    capped = set()
+    for _ in range(len(tgt) + 1):
+        over = [d for d, v in tgt.items() if v > cap + 1e-12 and d not in exempt and d not in capped]
+        if not over:
+            break
+        capped |= set(over)
+        free = [d for d in tgt if d not in capped]
+        rest = 1.0 - cap * len(capped)
+        base = sum(share[d] for d in free)
+        if not free or base <= 0 or rest < 0:
+            return tgt, capped, False
+        for d in capped:
+            tgt[d] = cap
+        for d in free:
+            tgt[d] = rest * share[d] / base
+    return tgt, capped, all(v <= cap + 1e-9 for d, v in tgt.items() if d not in exempt)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mix", default=str(G / "configs/train_mix.tsv"))
@@ -71,6 +98,9 @@ def main():
     ap.add_argument("--assume", nargs="*", default=[], metavar="DATASET:DOMAIN:GIỜ")
     ap.add_argument("--cs-groups", nargs="+", default=["cs_real", "cs_pseudo"])
     ap.add_argument("--domain-cap", type=float, default=0.35)
+    ap.add_argument("--fit-cap", action="store_true", help="đưa ra phương án trọng số theo domain đạt --domain-cap")
+    ap.add_argument("--cap-exempt", nargs="*", default=["other"])
+    ap.add_argument("--out-json")
     ap.add_argument("--out")
     args = ap.parse_args()
     groups = load_mix(args.mix)
@@ -100,6 +130,30 @@ def main():
     if args.assume:
         md += ["", "Giả định (--assume): " + ", ".join(f"`{a}`" for a in args.assume)]
     md += [""] + ([f"**CẢNH BÁO:** {x}" for x in warn] or ["Không có cảnh báo."])
+    if args.fit_cap and share:
+        tgt, capped, ok = fit_cap(share, args.domain_cap, set(args.cap_exempt))
+        cs_h = Counter()
+        for g in args.cs_groups:
+            cs_h.update(gh[g])
+        tot_h = sum(cs_h.values())
+        rep = {d: (tgt[d] / cs_h[d]) / (1.0 / tot_h) if cs_h[d] else float("inf") for d in tgt}
+        md += ["", f"## Phương án đạt trần {100 * args.domain_cap:.0f}% (--fit-cap)", "",
+               ("Đạt trần." if ok else "**KHÔNG đạt được trần** với dữ liệu hiện có.")
+               + f" Domain bị cắt: {', '.join(sorted(capped)) or 'không'}; miễn trần: {', '.join(args.cap_exempt) or 'không'}.",
+               "", "| Domain | Giờ có (phần CS) | Tỉ lệ tự nhiên | Tỉ lệ mục tiêu | Hệ số lặp tương đối |",
+               "| --- | --- | --- | --- | --- |"]
+        md += [f"| {d} | {cs_h[d]:.2f} | {100 * share[d]:.1f}% | {100 * tgt[d]:.1f}% | {rep[d]:.2f}× |"
+               for d in sorted(tgt, key=lambda d: -tgt[d])]
+        md += ["", "Hệ số lặp tương đối = (tỉ lệ mục tiêu / giờ có của domain) chia (1 / tổng giờ phần CS): 1× = lấy mẫu "
+               "đều theo giờ; số lớn = audio domain đó bị lặp nhiều (dễ overfit)."]
+        if args.out_json:
+            cell = {}
+            for g in args.cs_groups:
+                for d, hh in gh[g].items():
+                    cell[f"{g}:{d}"] = {"hours": round(hh, 3), "target_share": round(tgt[d] * hh / cs_h[d], 5)}
+            Path(args.out_json).write_text(json.dumps({"domain_cap": args.domain_cap, "feasible": ok,
+                                                       "target_share": {d: round(v, 5) for d, v in tgt.items()},
+                                                       "cells": cell}, ensure_ascii=False, indent=1), encoding="utf-8")
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text("\n".join(md) + "\n", encoding="utf-8")
