@@ -497,6 +497,49 @@ def main():
         "--out", T / "pre_out_nohapax.jsonl")
     assert "p7" in [r["id"] for r in L(T / "pre_out_nohapax.jsonl")]  # --hapax-keep-frac 1: không lọc
     assert len(L(T / "pre_pilot.jsonl")) == 1 and po[0]["prefilter"]["en_frac"] <= 0.5
+    # --- Phase 1 T1.1: ft/curate_train.py — mỗi luật hoạt động độc lập (các luật khác tắt)
+    cur = T / "curate"
+    cur.mkdir(parents=True, exist_ok=True)
+
+    def crow(i, text, spk, dom, **kw):
+        return dict(id=i, split="train", audio=f"a/{i}.wav", duration=10.0, text_tagged=text, speaker=spk,
+                    source=f"src:{spk}", domain=dom, dataset="toy", **kw)
+    ctx = ["chạy", "kịp", "trễ", "dời", "lo", "gấp"]
+    c_rows = [crow(f"t{k}", f"{ctx[k]} <en>deadline</en> {ctx[(k + 1) % 6]} nha", s, "medical")
+              for k, s in enumerate(["sA", "sA", "sA", "sB", "sB", "sC"])]
+    c_rows += [crow("f1", "họp <en>meeting</en> tài chính", "sF", "finance"), crow("f2", "lãi suất tăng", "sF", "finance"),
+               crow("m1", "mở <en>meeting</en> đi", "sM", "tech", label_source="pseudo:x"),
+               crow("m2", "dời <en>meeting</en> lại", "sN", "tech", label_source="pseudo:x"),
+               crow("y1", "bật <en>meeting</en> lên", "tts1", "tech", synthetic=True),
+               crow("y2", "tắt <en>meeting</en> đi", "tts2", "tech", synthetic=True)]
+    cm_in = cur / "in.jsonl"
+    cm_in.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in c_rows), encoding="utf-8")
+    OFF = ["--max-per-term", "0", "--max-speaker-share", "0", "--max-domain-share", "0", "--max-synthetic-share", "0"]
+
+    def curate(name, *flags):
+        run(G / "ft/curate_train.py", "--manifest", cm_in, "--catalog", cat, "--out", cur / f"{name}.jsonl", *OFF, *flags)
+        return {r["id"]: r for r in L(cur / f"{name}.jsonl")}
+    allids = {r["id"] for r in c_rows}
+    assert set(curate("none")) == allids  # tắt hết luật: giữ nguyên
+    assert set(curate("holdout", "--holdout-domain", "finance")) == allids - {"f1", "f2"}  # cả câu không CS
+    (cur / "hyp.jsonl").write_text(json.dumps({"id": "m1", "hyp": "mở meeting đi"}, ensure_ascii=False) + "\n"
+                                   + json.dumps({"id": "m2", "hyp": "dời mít tinh lại"}, ensure_ascii=False) + "\n",
+                                   encoding="utf-8")
+    assert set(curate("agree", "--agreement-hyps", cur / "hyp.jsonl")) == allids - {"m2"}  # chỉ câu nhãn máy bị xét
+    pt = curate("perterm", "--max-per-term", "2")
+    dl = [r for r in pt.values() if "deadline" in r["text_tagged"]]
+    assert len(dl) == 2 and len({r["speaker"] for r in dl}) == 2, dl  # xoay vòng người nói
+    assert sum("meeting" in r["text_tagged"] for r in pt.values()) == 2 and "f2" in pt
+    assert "| deadline | 6 | 2 |" in (cur / "perterm.jsonl.report.md").read_text(encoding="utf-8")
+    sp = curate("spk", "--max-speaker-share", "0.2")  # sA 30/110 s > 20% -> còn 20 s (20% của tổng mới 100 s)
+    assert sum(r["speaker"] == "sA" for r in sp.values()) == 2 and len(sp) == len(allids) - 1
+    dm = curate("dom", "--max-domain-share", "0.5")  # medical 60/110 s > 50% -> còn 50 s
+    assert sum(r["domain"] == "medical" for r in dm.values()) == 5 and len(dm) == len(allids) - 1
+    sy = curate("syn", "--max-synthetic-share", "0.1")  # synthetic 20 s / 110 s > 10% -> còn 10 s
+    assert sum(bool(r.get("synthetic")) for r in sy.values()) == 1 and len(sy) == len(allids) - 1
+    curate("few", "--min-speakers-per-term", "4")
+    few_md = (cur / "few.jsonl.report.md").read_text(encoding="utf-8")
+    assert "deadline (3)" in few_md and "meeting (" not in few_md, few_md  # chỉ báo cáo, không loại
     # --- Phase 0d T5: cấu hình trộn: vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
                                                    if not l.startswith("#")), delimiter="\t")}
