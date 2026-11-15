@@ -1,0 +1,22 @@
+# Cặp gần âm: thuật ngữ tiếng Anh <-> âm tiết / cụm tiếng Việt có nghĩa riêng (tools/make_confusables.py).
+# Cột vi_forms: các dạng tiếng Việt, ngăn bằng '|', viết thường có dấu. make_confusables.py còn lấy thêm cột
+# phonetic của catalog (--catalog). Danh sách khởi đầu, chưa kiểm chứng: thêm / bớt dòng tuỳ ý.
+term	vi_forms	note
+team	tim|tìm	tim (tim mạch), tìm (tìm kiếm)
+gas	ga	ga (nhà ga, bàn đạp ga)
+shop	sóp|xốp	xốp (bánh xốp, đất xốp)
+cool	cun|cún	cún (chó con)
+fan	phan|phăn	phan (họ Phan)
+game	ghem|gêm
+deal	đia|địa	địa (địa lý)
+like	lai|lài	lai (lai giống), lài (hoa lài)
+test	tét|tẹt
+check	chéc|chết	chết
+care	ke|kẻ|kè	kẻ (kẻ vạch), kè (bờ kè)
+mall	mon|môn	môn (môn học)
+date	đết|đét
+style	tai|tay	tay (bàn tay), tai (cái tai)
+show	sô|sâu	sâu (sâu sắc)
+link	linh|lính	linh (linh thiêng), lính (người lính)
+code	cốt|cột	cốt (cốt lõi), cột (cây cột)
+file	phai|phải	phải (đúng)

@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -540,6 +541,32 @@ def main():
     curate("few", "--min-speakers-per-term", "4")
     few_md = (cur / "few.jsonl.report.md").read_text(encoding="utf-8")
     assert "deadline (3)" in few_md and "meeting (" not in few_md, few_md  # chỉ báo cáo, không loại
+    # --- Phase 1 T1.3: tools/make_confusables.py — dạng gần âm từ --pairs + phonetic catalog; bench / train tách
+    #     theo người nói và nguồn (union-find: s1, s2 cùng nguồn srcX phải đi cùng một phía)
+    cf = T / "confusable"
+    cf.mkdir(parents=True, exist_ok=True)
+    cf_rows = [dict(id=f"v{k}", split="train", audio=f"a/v{k}.wav", duration=3.0, text_tagged=t, speaker=f"s{k}",
+                    source=src, dataset="vivos:train") for k, (t, src) in enumerate([
+                        ("anh đi tìm chìa khoá", "srcX"), ("tim em đập nhanh", "srcX"), ("ra nhà ga đón mẹ", "src2"),
+                        ("cuộc mít tinh rất đông", "src3"), ("tìm mãi không thấy", "src4"), ("đạp ga cho xe chạy", "src5"),
+                        ("hôm nay trời đẹp", "src6"), ("mở <en>team</en> chat đi", "src7"), ("tìm đường về nhà", "src8")], 1)]
+    cf_in = cf / "in.jsonl"
+    cf_in.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in cf_rows), encoding="utf-8")
+    out_cf = run(G / "tools/make_confusables.py", "--manifest", cf_in, "--catalog", cat, "--out-dir", cf / "out",
+                 "--bench-n", "3", "--max-per-form-bench", "2")
+    cb, ct = L(cf / "out/b5_confusable.jsonl"), L(cf / "out/train_confusable.jsonl")
+    assert 1 <= len(cb) <= 3 and ct and len(cb) + len(ct) == 7, (cb, ct)  # 9 câu - 1 không có dạng - 1 có <en>
+    assert all(r["split"] == "B5" and r["domain"] == "confusable" for r in cb)
+    assert Counter(r["confusable"]["form"] for r in cb).most_common(1)[0][1] <= 2
+    assert not ({r["speaker"] for r in cb} & {r["speaker"] for r in ct}) and not ({r["source"] for r in cb} & {r["source"] for r in ct})
+    sides = {r["id"]: "b" for r in cb} | {r["id"]: "t" for r in ct}
+    assert sides["cf_v1"] == sides["cf_v2"]  # cùng nguồn srcX -> cùng phía
+    mt = next(r for r in cb + ct if r["id"] == "cf_v4")
+    assert mt["confusable"] == {"form": "mít tinh", "term": "meeting", "from": "catalog phonetic"}, mt
+    assert next(r for r in cb + ct if r["id"] == "cf_v3")["confusable"]["term"] == "gas"  # từ configs/confusables.tsv
+    rv = list(csv.DictReader(open(cf / "out/b5_confusable_review.csv", encoding="utf-8-sig")))
+    from converters.common import REVIEW_COLS
+    assert len(rv) == len(cb) and list(rv[0]) == REVIEW_COLS and "phải = 0" in out_cf
     # --- Phase 0d T5: cấu hình trộn: vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
                                                    if not l.startswith("#")), delimiter="\t")}
