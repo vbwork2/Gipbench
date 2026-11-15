@@ -116,7 +116,7 @@ Dữ liệu train được phép nhiễu hơn bench, nhưng tuyệt đối khôn
 | ViMedCSS train (24.3 h) | CS thật, y tế | Gemini, kiểm tra mẫu | Dùng trực tiếp; split hard đã loại sẵn thuật ngữ của nó khỏi train. Audio gốc WAV 44.1 kHz: converter resample về 16 kHz mono |
 | ViMedCSS validation | Dev CS | Như trên | Chỉ dùng để chọn siêu tham số |
 | SEA Code-Switching en-vi (45.3 h) — **tùy chọn, không dùng** (quyết định sau Phase 0b) | CS thật, đa domain | Máy, chưa kiểm tra | Nếu dùng lại: giữ câu khi span Anh của nhãn gốc được ít nhất 1 trong 2 model đa ngôn ngữ (faster-whisper large-v3, Qwen3-ASR) xác nhận, tức 2 nguồn đồng thuận (tham số --min-agree); không dùng Gipformer để xác nhận vì nó hiếm khi ra chính tả Anh; bỏ câu có video trùng bench |
-| VietSuperSpeech (245 h: 60 656 + 6 749 câu, theo `manifest.json`) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Đã kiểm tra (Phase 0): 52.5% câu có từ Anh, viết chính tả Anh. Replay / chưng cất chỉ dùng câu không có từ Anh (~115 h); câu có từ Anh của phần train ghi riêng `vss_cs_candidates.jsonl` (chỉ train, nhóm tổng hợp / nhãn giả 0.10; lọc rẻ trước ASR rồi lọc đồng thuận theo tầng, xem "Nguồn dùng" ở trên) |
+| VietSuperSpeech (245 h: 60 656 + 6 749 câu, theo `manifest.json`) | Replay tiếng Việt hội thoại | Pseudo-label Zipformer-30M | Đã kiểm tra (Phase 0): 52.5% câu có từ Anh, viết chính tả Anh. Replay / chưng cất chỉ dùng câu không có từ Anh (~115 h); câu có từ Anh của phần train ghi riêng `vss_cs_candidates.jsonl` (chỉ train, nhóm `cs_pseudo` 0.10: audio thật, nhãn giả; lọc rẻ trước ASR, lọc đồng thuận theo tầng, WER tiếng Việt ≤ 0.15, xem "Nguồn dùng" ở trên) |
 | vivos / Common Voice train | Replay tiếng Việt đọc | Người | Không dùng phần test (đã thuộc B5) |
 | TTS tổng hợp (E4) | CS có kiểm soát, thuật ngữ hiếm | Chính xác theo kịch bản | Cấm thuật ngữ `reserved_b3`; speaker = ID giọng TTS |
 
@@ -272,11 +272,14 @@ Model có thể overfit theo 5 kiểu, mỗi kiểu cần một phép đo riêng
 
 | Thành phần | Tỉ trọng trong batch | Lý do |
 | --- | --- | --- |
-| CS thật (ViMedCSS train giảm tỉ trọng, `vss_cs` đã lọc đồng thuận, dữ liệu tự có) | 35–40% | Nguồn tín hiệu chính. `vss_cs` có nhãn giả nên trong `configs/train_mix.tsv` hiện nằm ở nhóm `synth_pseudo` |
-| CS tổng hợp (TTS, ghép) cho thuật ngữ hiếm | ≤ 10% | Phủ đuôi dài mà không để giọng TTS chi phối |
-| Replay tiếng Việt có nhãn người (vivos, Common Voice, dữ liệu call center của bạn) | 25–30% | Giữ năng lực gốc |
-| Replay tự chưng cất: audio tiếng Việt không nhãn, nhãn do chính Gipformer gốc sinh ra, chỉ giữ câu mà greedy và beam search cho kết quả giống hệt | 20–25% | Dữ liệu train gốc của Gipformer không công bố; dạy model FT lặp lại đúng hành vi cũ trên tiếng Việt là cách thay thế trực tiếp nhất |
-| Câu “dễ nhầm” (tiếng Việt gần âm thuật ngữ) | \~5% | Chống chèn bừa |
+| CS thật (`cs_real`: ViMedCSS train giảm tỉ trọng, dữ liệu tự có) | 35% | Nguồn tín hiệu chính |
+| CS audio thật, nhãn giả (`cs_pseudo`: `vss_cs` đã lọc đồng thuận + WER tiếng Việt) | 10% | Đa dạng giọng / domain hội thoại; nhãn máy nên tách khỏi `cs_real` |
+| CS tổng hợp (`synth`: TTS, ghép) cho thuật ngữ hiếm | 5% | Phủ đuôi dài mà không để giọng TTS chi phối |
+| Replay tiếng Việt có nhãn người (vivos, Common Voice, dữ liệu call center của bạn) | 25% | Giữ năng lực gốc |
+| Replay tự chưng cất: audio tiếng Việt không nhãn, nhãn do chính Gipformer gốc sinh ra, chỉ giữ câu mà greedy và beam search cho kết quả giống hệt | 20% | Dữ liệu train gốc của Gipformer không công bố; dạy model FT lặp lại đúng hành vi cũ trên tiếng Việt là cách thay thế trực tiếp nhất |
+| Câu “dễ nhầm” (tiếng Việt gần âm thuật ngữ) | 5% | Chống chèn bừa |
+
+Tỉ trọng mặc định nằm ở `configs/train_mix.tsv` (tổng = 1.00). `tools/mix_plan.py` kiểm ba việc: tổng tỉ trọng, phân bố domain dự kiến, và **trần domain 35% trên phần CS (`cs_real` + `cs_pseudo`)**; domain nào vượt trần (thường là medical, do ViMedCSS) thì cảnh báo.
 
 **Bổ sung cho bench v1** để đo được “vẫn tốt nhất trên general”:
 

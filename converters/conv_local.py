@@ -13,7 +13,7 @@ B5 chỉ nhận câu không có từ nào bị nghi là tiếng Anh. VietSuperSp
 train_vss / dev_vss (replay, chưng cất) chỉ giữ câu không có từ Anh (bỏ lọc bằng --keep-english).
 Câu có từ Anh của phần train VSS được ghi riêng ra vss_cs_candidates.jsonl:
   dataset = vss_cs, train_only = true; CHỈ dùng cho train, không bao giờ vào bench. Trong configs/train_mix.tsv,
-  vss_cs thuộc nhóm "tổng hợp / nhãn giả", không thuộc nhóm CS thật.
+  vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real.
   Câu rò rỉ với bench (--bench, mặc định chỉ xét split B1 B2 B3: speaker, source, text trùng; thuật ngữ reserved_b3
   trong --catalog) bị loại. Câu có từ Anh của phần dev bị bỏ (cùng video với dev_vss).
   Cần lọc thêm bằng tools/agreement_filter.py (đồng thuận với faster-whisper / Qwen3-ASR) trước khi dùng.

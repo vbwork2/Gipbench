@@ -445,11 +445,20 @@ def main():
         "--out", T / "pre_out_nohapax.jsonl")
     assert "p7" in [r["id"] for r in L(T / "pre_out_nohapax.jsonl")]  # --hapax-keep-frac 1: không lọc
     assert len(L(T / "pre_pilot.jsonl")) == 1 and po[0]["prefilter"]["en_frac"] <= 0.5
-    # --- Phase 0b T4: cấu hình trộn: vss_cs thuộc nhóm tổng hợp / nhãn giả, không thuộc CS thật
+    # --- Phase 0d T5: cấu hình trộn: vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
                                                    if not l.startswith("#")), delimiter="\t")}
-    assert "vss_cs" in mix["synth_pseudo"]["datasets"].split(",") and "vss_cs" not in mix["cs_real"]["datasets"]
+    assert mix["cs_pseudo"]["datasets"].split(",") == ["vss_cs"] and "vss_cs" not in mix["cs_real"]["datasets"]
+    assert "audio thật, nhãn giả" in mix["cs_pseudo"]["note"]
+    assert {k: float(v["weight"]) for k, v in mix.items()} == {"cs_real": 0.35, "cs_pseudo": 0.10, "synth": 0.05,
+                                                               "replay_human": 0.25, "distill": 0.20, "confusable": 0.05}
     assert abs(sum(float(r["weight"]) for r in mix.values()) - 1.0) < 1e-9
+    out_mp = run(G / "tools/mix_plan.py", "--manifest", raw / "vss2/vss_cs_candidates.jsonl", "--assume", "ViMedCSS:medical:24.3")
+    assert "**CẢNH BÁO:** domain medical (ViMedCSS) chiếm 77.8% phần CS (cs_real + cs_pseudo) > trần 35%" in out_mp, out_mp
+    assert "| cs_pseudo | 0.10 | vss_cs |" in out_mp and "| conversation | 22.2% |" in out_mp, out_mp
+    bad_mix = subprocess.run([sys.executable, str(G / "tools/mix_plan.py")], capture_output=True, text=True,
+                             env={**os.environ, "MIX_CS_REAL": "0.5"})
+    assert bad_mix.returncode == 1 and "tổng tỉ trọng = 1.1500" in bad_mix.stderr, bad_mix.stderr
     # --- Phase 0b T3: score.py --label-field (B3: số chính theo Spec, số phụ theo nhãn gốc)
     sb = T / "score_lf"
     sb.mkdir(parents=True, exist_ok=True)
