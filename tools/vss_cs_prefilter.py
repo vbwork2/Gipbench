@@ -11,7 +11,9 @@ Thứ tự các bước (mỗi bước báo số câu và số giờ còn lại 
      tiếng Anh nguyên câu / gần nguyên câu (lời bài hát, câu nhận dạng sai) trước khi tốn GPU;
   3. rò rỉ: speaker / source / text trùng bench (--bench, split --bench-splits B1 B2 B3) và thuật ngữ reserved_b3
      của --catalog (lib/leak.py, cùng luật với converter);
-  4. trần thuật ngữ --term-cap (50): mỗi thuật ngữ (span <en> sau chuẩn hoá) có mặt trong tối đa 50 câu. Câu được xét
+  4. bỏ câu mà MỌI thuật ngữ chỉ có trong đúng 1 câu của toàn bộ manifest đầu vào (thường là span nhận dạng sai:
+     pilot Phase 0c giữ được 7.7% so với 27.9% chung), nhưng giữ ngẫu nhiên --hapax-keep-frac (10%, --seed);
+  5. trần thuật ngữ --term-cap (50): mỗi thuật ngữ (span <en> sau chuẩn hoá) có mặt trong tối đa 50 câu. Câu được xét
      theo độ hiếm: câu có thuật ngữ hiếm nhất (ít câu nhất sau bước 3) trước, cùng độ hiếm thì thứ tự ngẫu nhiên
      (--seed). Câu được nhận khi MỌI thuật ngữ của nó còn dưới trần.
 --sample N: lấy ngẫu nhiên (--seed) N câu từ kết quả để chạy pilot, ghi ra --sample-out.
@@ -57,6 +59,8 @@ def main():
     ap.add_argument("--min-dur", type=float, default=1.0)
     ap.add_argument("--max-dur", type=float, default=20.0)
     ap.add_argument("--max-en-frac", type=float, default=0.5)
+    ap.add_argument("--hapax-keep-frac", type=float, default=0.10,
+                    help="tỉ lệ giữ lại (ngẫu nhiên, --seed) của câu mà mọi thuật ngữ chỉ có trong 1 câu; 1 = không lọc")
     ap.add_argument("--term-cap", type=int, default=50, help="0 = không đặt trần")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", required=True)
@@ -73,6 +77,8 @@ def main():
         guard = LeakGuard([], cat)
         bench_note = f"KHÔNG có --bench (chỉ kiểm reserved_b3: {len(guard.reserved)} thuật ngữ)"
     rows = read_jsonl(args.manifest)
+    n_input = len(rows)
+    freq_all = Counter(t for r in rows for t in en_frac_and_terms(r["text_tagged"], cat)[1])
     steps = [("vss_cs_candidates", len(rows), sum(float(r["duration"]) for r in rows) / 3600)]
     why = Counter()
 
@@ -102,6 +108,17 @@ def main():
         kept2.append(r)
         terms2.append(ts)
     rows, terms = step("rò rỉ B1–B3 + reserved_b3", kept2), terms2
+    hapax_note = ""
+    if args.hapax_keep_frac < 1.0:
+        # câu "hapax": mọi thuật ngữ chỉ có trong đúng 1 câu của TOÀN BỘ manifest đầu vào (thường là span nhận dạng sai)
+        hap = [i for i, ts in enumerate(terms) if ts and all(freq_all[t] == 1 for t in ts)]
+        keep_h = set(random.Random(args.seed).sample(hap, round(args.hapax_keep_frac * len(hap))))
+        hs = set(hap)
+        idx = [i for i in range(len(rows)) if i not in hs or i in keep_h]
+        hapax_note = (f"Câu mà mọi thuật ngữ chỉ có trong 1 câu (tính trên {n_input} câu đầu vào): {len(hap)} câu, "
+                      f"giữ ngẫu nhiên {len(keep_h)} ({args.hapax_keep_frac:.0%}, seed {args.seed}).")
+        rows = step(f"bỏ câu chỉ có thuật ngữ 1 lần (giữ {args.hapax_keep_frac:.0%})", [rows[i] for i in idx])
+        terms = [terms[i] for i in idx]
     used = freq = Counter()
     if args.term_cap:
         idx, used, freq = term_cap(rows, terms, args.term_cap, args.seed)
@@ -120,6 +137,8 @@ def main():
     md += [f"| {k / 10:.1f}–{(k + 1) / 10:.1f} | {fracs[k]} |" for k in range(10)]
     if why:
         md += ["", "Lý do rò rỉ:", "", "| Lý do | Số câu |", "| --- | --- |"] + [f"| {k} | {v} |" for k, v in why.most_common()]
+    if hapax_note:
+        md += ["", hapax_note]
     if args.term_cap:
         capped = [t for t, c in freq.items() if c > args.term_cap]
         md += ["", f"Trần thuật ngữ: {len(freq)} thuật ngữ khác nhau trước trần, {len(capped)} thuật ngữ vượt trần "

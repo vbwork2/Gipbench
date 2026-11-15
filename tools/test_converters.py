@@ -370,14 +370,19 @@ def main():
                 dict(base, id="p3", text_tagged="cái <en>zoom</en> hôm nay lag quá"),
                 dict(base, id="p4", text_tagged="vào <en>zoom</en> họp nha mọi người"),
                 dict(base, id="p5", text_tagged="bảng <en>kanban</en> trên <en>zoom</en> đó"),            # thuật ngữ hiếm -> ưu tiên
-                dict(base, id="p6", text_tagged="cụm <en>kubernetes</en> bên mình mới dựng")]             # reserved_b3 -> bỏ
+                dict(base, id="p6", text_tagged="cụm <en>kubernetes</en> bên mình mới dựng"),             # reserved_b3 -> bỏ
+                dict(base, id="p7", text_tagged="cái <en>blorptech</en> này lạ ghê")]                    # thuật ngữ 1 lần -> bỏ (giữ 10% của 1 = 0)
     pre_m = T / "pre_in.jsonl"
     pre_m.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in pre_rows), encoding="utf-8")
     out_p = run(G / "tools/vss_cs_prefilter.py", "--manifest", pre_m, "--catalog", cat, "--term-cap", "2",
                 "--out", T / "pre_out.jsonl", "--sample", "1", "--sample-out", T / "pre_pilot.jsonl")
     po = L(T / "pre_out.jsonl")
     assert len(po) == 2 and "p5" in [r["id"] for r in po] and all(r["id"] in ("p2", "p3", "p4", "p5") for r in po), po
-    assert "--max-en-frac 0.5: 5 câu" in out_p and "rò rỉ B1–B3 + reserved_b3: 4 câu" in out_p, out_p
+    assert "--max-en-frac 0.5: 6 câu" in out_p and "rò rỉ B1–B3 + reserved_b3: 5 câu" in out_p, out_p
+    assert "bỏ câu chỉ có thuật ngữ 1 lần (giữ 10%): 4 câu" in out_p, out_p
+    run(G / "tools/vss_cs_prefilter.py", "--manifest", pre_m, "--catalog", cat, "--term-cap", "0", "--hapax-keep-frac", "1",
+        "--out", T / "pre_out_nohapax.jsonl")
+    assert "p7" in [r["id"] for r in L(T / "pre_out_nohapax.jsonl")]  # --hapax-keep-frac 1: không lọc
     assert len(L(T / "pre_pilot.jsonl")) == 1 and po[0]["prefilter"]["en_frac"] <= 0.5
     # --- Phase 0b T4: cấu hình trộn: vss_cs thuộc nhóm tổng hợp / nhãn giả, không thuộc CS thật
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
