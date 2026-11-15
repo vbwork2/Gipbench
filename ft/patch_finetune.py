@@ -30,6 +30,36 @@ ARGS = '''
         default=[],
         help="Một hoặc nhiều CutSet valid",
     )
+
+    parser.add_argument(
+        "--mp-start-method",
+        type=str,
+        default="",
+        help="spawn / forkserver cho worker DataLoader (rỗng = mặc định fork). fork + model_avg float64 trên CPU "
+        "làm RAM worker phình dần (copy-on-write) khi tính fbank on-the-fly",
+    )
+
+    parser.add_argument(
+        "--freeze-modules",
+        type=str,
+        default="",
+        help="tiền tố tên tham số cần đóng băng, ngăn bằng dấu phẩy "
+        "(vd encoder_embed.,encoder.encoders.0.,encoder.encoders.1.)",
+    )
+'''
+
+FREEZE = '''    # --- gipbench: đóng băng một phần model (ScaledAdam coi grad None = 0 nên tham số đứng yên)
+    if params.freeze_modules:
+        _pref = [x.strip() for x in params.freeze_modules.split(",") if x.strip()]
+        _nf = _nt = 0
+        for _name, _p in model.named_parameters():
+            _nt += _p.numel()
+            if any(_name.startswith(x) for x in _pref):
+                _p.requires_grad_(False)
+                _nf += _p.numel()
+        if _nf == 0:
+            raise ValueError(f"--freeze-modules {_pref}: không khớp tham số nào")
+        logging.info(f"freeze {_pref}: {_nf / 1e6:.2f}M / {_nt / 1e6:.2f}M tham số")
 '''
 
 TRAIN = '''    # --- gipbench: nạp dữ liệu fine-tune của bạn thay cho GigaSpeech/LibriSpeech
@@ -76,6 +106,27 @@ def main():
     if not m:
         sys.exit("Không thấy khối nạp valid cuts — cần sửa tay (xem Runbook).")
     s = s[:m.start()] + "\n" + VALID + s[m.end():]
+
+    # on-the-fly fbank: cut chưa có features -> num_frames = None; ước tính từ duration (frame shift 10 ms)
+    nf_old = "        T = ((c.num_frames - 7) // 2 + 1) // 2\n"
+    if nf_old not in s:
+        sys.exit("Không thấy dòng T = ((c.num_frames - 7) ...) — cần sửa tay (xem Runbook).")
+    s = s.replace(nf_old, "        _nf = c.num_frames if c.num_frames is not None else int(round(c.duration * 100))\n"
+                          "        T = ((_nf - 7) // 2 + 1) // 2\n", 1)
+
+    mp_anchor = "    args = parser.parse_args()\n"
+    i = s.find("def main():")
+    j = s.find(mp_anchor, i)
+    if i < 0 or j < 0:
+        sys.exit("Không thấy main() / parser.parse_args() — cần sửa tay phần --mp-start-method (xem Runbook).")
+    j += len(mp_anchor)
+    s = (s[:j] + "    if args.mp_start_method:  # gipbench\n"
+         "        torch.multiprocessing.set_start_method(args.mp_start_method, force=True)\n" + s[j:])
+
+    anchor = "    model.to(device)\n    if world_size > 1:\n"
+    if anchor not in s:
+        sys.exit("Không thấy chỗ model.to(device) — cần sửa tay phần --freeze-modules (xem Runbook).")
+    s = s.replace(anchor, FREEZE + anchor, 1)
 
     dst = src.with_name("finetune_cs.py")
     dst.write_text(s, encoding="utf-8")

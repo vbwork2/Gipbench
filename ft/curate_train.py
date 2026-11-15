@@ -88,14 +88,15 @@ def pick_diverse(cands, cap, rnd):
     return picked
 
 
-def downsample(rows, key, cap_share, rnd):
+def downsample(rows, key, cap_share, rnd, exempt=()):
     """Giữ mỗi nhóm key(r) <= cap_share * tổng giờ (tổng tính SAU khi cắt: giải đúng cho tập nhóm vượt trần).
+    Nhóm trong `exempt` (vd domain other = chưa biết domain) không bị cắt nhưng vẫn tính vào tổng.
     Trả về (rows giữ, {nhóm: (giờ trước, giờ sau)}, cảnh báo)."""
     h = Counter()
     for r in rows:
         h[key(r)] += float(r["duration"]) / 3600
     total = sum(h.values())
-    over = {g for g, v in h.items() if v > cap_share * total + 1e-12}
+    over = {g for g, v in h.items() if v > cap_share * total + 1e-12 and g not in exempt}
     warn = ""
     for _ in range(len(h) + 1):  # tìm tập nhóm vượt trần ổn định
         if not over:
@@ -106,7 +107,7 @@ def downsample(rows, key, cap_share, rnd):
             break
         others = sum(v for g, v in h.items() if g not in over)
         x = cap_share * others / (1 - cap_share * len(over))
-        new_over = {g for g, v in h.items() if v > x + 1e-12}
+        new_over = {g for g, v in h.items() if v > x + 1e-12 and g not in exempt}
         if new_over == over:
             break
         over = new_over
@@ -164,6 +165,8 @@ def main():
     ap.add_argument("--min-speakers-per-term", type=int, default=3, help="chỉ báo cáo")
     ap.add_argument("--max-speaker-share", type=float, default=0.02, help="0 = tắt")
     ap.add_argument("--max-domain-share", type=float, default=0.35, help="0 = tắt")
+    ap.add_argument("--cap-exempt", nargs="*", default=[],
+                    help="domain không bị cắt bởi --max-domain-share (vd other = chưa biết domain, như tools/mix_plan.py)")
     ap.add_argument("--max-synthetic-share", type=float, default=0.2, help="0 = tắt")
     add_block_arg(ap)
     args = ap.parse_args()
@@ -244,7 +247,7 @@ def main():
         if what == "synthetic":
             keep_cs, cut, w = cap_synthetic(cs, share, rnd)
         else:
-            keep_cs, cut, w = downsample(cs, key, share, rnd)
+            keep_cs, cut, w = downsample(cs, key, share, rnd, args.cap_exempt if what == "domain" else ())
         rows = apply_cs(keep_cs)
         step(f"{flag} {share:g}")
         shown = list(cut.items())[:10]

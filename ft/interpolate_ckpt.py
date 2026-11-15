@@ -15,9 +15,9 @@ from pathlib import Path
 import torch
 
 
-def state(path):
+def state(path, keys=("model_avg", "model")):
     ck = torch.load(path, map_location="cpu", weights_only=False)
-    for key in ("model_avg", "model"):  # ưu tiên bản trung bình nếu có
+    for key in keys:  # mặc định ưu tiên bản trung bình nếu có
         if isinstance(ck, dict) and key in ck and isinstance(ck[key], dict):
             return {k[7:] if k.startswith("module.") else k: v for k, v in ck[key].items()}
     return ck
@@ -30,8 +30,12 @@ def main():
     ap.add_argument("--alphas", type=float, nargs="+", default=[0.3, 0.5, 0.7])
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--epoch", type=int, default=1, help="số epoch dùng trong tên file xuất")
+    ap.add_argument("--ft-key", choices=["auto", "model", "model_avg"], default="auto",
+                    help="khoá state dict của checkpoint FT (auto: model_avg nếu có, không thì model). Dùng model để "
+                         "khớp với export-onnx --use-averaged-model 0")
     args = ap.parse_args()
-    b, f = state(args.base), state(args.ft)
+    b = state(args.base)
+    f = state(args.ft, ("model_avg", "model") if args.ft_key == "auto" else (args.ft_key,))
     miss = [k for k in f if k not in b]
     bad = [k for k in f if k in b and hasattr(f[k], "shape") and b[k].shape != f[k].shape]
     if bad:
