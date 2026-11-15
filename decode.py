@@ -60,6 +60,8 @@ def main():
                     help="bỏ thuật ngữ reserved_b3 khỏi danh sách (mặc định giữ: biasing được phép biết danh sách thuật ngữ lúc decode)")
     ap.add_argument("--hotwords-score", type=float, default=1.5)
     ap.add_argument("--case", choices=["upper", "lower"], default="upper", help="kiểu chữ của tokenizer (Gipformer: upper)")
+    ap.add_argument("--save-logprobs", action="store_true",
+                    help="ghi thêm n_tokens, logprob_mean, logprob_min (từ ys_log_probs của sherpa-onnx) vào hyps.jsonl")
     args = ap.parse_args()
 
     import numpy as np
@@ -109,7 +111,12 @@ def main():
             rec.decode_streams(streams)
             proc_sec += time.perf_counter() - t0
             for r, s in zip(chunk, streams):
-                f.write(json.dumps({"id": r["id"], "hyp": s.result.text}, ensure_ascii=False) + "\n")
+                rec_out = {"id": r["id"], "hyp": s.result.text}
+                if args.save_logprobs:  # ys_log_probs của sherpa-onnx (rỗng nếu model / cách giải mã không trả)
+                    lp = list(getattr(s.result, "ys_log_probs", []) or [])
+                    rec_out.update(n_tokens=len(lp), logprob_mean=(sum(lp) / len(lp)) if lp else None,
+                                   logprob_min=min(lp) if lp else None)
+                f.write(json.dumps(rec_out, ensure_ascii=False) + "\n")
             print(f"\r{min(i + args.batch, len(rows))}/{len(rows)}", end="", flush=True)
     summ = {"system": args.system, "audio_sec": audio_sec, "proc_sec": proc_sec, "rtf": proc_sec / max(audio_sec, 1e-9),
             "threads": args.threads, "config": {k: v for k, v in vars(args).items()}, "model_files": {k: kw[k] for k in ("encoder", "decoder", "joiner")}}

@@ -567,6 +567,28 @@ def main():
     rv = list(csv.DictReader(open(cf / "out/b5_confusable_review.csv", encoding="utf-8-sig")))
     from converters.common import REVIEW_COLS
     assert len(rv) == len(cb) and list(rv[0]) == REVIEW_COLS and "phải = 0" in out_cf
+    # --- Phase 1 T1.2: ft/make_distill.py — chỉ giữ câu greedy == beam, lọc độ dài / từ mỗi giây / logprob
+    ds = T / "distill"
+    ds.mkdir(parents=True, exist_ok=True)
+    d_rows = [("d1", 3.0, "HÔM NAY TRỜI ĐẸP", "HÔM NAY TRỜI ĐẸP", -0.1),      # giữ
+              ("d2", 3.0, "ANH ĐI LÀM", "ANH ĐI CHƠI", -0.1),                # greedy khác beam
+              ("d3", 3.0, "", "", None),                                     # hyp rỗng
+              ("d4", 0.5, "ỪM", "ỪM", -0.1),                                 # quá ngắn
+              ("d5", 1.5, " ".join(["MỘT"] * 20), " ".join(["MỘT"] * 20), -0.1),  # 13 từ/giây: ảo
+              ("d6", 3.0, "CHÀO CÁC BẠN NHÉ", "CHÀO CÁC BẠN NHÉ", -3.0)]      # logprob thấp
+    (ds / "m.jsonl").write_text("".join(json.dumps({"id": i, "split": "train", "audio": f"a/{i}.wav", "duration": d,
+                                                     "text": "nhãn cũ", "speaker": "s", "source": "x", "dataset": "vivos:train"},
+                                                    ensure_ascii=False) + "\n" for i, d, *_ in d_rows), encoding="utf-8")
+    for name, col in (("g", 2), ("b", 3)):
+        (ds / f"{name}.jsonl").write_text("".join(json.dumps({"id": r[0], "hyp": r[col], "logprob_mean": r[4]},
+                                                             ensure_ascii=False) + "\n" for r in d_rows), encoding="utf-8")
+    out_d = run(G / "ft/make_distill.py", "--manifest", ds / "m.jsonl", "--greedy-hyps", ds / "g.jsonl",
+                "--beam-hyps", ds / "b.jsonl", "--min-logprob-mean", "-1.0", "--out", ds / "out.jsonl")
+    dk = L(ds / "out.jsonl")
+    assert [r["id"] for r in dk] == ["d1"] and dk[0]["text"] == "hôm nay trời đẹp" and dk[0]["distill"], dk
+    assert dk[0]["dataset"] == "distill:vivos" and dk[0]["label_source"].startswith("distill:")
+    for k in ("greedy khác beam: 1", "hyp rỗng: 1", "độ dài ngoài 1–20 s: 1", "từ/giây ngoài 1–6: 1", "logprob_mean < -1: 1"):
+        assert k in out_d, (k, out_d)
     # --- Phase 0d T5: cấu hình trộn: vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real
     mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/train_mix.tsv", encoding="utf-8")
                                                    if not l.startswith("#")), delimiter="\t")}
