@@ -12,7 +12,12 @@
 --accept:
   reviewed (mặc định)  chỉ nhận câu người duyệt ghi decision = ok hoặc fix; B5 không có cờ thì nhận thẳng
   catalog              thêm câu chưa duyệt mà mọi span đều khớp catalog và không có cờ
+  trusted-text         thêm câu trusted_text (G-Group, consensus agreed: text do người gõ) khi mọi thuật ngữ còn cờ đã
+                       được chốt trong --term-decisions (configs/term_decisions.tsv), không còn cờ chặn (vd numbers_disagree)
+                       và nhãn đã theo quyết định hiện tại (xem lib/term_decisions.py; sửa file quyết định thì chạy lại
+                       converter). review = "term_decisions". Câu chứa thuật ngữ chưa chốt thì chưa vào bench.
   all                  nhận hết — CHỈ để chạy thử pipeline (bench nháp, không dùng để kết luận)
+--draft-splits B3 ...: nhận câu CHƯA duyệt của các split này (review = "draft_unreviewed") — chỉ cho bench nháp.
   Dòng có review_required = true (vd consensus disputed / pending) chỉ được nhận khi decision = ok / fix, ở mọi chế độ.
 Phiếu duyệt: decision = ok | fix (dùng text_tagged_fixed) | drop; viet_levels = "strong,mid" theo thứ tự span;
 reading_note = cách đọc nghe được của từ mơ hồ (được chép sang bench); region / gender điền nếu nghe ra.
@@ -29,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lib.manifest import read_jsonl  # noqa: E402
+from lib.term_decisions import load_term_decisions, term_status  # noqa: E402
 from lib.textnorm import basic_tokens, tagged_well_formed  # noqa: E402
 
 
@@ -67,7 +73,10 @@ def main():
     ap.add_argument("--reviews", nargs="*", default=[])
     ap.add_argument("--catalogs", nargs="*", default=[])
     ap.add_argument("--catalog-out", default="configs/catalog_v0.tsv")
-    ap.add_argument("--accept", choices=["reviewed", "catalog", "all"], default="reviewed")
+    ap.add_argument("--accept", choices=["reviewed", "catalog", "trusted-text", "all"], default="reviewed")
+    ap.add_argument("--term-decisions", default=None, help="mặc định configs/term_decisions.tsv (cho --accept trusted-text)")
+    ap.add_argument("--draft-splits", nargs="*", default=[], help="split nhận cả câu chưa duyệt (bench nháp)")
+    ap.add_argument("--pending-out", help="ghi thuật ngữ còn chờ (trusted-text) ra TSV: term, n_câu, giờ")
     ap.add_argument("--max-per-source", type=int, default=0, help="trần số câu mỗi source (0 = không giới hạn)")
     ap.add_argument("--out", default="data/bench_v0.jsonl")
     ap.add_argument("--seed", type=int, default=0)
@@ -82,6 +91,8 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     kept, why = [], Counter()
     seen = set()
+    tdec = load_term_decisions(args.term_decisions) if args.accept == "trusted-text" else {}
+    pend = defaultdict(lambda: [0, 0.0])
     for cp in args.candidates:
         for r in read_jsonl(cp):
             if r["id"] in seen:
@@ -111,6 +122,25 @@ def main():
                 continue
             elif clean_b5:
                 why["nhận: B5 không có từ Anh"] += 1
+            elif args.accept == "trusted-text" and r.get("trusted_text"):
+                st = term_status(r, tdec)
+                if st["stale"]:
+                    why[f"chờ: nhãn cũ, chạy lại converter ({r['split']})"] += 1
+                    continue
+                if st["blocking"]:
+                    why[f"chờ duyệt câu: cờ không theo thuật ngữ ({r['split']})"] += 1
+                    continue
+                if st["pending"]:
+                    why[f"chờ: thuật ngữ chưa chốt ({r['split']})"] += 1
+                    for t in st["pending"]:
+                        pend[t][0] += 1
+                        pend[t][1] += float(r["duration"])
+                    continue
+                why[f"nhận: trusted_text, thuật ngữ đã chốt ({r['split']})"] += 1
+                dec = "term_decisions"
+            elif r["split"] in args.draft_splits:
+                why[f"nhận: CHƯA duyệt ({r['split']}, --draft-splits)"] += 1
+                dec = "draft_unreviewed"
             elif args.accept == "all" or (args.accept == "catalog" and auto_ok):
                 why[f"nhận: CHƯA duyệt ({r['split']}, --accept {args.accept})"] += 1
             else:
@@ -152,7 +182,13 @@ def main():
         print(f"  {v:6d}  {k}")
     if args.catalogs:
         merge_catalogs(args.catalogs, args.catalog_out)
-    unrev = sum(1 for r in kept if r["review"] == "none" and r["split"] != "B5")
+    if args.pending_out:
+        with open(args.pending_out, "w", encoding="utf-8") as f:
+            f.write("term\tn_sentences\thours\n")
+            for t, (c, d) in sorted(pend.items(), key=lambda x: -x[1][0]):
+                f.write(f"{t}\t{c}\t{d / 3600:.3f}\n")
+        print(f"Thuật ngữ còn chờ: {len(pend)} -> {args.pending_out}")
+    unrev = sum(1 for r in kept if r["review"] in ("none", "draft_unreviewed") and r["split"] != "B5")
     if unrev:
         print(f"LƯU Ý: {unrev} câu B1–B4 chưa được người duyệt — bench này chỉ là bản nháp.")
 

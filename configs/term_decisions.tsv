@@ -1,0 +1,16 @@
+# Quyết định gắn tag theo thuật ngữ (decisions §12.4). Xem lib/term_decisions.py.
+# decision: en | vi | drop_tag | (trống = chưa chốt). Sửa file này xong thì chạy lại converter.
+# Dòng do người dùng chốt ghi 'người dùng chốt'; dòng nhập từ reports/term_decisions_ask.csv ghi 'ask'.
+term	decision	note
+sjc	vi	người dùng chốt 15/11 (§12.3): đọc kiểu Việt, có trong vi_abbrev
+tv	vi	người dùng chốt 15/11 (§12.3): đọc kiểu Việt, có trong vi_abbrev
+vtv	vi	người dùng chốt 15/11 (§12.3): đọc kiểu Việt, có trong vi_abbrev
+htv	vi	người dùng chốt 15/11 (§12.3): đọc kiểu Việt, có trong vi_abbrev
+sctv	vi	người dùng chốt 15/11 (§12.3): đọc kiểu Việt, có trong vi_abbrev
+sms	en	người dùng chốt 15/11 (§12.3)
+ok	en	người dùng chốt 15/11 (§12.3)
+email	en	người dùng chốt 15/11 (§12.3)
+check	en	người dùng chốt 15/11 (§12.3)
+zalo	en	người dùng chốt 15/11 (§12.3)
+app	en	người dùng chốt 15/11 (§12.3)
+online	en	người dùng chốt 15/11 (§12.3)

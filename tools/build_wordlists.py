@@ -22,6 +22,8 @@ vi_abbrev, luật cho từng nhóm:
   viết tắt        mục Wiktionary có dạng đầy đủ toàn tiếng Việt, không có định nghĩa "abbreviation of|en"
 Ứng viên bị LOẠI tự động (ghi lại dưới dạng "#-" kèm lý do, người duyệt có thể bật lại):
   trùng catalog (EN), trùng từ tiếng Anh phổ biến (google-10000), hoặc đã là âm tiết tiếng Việt (không cần).
+Luật text không phải tài chính (--nonfin-text, decisions §12.3): mã CHỈ thuộc nhóm "mã chứng khoán" (không thêm tay)
+gặp >= --nonfin-min (20) lần trong các text đó (VSS, VIVOS) thì bị loại, vd tot, fir (thực ra là từ Anh / nhãn giả).
 Quyết định tay: --project-abbrev (mặc định configs/vi_abbrev_project.tsv), áp SAU các nguồn: add (thắng luật
 google-10000 / âm tiết, vd tp) và exclude (vd cdn). Luật catalog áp sau cùng: mục nào là term EN trong catalog đều bị
 loại, danh sách in ra màn hình.
@@ -30,7 +32,7 @@ vi_loanwords, hai loại:
   vi_spelling   mục một chữ trong Viet74K, không phải âm tiết tiếng Việt đơn, không có trong words_alpha, không trùng
                 google-10000 (axit, canxi, vaccin): chính tả Việt -> không EN, áp cho mọi dataset
   same_surface  thuật ngữ ViMedCSS (cs_terms_list, mặt chữ khớp trong câu) có trong Viet74K và trùng mặt chữ tiếng Anh
-                (vitamin, protein, insulin): CHỜ DUYỆT, mặc định không EN, chỉ áp trong conv_vimedcss
+                (vitamin, protein, insulin): không EN ở MỌI bộ (decisions §12)
   --exclude TỪ:LÝ_DO loại tay một mục (vẫn ghi lại thành dòng '#-' kèm lý do)
 """
 import argparse
@@ -128,6 +130,33 @@ def from_wiktionary(path):
                 break
 
 
+def nonfin_counts(paths, toks):
+    """Đếm token (trong toks) trong text không phải tài chính: .json (list / dict bản ghi có 'text', như VSS),
+    .jsonl (manifest: 'text' hoặc 'text_tagged'), .txt (mỗi dòng '<id> <text>', như prompts của VIVOS)."""
+    from lib.textnorm import basic_tokens
+    cnt = Counter()
+
+    def add(t):
+        for w in basic_tokens(t or ""):
+            if w in toks:
+                cnt[w] += 1
+    for p in paths:
+        p = Path(p)
+        if p.suffix == ".json":
+            d = json.loads(p.read_text(encoding="utf-8"))
+            for x in (d if isinstance(d, list) else d.values()):
+                add(x.get("text") if isinstance(x, dict) else str(x))
+        elif p.suffix == ".jsonl":
+            for line in open(p, encoding="utf-8"):
+                if line.strip():
+                    x = json.loads(line)
+                    add(x.get("text") or re.sub(r"</?en>", "", x.get("text_tagged", "")))
+        else:
+            for line in open(p, encoding="utf-8"):
+                add(line.split(" ", 1)[1] if " " in line.strip() else "")
+    return cnt
+
+
 def build_abbrev(args, cat_keys, g10k):
     entries, dropped = OrderedDict(), OrderedDict()
     gens = [from_tickers(Path(args.src) / "vietcap_symbols.json", set(args.boards)),
@@ -150,6 +179,7 @@ def build_abbrev(args, cat_keys, g10k):
             else:
                 book[tok] = {"group": [group], "full": [full], "src": [src], "reason": reason}
     # quyết định tay (configs/vi_abbrev_project.tsv): add thắng luật google-10000 / âm tiết, KHÔNG thắng luật catalog
+    added = set()
     if args.project_abbrev and Path(args.project_abbrev).exists():
         with open(args.project_abbrev, encoding="utf-8") as f:
             for p in csv.DictReader((l for l in f if not l.startswith("#")), delimiter="\t"):
@@ -159,11 +189,21 @@ def build_abbrev(args, cat_keys, g10k):
                     e["reason"] = f"loại tay: {p['source']}"
                     dropped[tok] = e
                     continue
+                added.add(tok)
                 for k, v in (("group", p["group"]), ("full", p["full"]), ("src", p["source"])):
                     if v and v not in e[k]:
                         e[k].insert(0, v)
                 e["reason"] = "trùng catalog (EN)" if tok in cat_keys else ""
                 (dropped if e["reason"] else entries)[tok] = e
+    if args.nonfin_text:
+        only_stock = {k for k, e in entries.items() if e["group"] == ["mã chứng khoán"] and k not in added}
+        cnt = nonfin_counts(args.nonfin_text, only_stock)
+        nf = [(k, cnt[k]) for k in sorted(only_stock, key=lambda k: -cnt[k]) if cnt[k] >= args.nonfin_min]
+        for k, c in nf:
+            e = entries.pop(k)
+            e["reason"] = f"mã chứng khoán gặp {c} lần trong text không phải tài chính (>= {args.nonfin_min})"
+            dropped[k] = e
+        print(f"  luật text không phải tài chính: {len(nf)} mã bị loại: " + ", ".join(f"{k} ({c})" for k, c in nf))
     cat_drops = sorted(k for k, e in dropped.items() if e["reason"] == "trùng catalog (EN)")
     print(f"  luật catalog: {len(cat_drops)} mục vi_abbrev trùng term EN trong catalog bị loại: {', '.join(cat_drops)}")
     hdr = ["# vi_abbrev.txt — viết tắt / mã thường đọc kiểu Việt: auto_tag KHÔNG gắn <en> (trừ khi có trong catalog).",
@@ -206,7 +246,7 @@ def build_loan(args, cat_keys, g10k, exclude):
             for r in csv.DictReader(open(f, encoding="utf-8")):
                 terms = [t.strip() for t in (r.get("cs_terms_list") or "").split(";") if t.strip()]
                 # chỉ thuật ngữ do dataset gắn (cs_terms_list), không lấy span heuristic (video, ok, top...)
-                tg = auto_tag(r["segment_text"], None, terms, vi_words=set(), heuristic=False)
+                tg = auto_tag(r["segment_text"], None, terms, vi_words=set(), heuristic=False, term_dec={})
                 for s in tg["spans"]:
                     surf[s] += 1
     for s, c in surf.most_common():
@@ -238,6 +278,9 @@ def main():
     ap.add_argument("--boards", nargs="+", default=["HSX", "HNX"])
     ap.add_argument("--project-abbrev", default=str(Path(__file__).resolve().parents[1] / "configs/vi_abbrev_project.tsv"),
                     help="quyết định tay cho vi_abbrev (add / exclude); '' = bỏ qua")
+    ap.add_argument("--nonfin-text", nargs="*", default=[],
+                    help="text không phải tài chính (VSS train.json/dev.json, VIVOS prompts) cho luật loại mã chứng khoán")
+    ap.add_argument("--nonfin-min", type=int, default=20)
     ap.add_argument("--vimedcss-meta", help="thư mục *_set.csv của ViMedCSS (cho same_surface)")
     ap.add_argument("--out-abbrev")
     ap.add_argument("--out-loan")

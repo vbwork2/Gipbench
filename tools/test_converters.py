@@ -123,6 +123,7 @@ def main():
         return [json.loads(l) for l in open(p, encoding="utf-8")]
     b1 = L(raw / "ggroup/b1_candidates.jsonl")
     assert len(b1) == 5 and any("<en>connect metamask</en>" in r["text_tagged"] for r in b1), b1
+    assert all(r["trusted_text"] is True for r in b1 + L(raw / "ggroup/b5_ggroup.jsonl"))  # G-Group: text do người gõ
     assert len(L(raw / "ggroup/b5_ggroup.jsonl")) == 1
     b3 = L(raw / "vimedcss/b3_candidates.jsonl")
     assert "<en>leukotriene</en>" in b3[0]["text_tagged"] and "term_not_found" in b3[1]["auto_tag"]["flags"]
@@ -314,6 +315,17 @@ def main():
     assert any(l.startswith("vn\t") and l.endswith("quy ước dự án, đọc kiểu Việt") for l in abp_lines)
     assert any(l.startswith("#-shs\t") and "loại tay: bỏ theo quyết định dự án" in l for l in abp_lines)
     assert any(l.startswith("#-api\t") and "catalog" in l for l in abp_lines) and "luật catalog: 1 mục" in out_ab, out_ab
+    # §12.3: mã CHỈ thuộc nhóm mã chứng khoán, gặp >= --nonfin-min lần trong text không phải tài chính -> loại
+    (lex / "nonfin.txt").write_text("".join(f"S{i} GAS PLX VN FPT\n" for i in range(3)) + "S9 PLX\n", encoding="utf-8")
+    (lex / "nonfin.json").write_text(json.dumps([{"text": "plx shs"}]), encoding="utf-8")
+    out_nf = run(G / "tools/build_wordlists.py", "--src", lex, "--catalog", cat, "--out-abbrev", T / "vi_abbrev_nf.txt",
+                 "--project-abbrev", proj, "--nonfin-text", lex / "nonfin.txt", lex / "nonfin.json", "--nonfin-min", "3")
+    abn = load_vi_words([T / "vi_abbrev_nf.txt"])
+    # plx 5 lần, fpt 3 lần -> loại; vn (thêm tay) và shs (đã exclude) không xét; gas đã bị loại trước đó
+    assert abn == abp - {"plx", "fpt"}, sorted(abn)
+    assert "2 mã bị loại: plx (5), fpt (3)" in out_nf, out_nf
+    assert any(l.startswith("#-plx\t") and "gặp 5 lần trong text không phải tài chính" in l
+               for l in (T / "vi_abbrev_nf.txt").read_text(encoding="utf-8").splitlines())
     # --- Phase 0b T3: vi_loanwords — vi_spelling + same_surface (mọi bộ, §12) / --exclude / google-10000
     (lex / "Viet74K.txt").write_text("axit\ncanxi\nvitamin\niot\nmega\ncon\nHà Nội\na-xít\n", encoding="utf-8")
     (lex / "words_alpha.txt").write_text("vitamin\nlipid\n", encoding="utf-8")
@@ -624,6 +636,7 @@ def main():
     assert json.loads((sb / "text_tagged_orig/summary.json").read_text(encoding="utf-8"))["groups"]["B1"]["cs_wer"] == 0.0
     assert len(list(csv.reader(open(T / "reports/eval_spotcheck.csv", encoding="utf-8-sig")))) == 3
     test_consensus(cat, L)
+    test_term_decisions(cat, L)
     print("TẤT CẢ KIỂM THỬ CONVERTER ĐẠT")
 
 
@@ -761,6 +774,114 @@ def test_consensus(cat, L):
     sm = json.loads((sc / "summary.json").read_text(encoding="utf-8"))["groups"]
     assert sm["B2"]["boot_units"] == 2 and sm["B5"]["boot_units"] == 2, sm  # 2 cụm, không phải số phiên
     assert {json.loads(l)["boot_unit"] for l in open(sc / "utt_scores.jsonl", encoding="utf-8")} == {"consensus:spk000", "consensus:spk001"}
+
+
+
+def test_term_decisions(cat, L):
+    """§12.4: chốt tag theo thuật ngữ — auto_tag theo configs/term_decisions.tsv, lib.term_decisions (chờ / chặn / cũ),
+    build_bench_v0 --accept trusted-text (+ --pending-out, --draft-splits), tools/term_decisions.py ask / import."""
+    from converters.common import auto_tag
+    from converters.conv_consensus import tag_text
+    from lib.term_decisions import load_term_decisions, term_status, write_term_rows
+    from lib.textnorm import Catalog
+    cat_obj = Catalog.load(str(cat))
+    # auto_tag: en thắng vi_words, vi thắng catalog; cụm nhiều từ vi không sinh cờ vi_word từng từ
+    td = {"sjc": "vi", "test": "en", "zalo": "vi", "mr tanaka": "drop_tag"}
+    t = auto_tag("giá vàng sjc và chạy test trên zalo", cat_obj, vi_words={"sjc", "test"}, term_dec=td)
+    assert t["spans"] == ["test"] and "vi_word:sjc" in t["flags"] and "vi_word:zalo" in t["flags"], t
+    assert auto_tag("giá vàng sjc", cat_obj, vi_words=set(), term_dec={})["spans"] == ["sjc"]  # {} = tắt
+    # quyết định en không tách cụm: ghép với từ Anh liền kề, không sinh cờ abbr_reading cho phần còn lại
+    t3 = auto_tag("đặt stop loss ở new york", None, vi_words=set(), term_dec={"stop": "en", "new": "en"})
+    assert t3["spans"] == ["stop loss", "new york"] and not any(f.startswith("abbr_reading") for f in t3["flags"]), t3
+    t4 = auto_tag("mở crm nhé", None, vi_words=set(), term_dec={"crm": "en"})
+    assert t4["spans"] == ["crm"] and t4["span_kinds"] == ["D"] and t4["flags"] == [], t4
+    t2 = auto_tag("gặp mr tanaka nhé", None, vi_words=set(), term_dec=td)
+    assert t2["spans"] == [] and not any(f.startswith("vi_word") for f in t2["flags"]), t2
+    # consensus tag_text: cụm tên có decision vi / en
+    names = {"sam": "given", "kim": "surname", "lucas": "given"}
+    assert "<en>" not in tag_text("gọi lucas nhé", cat_obj, set(), names, set(), {"lucas": "vi"})[0]
+    tg, _, tcat, fl = tag_text("gọi sam kim nhé", cat_obj, set(), names, set(), {"sam kim": "en"})
+    assert tg == "gọi <en>sam kim</en> nhé" and tcat == {"sam kim": "name"}, (tg, tcat, fl)
+    assert "maybe_name:sam kim" in tag_text("gọi sam kim nhé", cat_obj, set(), names, set(), {})[3]
+    # term_status
+    r_ok = {"text_tagged": "mở <en>crm</en> nhé", "auto_tag": {"flags": ["abbr_reading:crm", "heuristic_span"]}}
+    assert term_status(r_ok, {})["pending"] == ["crm"]
+    assert term_status(r_ok, {"crm": "en"}) == {"pending": [], "blocking": [], "stale": []}
+    assert term_status(r_ok, {"crm": "vi"})["stale"] == ["crm"]  # quyết định vi mà nhãn còn <en>: phải chạy lại converter
+    r_vw = {"text_tagged": "co giãn tốt", "auto_tag": {"flags": ["vi_word:co", "vi_word:fpt"]}}
+    assert term_status(r_vw, {})["pending"] == ["fpt"]  # 'co' là âm tiết Việt hợp lệ: không cần chốt
+    assert term_status(r_vw, {"fpt": "en"})["stale"] == ["fpt"]
+    r_amb = {"text_tagged": "bật <en>snap to grid</en>", "auto_tag": {"flags": ["ambiguous_joined", "heuristic_span"]}}
+    assert term_status(r_amb, {})["pending"] == ["snap to grid"]
+    r_blk = {"text_tagged": "chuyển ba trăm", "auto_tag": {"flags": ["numbers_disagree"]}}
+    assert term_status(r_blk, {})["blocking"] == ["numbers_disagree"]
+    # file quyết định: ghi / đọc / decision lạ
+    D = T / "term_dec"
+    shutil.rmtree(D, ignore_errors=True)
+    D.mkdir(parents=True)
+    write_term_rows(D / "td.tsv", [{"term": "CRM", "decision": "en", "note": "x"}, {"term": "ai", "decision": "", "note": ""}])
+    assert load_term_decisions(D / "td.tsv") == {"crm": "en"} and load_term_decisions("") == {}
+    (D / "bad.tsv").write_text("term\tdecision\tnote\nabc\tyes\t\n", encoding="utf-8")
+    try:
+        load_term_decisions(D / "bad.tsv")
+        raise AssertionError("decision lạ phải báo lỗi")
+    except ValueError:
+        pass
+    # build_bench_v0 --accept trusted-text
+    (D / "a.wav").write_bytes(wav_bytes(1.0))
+
+    def row(i, split, text, flags, trusted=True, **kw):
+        return dict({"id": i, "split": split, "audio": "a.wav", "duration": 1.0, "speaker": i, "source": i,
+                     "domain": "tech", "dataset": "x", "text_tagged": text, "_audio_path": str(D / "a.wav"),
+                     "auto_tag": {"confidence": "heuristic" if "<en>" in text else "none", "flags": flags}},
+                    **({"trusted_text": True} if trusted else {}), **kw)
+    rows = [row("t_ok", "B1", "mở <en>crm</en> nhé", ["abbr_reading:crm", "heuristic_span"]),
+            row("t_clear", "B1", "học <en>deep learning</en>", ["heuristic_span"]),
+            row("t_pend", "B1", "mở <en>xyz</en> nhé", ["abbr_reading:xyz", "heuristic_span"]),
+            row("t_stale", "B2", "giá <en>sjc</en>", ["abbr_reading:sjc", "heuristic_span"]),
+            row("t_blk", "B5", "chuyển ba trăm", ["numbers_disagree"]),
+            row("t_b5", "B5", "co giãn tốt", ["vi_word:co"]),
+            row("u_b1", "B1", "mở <en>crm</en>", ["abbr_reading:crm", "heuristic_span"], trusted=False),
+            row("u_b3", "B3", "uống <en>aspirin</en>", ["heuristic_span"], trusted=False)]
+    (D / "cand.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    write_term_rows(D / "dec.tsv", [{"term": "crm", "decision": "en"}, {"term": "sjc", "decision": "vi"}])
+    out = run(G / "converters/build_bench_v0.py", "--candidates", D / "cand.jsonl", "--accept", "trusted-text",
+              "--term-decisions", D / "dec.tsv", "--out", D / "bench.jsonl", "--pending-out", D / "pend.tsv")
+    got = {r["id"]: r["review"] for r in L(D / "bench.jsonl")}
+    assert got == {"t_ok": "term_decisions", "t_clear": "term_decisions", "t_b5": "term_decisions"}, (got, out)
+    assert "chờ: nhãn cũ, chạy lại converter (B2)" in out and "chờ duyệt câu: cờ không theo thuật ngữ (B5)" in out, out
+    assert (D / "pend.tsv").read_text(encoding="utf-8").splitlines()[1] == "xyz\t1\t0.000"
+    out = run(G / "converters/build_bench_v0.py", "--candidates", D / "cand.jsonl", "--accept", "trusted-text",
+              "--term-decisions", D / "dec.tsv", "--out", D / "bench2.jsonl", "--draft-splits", "B3")
+    got2 = {r["id"]: r["review"] for r in L(D / "bench2.jsonl")}
+    assert got2.get("u_b3") == "draft_unreviewed" and "u_b1" not in got2 and "bản nháp" in out, (got2, out)
+    # tools/term_decisions.py ask (gộp top_review) / import
+    top = D / "top.csv"
+    with open(top, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["file", "rank", "entry", "group_or_kind", "count", "count_ggroup", "count_vimedcss", "count_vss",
+                    "example_source", "example_id", "example_text", "list_source"])
+        w.writerow(["vi_loanwords.txt", 1, "virus", "same_surface", 50, 0, 40, 10, "vimedcss", "m1", "virus cúm", "x"])
+        w.writerow(["vi_abbrev.txt", 1, "crm", "x", 3, 3, 0, 0, "ggroup", "g1", "mở crm", "x"])
+    out = run(G / "tools/term_decisions.py", "ask", "--manifests", D / "cand.jsonl", "--decisions", D / "td.tsv",
+              "--top-review", top, "--catalog", cat, "--out", D / "ask.csv", "--auto-out", D / "auto.csv")
+    ask = list(csv.DictReader(open(D / "ask.csv", encoding="utf-8-sig")))
+    terms = [r["term"] for r in ask]
+    assert "crm" not in terms and terms[:2] == ["sjc", "xyz"] and terms[-1] == "virus", (terms, out)  # crm đã chốt
+    assert all(r["n_sentences"] == "1" and r["example_1"] for r in ask[:2]) and ask[-1]["flags"] == "top_review"
+    assert ask[-1]["decision"] == "vi" and "same_surface" in ask[-1]["note"], ask[-1]
+    auto = list(csv.DictReader(open(D / "auto.csv", encoding="utf-8-sig")))
+    assert [r["term"] for r in auto] == ["deep learning"], auto
+    rows_ask = list(csv.DictReader(open(D / "ask.csv", encoding="utf-8-sig")))
+    for r in rows_ask:
+        r["decision"] = {"sjc": "vi", "xyz": "drop_tag"}.get(r["term"], "")
+    with open(D / "ask.csv", "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows_ask[0]))
+        w.writeheader()
+        w.writerows(rows_ask)
+    run(G / "tools/term_decisions.py", "import", "--ask", D / "ask.csv", "--decisions", D / "td.tsv", "--out", D / "td2.tsv")
+    assert load_term_decisions(D / "td2.tsv") == {"crm": "en", "sjc": "vi", "xyz": "drop_tag"}
+    assert load_term_decisions(D / "td.tsv") == {"crm": "en"}  # --out khác: không đụng file gốc
 
 
 if __name__ == "__main__":

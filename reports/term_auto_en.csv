@@ -1,0 +1,1140 @@
+﻿term,n_sentences,sources,example
+token,9,vi-asr-tech-test 5; vi-asr-finance-test 3; vi-asr-pubadmin-test 1,gg_tech_113108: và tạo <en>token</en> đó về cho <en>client</en> và lưu trữ các <en>token</en> đó
+photo,8,vi-asr-pubadmin-test 6; vi-asr-edu-test 1; consensus:B2 1,gg_edu_114825: thì thầy sẽ <en>photo</en> công chứng mười bản
+click,7,vi-asr-tech-test 4; vi-asr-pubadmin-test 2; vi-asr-edu-test 1,gg_tech_113126: đó <en>click</en> vào cái mục đó là <en>home</en>
+metro,7,consensus:B2 5; vi-asr-pubadmin-test 2,gg_pubadmin_113163: vào năm hai nghìn không trăm hai mươi tư hoàn thành <en>metro</en> số hai vào năm hai nghìn không trăm ba mươi
+video,7,vi-asr-tech-test 2; vi-asr-edu-test 2; vi-asr-finance-test 2; consensus:B2 1,gg_tech_114645: đáng lẽ ra cái <en>video</en> này thì nó nói về <en>rabbit mq</en>
+vietcombank,7,vi-asr-finance-test 7,gg_finance_113224: <en>return</en> của ví dụ như <en>return</en> của <en>vietcombank</en>
+blockchain,6,vi-asr-tech-test 4; vi-asr-finance-test 2,gg_tech_113975: đã xác định trở thành một <en>developer</en> và <en>blockchain</en> á
+confirm,6,vi-asr-tech-test 4; consensus:B2 2,gg_tech_114358: đây <en>confirm</en> thì nó sẽ hiện cái
+pizza,6,consensus:B2 6,cons_public_0036_u3: quanh đây có quán <en>pizza</en> nào ngon không
+apply,5,vi-asr-edu-test 4; vi-asr-tech-test 1,gg_tech_116450: <en>apply</en> là cái gì <en>ctrl shift</en> k đưa cái ảnh vào đưa vào cái
+bachelor,5,vi-asr-edu-test 5,gg_edu_113637: thì cái <en>bachelor</en> của bạn ngay cả một người học <en>bachelor</en> thì
+build,5,vi-asr-tech-test 3; vi-asr-edu-test 2,gg_tech_114380: đưa vào trong <en>debug</en> nè trong <en>folder debug</en> nó <en>build</en>
+ethereum,5,vi-asr-finance-test 5,gg_finance_113848: kẹt <en>makerdao</en> này là cái nền tảng <en>landing</en> hàng đầu ở trên <en>ethereum</en>
+homestay,5,consensus:B2 3; vi-asr-edu-test 2,gg_edu_114085: chắc chắn là các bạn lựa chọn <en>homestay</en> thì
+https,5,vi-asr-tech-test 2; vi-asr-pubadmin-test 2; vi-asr-edu-test 1,gg_tech_113584: <en>ok</en> rồi đầu tiên thì mọi người sẽ vào cho mình cái trang <en>https</en> suộc chéo suộc chéo <en>clowd</en> chấm <en>bot</en>
+search,5,vi-asr-tech-test 3; vi-asr-pubadmin-test 1; consensus:B2 1,gg_tech_113139: như mình có cài rồi thì phải <en>direct link forward rate</en> các bạn <en>search</en> cái từ khóa này nha
+finance,4,vi-asr-finance-test 2; vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115097: tức là những cái sàn những cái <en>finance</en> tập trung á anh tài chính mới tập trung
+gmail,4,vi-asr-pubadmin-test 3; vi-asr-edu-test 1,gg_edu_114982: và các em sẽ lập một cái <en>email</en> nhá ở đây bạn ấy đăng ký cái <en>gmail</en> này
+module,4,vi-asr-tech-test 3; vi-asr-edu-test 1,gg_tech_114492: và một cái <en>module</en> bắt cóc hay <en>cover</en>
+pancake,4,consensus:B2 4,cons_public_0409_final: mai ăn sáng món chi hè lưu giùm em thịt kho trứng à không <en>pancake</en> chuối đi cái mô làm nhanh hơn á
+review,4,consensus:B2 3; vi-asr-edu-test 1,gg_edu_114198: có <en>review</en> một lần đó là trường <en>houston community college</en>
+smart contract,4,vi-asr-tech-test 4,gg_tech_113269: cái <en>smart contract</en> bằng cái lệnh là <en>npx hardhat compile</en> thì khi mà mình <en>combine</en> nó sẽ lỗi ha
+vitech,4,consensus:B2 4,cons_public_0443_u2: thế <en>vitech</en> hôm nay lên được bao nhiêu
+alpha,3,vi-asr-tech-test 1; vi-asr-edu-test 1; vi-asr-finance-test 1,gg_tech_114211: và cuối cùng cập nhật <en>gradient descent</en> sẽ là cập nhật <en>vekf</en> một <en>new vekf</en> một trừ <en>alpha</en>
+background,3,vi-asr-edu-test 2; vi-asr-tech-test 1,gg_tech_113713: <en>background</en> về kỹ thuật của ông này còn lớn hơn cả <en>background</en> và <en>elena</en> nữa
+canada,3,vi-asr-edu-test 3,gg_edu_113820: <en>status</en> có thể làm <en>clear</en> một là <en>canadian citizen</en> là có quốc tịch <en>canada</en>
+cancel,3,consensus:B2 2; vi-asr-pubadmin-test 1,gg_pubadmin_114315: khi vào đây sẽ hiện là <en>cancel</en> và <en>ok</en> mình ấn <en>cancel</en> cho em nhá <en>cancel</en> này
+captcha,3,vi-asr-pubadmin-test 2; vi-asr-tech-test 1,gg_tech_114578: giống như mã <en>captcha</en> bảo vệ chúng ta phải
+check out,3,consensus:B2 2; vi-asr-tech-test 1,gg_tech_114426: <en>check out</en> nó về các bạn gõ <en>docker</en> <en>combo</en> các bạn
+clear,3,vi-asr-tech-test 2; vi-asr-edu-test 1,gg_tech_114843: <en>cut</en> tiếp bây giờ mình sẽ <en>clear</en> cái <en>terminal</en> này đi
+connect,3,vi-asr-finance-test 2; vi-asr-edu-test 1,gg_edu_114640: <en>mentor</en> linh bùi thì có thể là <en>connect</en> với lại <en>contact</en> với lại <en>sparkon</en> để có thêm thông tin
+container,3,vi-asr-tech-test 3,gg_tech_113704: nó đã bổ sung gì ạ <en>container</en> cấu trúc <en>ida</en> này
+design,3,vi-asr-tech-test 2; vi-asr-finance-test 1,gg_tech_114799: <en>design</en> tức là phần <en>architect</en> và <en>design</en> là đảm bảo cái
+developer,3,vi-asr-tech-test 3,gg_tech_113316: giống như mình xuất thân là dân làm <en>developer</en> hoặc làm <en>software</en>
+digital,3,vi-asr-edu-test 3,gg_edu_115743: thì ngành <en>it</en> hoặc là <en>digital</en> <en>marketing</en> đang <en>hot</en> chọn luôn
+diploma,3,vi-asr-edu-test 3,gg_edu_113171: khóa <en>diploma</en> ở <en>sing</en> rồi qua úc thì cái kia thì cái việc mà <en>apply</en> từ từ <en>singapore</en> qua úc
+docker,3,vi-asr-tech-test 3,gg_tech_114426: <en>check out</en> nó về các bạn gõ <en>docker</en> <en>combo</en> các bạn
+dotcom,3,vi-asr-finance-test 3,gg_finance_113507: năm hai nghìn sau khi bong bóng <en>dotcom</en> nổ tung
+event,3,vi-asr-tech-test 2; vi-asr-edu-test 1,gg_tech_114654: mà có cái <en>event</en> mà có còn <en>structure</en>
+file xml,3,vi-asr-pubadmin-test 3,gg_pubadmin_113955: rồi sau ở đây thì bạn sẽ ấn nộp <en>file xml</en> này
+hanoi,3,vi-asr-pubadmin-test 2; vi-asr-edu-test 1,gg_edu_115559: <en>ts</en> đầu cấp chấm <en>hanoi</en> chấm <en>gov</en> chấm vn để đăng ký tuyển sinh trực tuyến
+hutech,3,vi-asr-edu-test 3,gg_edu_113223: tuyển sinh đại học hai không hai hai chọn <en>hutech</en> chọn thành công
+index,3,vi-asr-finance-test 2; consensus:B2 1,gg_finance_113996: tại nếu mà đường màu đỏ cắt xuống đường lấy vn <en>index</en>
+laptop,3,consensus:B2 2; vi-asr-pubadmin-test 1,gg_pubadmin_113046: <en>scan scan</en> và mình lưu vào cái <en>laptop</en> mình sẽ gắn vào đây kiểu như mình nộp <en>online</en> á
+layer,3,vi-asr-tech-test 2; vi-asr-finance-test 1,gg_tech_113645: thì nó là <en>layer</en> thôi nó <en>layer</en> giống như <en>layer photoshop</en> ấy
+portfolio,3,vi-asr-edu-test 2; vi-asr-finance-test 1,gg_edu_113091: còn <en>portfolio</en> thì mình vẫn đang <en>build</en> nên là chắc cũng
+retest,3,vi-asr-finance-test 3,gg_finance_113853: đó và hãy <en>retest</en> lại rồi mới tắng
+singapore,3,vi-asr-edu-test 3,gg_edu_113171: khóa <en>diploma</en> ở <en>sing</en> rồi qua úc thì cái kia thì cái việc mà <en>apply</en> từ từ <en>singapore</en> qua úc
+target,3,vi-asr-finance-test 2; vi-asr-tech-test 1,gg_tech_113459: <en>target</en> trong <en>target</en> ở đấy mà lại không phải lấy
+techcombank,3,vi-asr-finance-test 3,gg_finance_113247: <en>techcombank</en> giảm hơn ba mươi phần trăm ba tháng
+toefl,3,vi-asr-edu-test 3,gg_edu_113010: thi tiếng anh <en>ielts</en> hay <en>toefl</en> dạ dạ cái điểm
+topik,3,vi-asr-edu-test 3,gg_edu_113991: chứng chỉ <en>topik</en> từ năm năm đến bảy mươi tám
+university,3,vi-asr-edu-test 3,gg_edu_114125: hai tờ <en>university</en> hay là <en>world ranking</en> ghép được sắp xếp bảng xếp hạng
+usb token,3,vi-asr-pubadmin-test 3,gg_pubadmin_114041: kết xuất tờ khai định dạng <en>xml</en> và nộp qua cổng thư điện tử <en>kisso</en> bằng <en>usb token</en>
+account,2,vi-asr-tech-test 2,gg_tech_113765: mình sẽ <en>add</en> cái <en>account</en> vô để mình làm cái thằng <en>sender</en>
+admin,2,vi-asr-tech-test 2,gg_tech_114479: ai vào cái <en>shop</en> á <en>add</en> một cái <en>admin</en>
+advance,2,vi-asr-edu-test 2,gg_edu_114064: <en>ielts</en> <en>speaking</en> mà có năm từ khó năm từ <en>advance</en> một bài thi
+amsterdam,2,vi-asr-edu-test 2,gg_edu_113157: bước đến hiệp hai trận đấu giữa trường trung học phổ thông hà nội <en>amsterdam</en> và trường trung học
+automatic,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_113654: sáu <en>automatic</en> tính
+automation,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_116396: là gì test có những <en>menu</en> này không mà có cả <en>automation</en> test nữa
+backend,2,vi-asr-tech-test 2,gg_tech_116363: máy chủ ảo mà đang chạy <en>backend</en> của mình
+blended learning,2,vi-asr-edu-test 2,gg_edu_114591: i lai tiên phong trong việc sử dụng <en>blended learning</en>
+block,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_113888: <en>stream</en> đấy vào trong các cái <en>rule</en> thì ngay lập tức <en>block</en>
+bluebird,2,consensus:B2 2,cons_public_0668_final: tui ra <en>bluebird</en> café đón khách <en>check in</en> đây em bật chế độ ra khỏi nhà rồi đặt xe trong máy chở tui qua đó nghe
+brightpath holdings,2,consensus:B2 2,cons_public_0654_u2: đặt cảnh báo khi <en>brightpath holdings</en> xuống dưới ba mươi nghìn giùm anh
+business,2,vi-asr-edu-test 2,gg_edu_113085: nãy giờ mình đang trao đổi ví dụ như <en>engineering</en> nè <en>business</en> nè kiến trúc thiết kế hay <en>media</en>
+campus,2,vi-asr-edu-test 2,gg_edu_113662: <en>campus</en> các bạn hãy cùng minh khám phá nhé
+chill,2,consensus:B2 2,cons_public_0652_u8: thêm bài ni vô <en>list</en> nhạc <en>chill</en> buổi tối luôn
+client,2,vi-asr-tech-test 1; consensus:B2 1,gg_tech_113108: và tạo <en>token</en> đó về cho <en>client</en> và lưu trữ các <en>token</en> đó
+coffee,2,consensus:B2 2,cons_public_0611_u3: anh ấy hẹn chị ở cao nguyên <en>coffee</en> em xem có những quán nào
+coinbase ventures,2,vi-asr-finance-test 2,gg_finance_113061: ví dụ mình sẽ gõ quỹ <en>coinbase ventures</en>
+comment,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_114621: sau đó là anh thực hiện cái lời <en>comment</en> là <en>control</en> v thực hiện lệnh <en>control</en> v
+component,2,vi-asr-tech-test 2,gg_tech_115714: mới là đến thiết kế phần mềm những cái <en>component</en>
+console,2,vi-asr-tech-test 2,gg_tech_113949: đấy nó <en>in hello world</en> ra cái <en>console</en> hiện tại của mình
+continue,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115843: và các bạn bấm <en>continue</en> sau khi <en>confirm</en> lại một lần nữa đây các bạn sẽ bấm <en>register</en>
+convert,2,vi-asr-tech-test 2,gg_tech_114210: mảng này ta đã <en>convert</en> thành là kiểu dữ liệu
+coupon,2,vi-asr-finance-test 2,gg_finance_113031: điều đó có nghĩa rằng là cái giá <en>coupon</en>
+cover,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_114492: và một cái <en>module</en> bắt cóc hay <en>cover</en>
+crestview hotels,2,consensus:B2 2,cons_public_0619_final: tối nay chị hẹn với <en>crestview hotels</en> cái đối diện quán mộc lam á em tìm rồi lưu tên chỗ hẹn tối nay nghe
+dashboard,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_114676: khi báo cáo là <en>dashboard</en> những cái <en>kpi</en> trên đây
+data scientist,2,vi-asr-tech-test 2,gg_tech_114012: là <en>data scientist</en> và hai người có cái <en>title</en>
+database,2,vi-asr-tech-test 2,gg_tech_115600: vậy <en>database</en> gồm những điều gì
+deep learning,2,vi-asr-tech-test 2,gg_tech_113003: những mô hình trong <en>deep learning</en>
+domain,2,vi-asr-tech-test 2,gg_tech_114932: rồi ở đây mình có một cái <en>domain</en> tên là <en>tova</en> mười bảy chấm <en>site</en> ha
+education,2,vi-asr-edu-test 2,gg_edu_114354: ở trên <en>education</en> và thực ra sáng nay em nghe
+engineering,2,vi-asr-edu-test 2,gg_edu_113085: nãy giờ mình đang trao đổi ví dụ như <en>engineering</en> nè <en>business</en> nè kiến trúc thiết kế hay <en>media</en>
+enter,2,vi-asr-tech-test 2,gg_tech_114671: <en>enter</en> rồi mình <en>set up</en> lại từ đầu đi cho nó dễ
+exchange,2,vi-asr-finance-test 2,gg_finance_114079: một cái đồng <en>coin</en> trung gian thanh toán trao đổi <en>exchange</en> giữa
+extension,2,vi-asr-tech-test 1; vi-asr-pubadmin-test 1,gg_tech_115422: <en>extension</en> gì thì nó là <en>extension</en> từ điển
+fanpage,2,vi-asr-finance-test 1; vi-asr-pubadmin-test 1,gg_finance_114396: và cái <en>fanpage</en> của đầu tư chơi <en>coin</en>
+file pdf,2,vi-asr-pubadmin-test 2,gg_pubadmin_113736: xong rồi nhấn ở đây mọi người chọn <en>file pdf</en>
+file word,2,vi-asr-edu-test 1; vi-asr-pubadmin-test 1,gg_edu_115757: rồi quý thầy cô muốn xuất ra <en>file word</en> nó xuất ra thành cái <en>file word</en> luôn
+folder,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_115288: rồi đầu tiên mình sử dụng một cái <en>folder</en> mình đặt tên là <en>mini</en>
+foundation,2,vi-asr-edu-test 2,gg_edu_113242: lớp mười một chuẩn bị cho một cái <en>foundation</en> tốt để lớp mười hai mình
+group,2,vi-asr-edu-test 1; vi-asr-pubadmin-test 1,gg_edu_114281: hay qua <en>group</en> hay <en>stem</en> ạ thì các bạn
+harvard,2,vi-asr-edu-test 2,gg_edu_113927: khoa của chúng ta vậy các em có hiểu không nào hay trường <en>harvard</en> với lại trường trường
+high school,2,vi-asr-edu-test 2,gg_edu_113110: tập trung là là <en>final</en> nữ hết từ bậc <en>high school</en> cho tới bậc <en>graduate</en>
+inbox,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_116287: <en>inbox</en> về phở bò toán thầy tiến chuyên luyện thi đại học
+intel,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115648: thì ví dụ như là <en>intel</en> với là <en>amd</en> gì đấy
+internet,2,vi-asr-tech-test 1; consensus:B2 1,gg_tech_113506: trong pắc lét cây rút thì mình phải qua cổng <en>internet</en>
+invoice,2,vi-asr-tech-test 1; consensus:B2 1,gg_tech_114343: đây là một cái đơn vị <en>order</en> đây là một cái đơn vị <en>invoice</en>
+james cook,2,vi-asr-edu-test 2,gg_edu_113922: có ờ tại trường đại học <en>james cook</en> của mình bao gồm là chương trình tiếng anh
+java script,2,vi-asr-tech-test 2,gg_tech_113774: <en>vitam</en> thì từ <en>java script</en> <en>code</en> của mình á
+jenkins,2,vi-asr-tech-test 2,gg_tech_114001: ở trong cái <en>jenkins</en> mới này nhé <en>version</en>
+jetxanh,2,consensus:B2 2,cons_public_0055_final: đặt cho tôi một vé đi hà nội ngày mùng mười tháng mười hai đi hãng <en>jetxanh</en> chuyến bay buổi sáng ấy
+level,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_113838: <en>level</en> cần đạt điểm a môn toán trở lên
+logic,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115767: thứ người ta dùng <en>transistor</en> người ta nối thành những cái cổng <en>logic</en> rồi
+login,2,vi-asr-tech-test 2,gg_tech_114517: khi đăng nhập thì mình sẽ <en>call</en> <en>api</en> <en>login</en> để mình lấy cái sơ sồ úp <en>token</en> đó
+macau,2,vi-asr-pubadmin-test 2,gg_pubadmin_113858: đại diện <en>macau</en> đến bảo đảm với lãnh sự <en>ima</en>
+margin,2,vi-asr-finance-test 2,gg_finance_113071: bạn tuấn anh nguyễn cả tuần <en>bitcoin</en> <en>sideway</en> em đánh <en>margin</en> toàn <en>win</en> vì <en>sideway long short</en> đều
+master,2,vi-asr-edu-test 2,gg_edu_113357: có thể <en>apply</en> sang các học tiếp <en>master</en> hoặc là sau sau cho đại học nữa
+maximum,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_113248: tối đa là <en>maximum</en> là bảy bài <en>expose</en> là bảy bài thuyết trình ý
+member,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115729: <en>stakeholder</en> khác đúng không với <en>team</en> <en>member</en> hay là với <en>manager</en> hay là với <en>ceo</en> thì họ
+microsoft edge,2,vi-asr-tech-test 2,gg_tech_115343: trình duyệt là <en>microsoft edge</en> hoặc là <en>chrome</en> anh đừng xài
+miligam,2,vi-asr-pubadmin-test 2,gg_pubadmin_113363: điều khiển xe trên đường mà có nồng độ cồn vượt quá tám mươi <en>miligam</en> trên một trăm <en>mililit</en> máu
+miner,2,vi-asr-tech-test 2,gg_tech_113937: các cái ông <en>miner</en> và nhiệm vụ của các ông <en>miner</en> là phải chứng minh
+modem,2,vi-asr-tech-test 2,gg_tech_113783: thì các thiết bị <en>modem</en> hoặc là các thiết bị <en>router</en>
+networking,2,vi-asr-tech-test 2,gg_tech_113576: vì đi sâu vào mảng <en>networking</en> hay là mảng
+new zealand,2,vi-asr-edu-test 2,gg_edu_113080: học bổng chính của <en>new zealand</en> nó cũng là một cái ví dụ điển hình
+node js,2,vi-asr-tech-test 2,gg_tech_115386: cho <en>user</en> hoặc là mình dùng <en>node js</en>
+official,2,vi-asr-edu-test 1; vi-asr-pubadmin-test 1,gg_edu_116348: đúng rồi trường sẽ gửi bảng điểm <en>official</en> cũng như là bằng đại học
+order,2,vi-asr-tech-test 2,gg_tech_114343: đây là một cái đơn vị <en>order</en> đây là một cái đơn vị <en>invoice</en>
+partition,2,vi-asr-tech-test 2,gg_tech_113682: này trước đây cột này làm <en>null</en> nhưng bây giờ nếu bảng em có <en>partition</en> ấy
+password,2,vi-asr-tech-test 2,gg_tech_113933: <en>password</en> thì mình sẽ nhấn cái nút <en>store in</en> vao để nó lưu <en>password</en> luôn
+pinnacle design,2,consensus:B2 2,cons_public_0684_u2: à em tìm giúp chị cái <en>workshop</en> của <en>pinnacle design</en> với
+playlist,2,consensus:B2 2,cons_public_0655_u1: sáng rồi mở <en>playlist</en> nhạc <en>chill</en> cho anh nghe
+podcast,2,vi-asr-edu-test 2,gg_edu_113666: chuỗi <en>podcast</en> được thành lập bởi chương trình <en>college campus</en> của <en>everest education</en>
+polygon,2,vi-asr-finance-test 2,gg_finance_114651: còn <en>layer</en> hai thì <en>layer zero</en> là tích hợp là <en>optimisum abitum metis</en> và <en>polygon</en>
+proof of stake,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_115483: <en>decoin chain</en> là một cái <en>blockchain</en> hoạt động theo cơ chế <en>proof of stake</en>
+query,2,vi-asr-tech-test 2,gg_tech_113566: <en>ulr link</en> ấy thì bản chất là cái <en>client side</en> ấy nó sẽ phải <en>query</en> vào trong hàm
+ranking ranking,2,vi-asr-edu-test 2,gg_edu_113153: cảm ơn <en>ranking ranking</en> mình nói lúc đầu bây giờ <en>tour</en> lại xíu nha
+react angular,2,vi-asr-tech-test 2,gg_tech_114301: bảo mật là như vậy <en>anguler</en> thua phần <en>react angular</en> hơn <en>react</en>
+reading,2,vi-asr-edu-test 2,gg_edu_116195: <en>reading</en> <en>ielts</en> các bạn nào thi <en>ielts</en> rồi thì biết
+research,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_116134: <en>master</en> by <en>coursework</en> còn cái <en>master</en> by <en>research</en> là cái <en>master</en> mà
+research proposal,2,vi-asr-edu-test 2,gg_edu_113578: chính là <en>research proposal</en> thì thì cái
+return,2,vi-asr-finance-test 2,gg_finance_113224: <en>return</en> của ví dụ như <en>return</en> của <en>vietcombank</en>
+robot,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_114777: định hướng cái cuộc <en>steam</en> trong nhà trường được lập trình <en>robot</en> lĩnh vực ngôn ngữ lập trình
+router,2,vi-asr-tech-test 2,gg_tech_113783: thì các thiết bị <en>modem</en> hoặc là các thiết bị <en>router</en>
+salad,2,consensus:B2 2,cons_public_0176_final: tìm giúp mình cách làm <en>salad</en> dưa chuột với kiểm thêm hai quả dưa chuột vào danh sách đi chợ luôn nhé
+sandwich,2,consensus:B2 2,cons_public_0415_final: à xóa bánh mì <en>sandwich</en> ờ không cái nớ để đó xóa món mô mua rồi thôi
+session,2,vi-asr-edu-test 1; vi-asr-finance-test 1,gg_edu_115081: gọi là tương tác giữa lớp dưới là sáu mươi <en>session</en>
+set up,2,vi-asr-tech-test 2,gg_tech_114671: <en>enter</en> rồi mình <en>set up</en> lại từ đầu đi cho nó dễ
+sideway,2,vi-asr-finance-test 2,gg_finance_113071: bạn tuấn anh nguyễn cả tuần <en>bitcoin</en> <en>sideway</en> em đánh <en>margin</en> toàn <en>win</en> vì <en>sideway long short</en> đều
+social,2,vi-asr-finance-test 2,gg_finance_113174: đấy thấy thị trường đang <en>fomo</en> chi ạ trên <en>social</en>
+speaking,2,vi-asr-edu-test 2,gg_edu_113973: khác nếu cần chứng chỉ theo <en>speaking</en> và <en>writing</en> đầy đủ bốn kỹ năng
+status,2,vi-asr-tech-test 1; vi-asr-edu-test 1,gg_tech_115111: <en>status</en> <en>code</en> như thế này
+stop loss,2,vi-asr-finance-test 2,gg_finance_114411: đúng không ạ thì chúng ta sẽ có cái điểm <en>stop loss</en> ở đây
+swing,2,vi-asr-finance-test 2,gg_finance_113776: khái niệm ở đây <en>trading</en> và <en>swing</en> <en>trading</en>
+sydney,2,vi-asr-edu-test 2,gg_edu_113411: púc mác qua ri <en>singapore</en> và trung tâm <en>sydney</en>
+table,2,vi-asr-tech-test 2,gg_tech_114322: cái sa cái cái <en>table</en> nào cần <en>translation</en> thì tạo ra cái
+talkshow,2,vi-asr-edu-test 2,gg_edu_113999: vâng ạ chủ đề của buổi <en>talkshow</en> ngày hôm nay là kinh nghiệm viết <en>sop</en> và <en>lor</en>
+terminal,2,vi-asr-tech-test 1; vi-asr-finance-test 1,gg_tech_114843: <en>cut</en> tiếp bây giờ mình sẽ <en>clear</en> cái <en>terminal</en> này đi
+tester,2,vi-asr-tech-test 2,gg_tech_113213: và <en>tester</en> sẽ kiểm thử phần mềm theo test <en>case</en> của <en>tester</en> tạo
+title,2,vi-asr-tech-test 2,gg_tech_114012: là <en>data scientist</en> và hai người có cái <en>title</en>
+translate,2,vi-asr-tech-test 2,gg_tech_113066: là đưa ra ngoài này và nó <en>translate</en> cái <en>ip address</en> luôn
+trend,2,vi-asr-finance-test 2,gg_finance_113257: hơi khó thị trường đa <en>trend</en> thì nó không có
+university john hopkins,2,vi-asr-edu-test 2,gg_edu_114063: là <en>university john hopkins</en> cái buổi đó là có ba chương
+upcom,2,vi-asr-finance-test 2,gg_finance_113886: <en>upcom</en> là ít khắt khe nhất sau đến <en>hnx</en> và sau đến <en>hose</en> là tiêu
+upload,2,vi-asr-edu-test 1; vi-asr-pubadmin-test 1,gg_edu_113690: đó mình có cái sơ ti phi kết mình <en>upload</en> lên
+vertex software,2,consensus:B2 2,cons_public_0561_u1: mấy đơn đồ ăn mình đặt trên công ty cho buổi họp với <en>vertex software</en> sao rồi em
+vinhomes,2,vi-asr-finance-test 2,gg_finance_114094: hai cây trần hôm nay <en>extra volume</en> khổng lồ của <en>vinhomes</en> trông cũng rất là khiếp
+vinuni,2,vi-asr-edu-test 2,gg_edu_114688: du học trao đổi với nhau nhé <en>vinuni</en> tại
+vnindex,2,vi-asr-finance-test 2,gg_finance_113833: nhưng chị thấy là <en>vnindex</en> của chúng ta đi ngang
+volume,2,vi-asr-finance-test 1; consensus:B2 1,gg_finance_115813: hơn <en>volume</en> trước nghĩa là <en>volume</en> thứ hai
+writing,2,vi-asr-edu-test 2,gg_edu_113973: khác nếu cần chứng chỉ theo <en>speaking</en> và <en>writing</en> đầy đủ bốn kỹ năng
+a s,1,vi-asr-finance-test 1,gg_finance_113960: <en>a s</en> có nghĩa là đây là một cái chuẩn mực của điều chỉnh
+abstract,1,vi-asr-tech-test 1,gg_tech_114583: hàm <en>api</en> <en>abstract</en> cho chúng ta sử dụng
+academic english,1,vi-asr-edu-test 1,gg_edu_114622: tiếng anh học thuật tức là <en>academic english</en>
+accept,1,vi-asr-tech-test 1,gg_tech_114379: còn về <en>log</en> của về <en>user</en> họ <en>accept</en> với <en>contest</en> thì chúng ta hãy <en>lock</en> về <en>id</en>
+access codes,1,vi-asr-tech-test 1,gg_tech_114696: thì khi chúng ta vào đây <en>access codes</en> hiểu không thì nó vào
+access rights,1,vi-asr-tech-test 1,gg_tech_114447: <en>access rights</en> nó khác với cái <en>access rights full access</en> này
+access rights full access,1,vi-asr-tech-test 1,gg_tech_114447: <en>access rights</en> nó khác với cái <en>access rights full access</en> này
+accgroup,1,vi-asr-pubadmin-test 1,gg_pubadmin_114541: truy cập <en>website</en> <en>accgroup</en> chấm vn và nhấn đăng
+accounting,1,vi-asr-edu-test 1,gg_edu_113250: biến <en>ict</en> nè <en>accounting</en> nè và <en>sap</en> nè là ba cái ngành rất quan trọng
+accounting and finance,1,vi-asr-edu-test 1,gg_edu_115229: <en>top</en> tám <en>uk</en> nhóm ngành <en>accounting and finance</en> hai nghìn không trăm hai mươi hai
+action,1,vi-asr-tech-test 1,gg_tech_115793: tìm kiếm theo tên thị trường <en>action</en>
+action undo,1,vi-asr-tech-test 1,gg_tech_115164: lưu lại các <en>action undo</en> thì anh <en>undo undo</en> lại
+actuary,1,vi-asr-edu-test 1,gg_edu_114568: quản trị kinh doanh sang ngành <en>actuary</en> thì lý có gặp một cái cú sốc khá là lớn
+adapt,1,vi-asr-edu-test 1,gg_edu_115359: và cái <en>curriculum</en> thì thật ra thì nó cũng <en>adapt</en> từ <en>australia</en> qua luôn trên
+add data this data module,1,vi-asr-tech-test 1,gg_tech_114875: đấy khi mà các bạn <en>load</en> mà các bạn chọn <en>add data this data module</en>
+adult basic education,1,vi-asr-edu-test 1,gg_edu_114765: vi <en>you</en> vi du <en>adult basic education</en> nó nằm không có nằm ngay cái chỗ <en>newberg</en> của chị
+advanced manufacturing,1,vi-asr-edu-test 1,gg_edu_114117: <en>agrifood</en> nông nghiệp thực phẩm <en>advanced manufacturing</en> sản xuất tiên tiến
+agrifood,1,vi-asr-edu-test 1,gg_edu_114117: <en>agrifood</en> nông nghiệp thực phẩm <en>advanced manufacturing</en> sản xuất tiên tiến
+air speedy,1,vi-asr-tech-test 1,gg_tech_114554: thường ấy khi <en>import product</en> mình sẽ hay <en>air speedy</en>
+alabama,1,vi-asr-edu-test 1,gg_edu_113695: học <en>alabama</en> có <en>ok</en> học <en>alabama</en> có học
+alcoin,1,vi-asr-finance-test 1,gg_finance_114862: đây là mình đang nói tới cái đồng <en>alcoin</en> đồng an ít
+align center center left,1,vi-asr-tech-test 1,gg_tech_114302: trong cái phần <en>alignment</en> các bạn chọn <en>align center center left</en>
+alignment,1,vi-asr-tech-test 1,gg_tech_114302: trong cái phần <en>alignment</en> các bạn chọn <en>align center center left</en>
+altcoin,1,vi-asr-finance-test 1,gg_finance_115017: <en>bnb</en> và <en>altcoin</en> mà chỉ có <en>bitcoin</en> và <en>altcoin</en> kể cả <en>ethereum</en>
+amazon,1,vi-asr-tech-test 1,gg_tech_115571: đây có phải là <en>amazon</en> của <en>web</en> 3
+amibroker,1,vi-asr-finance-test 1,gg_finance_114019: các cái bài về <en>code</en> <en>amibroker</en>
+analog,1,vi-asr-tech-test 1,gg_tech_113826: thì <en>analog</en> một cái điện thoại <en>analog</en> bình thường
+analyst,1,vi-asr-tech-test 1,gg_tech_116517: thì sẽ làm sao nếu các bạn chỉ là một người <en>analyst</en> hay là <en>scientist</en>
+analyze optimize,1,vi-asr-tech-test 1,gg_tech_116383: đi theo cái <en>flow</en> là có <en>idea</en> test <en>analyze optimize</en> và <en>repeat</en> không
+anbar,1,vi-asr-edu-test 1,gg_edu_114469: đặc biệt nhắc đến <en>suwon</en> là phải nhắc đến cơ hội việc làm thêm <en>anbar</en>
+anguler,1,vi-asr-tech-test 1,gg_tech_114301: bảo mật là như vậy <en>anguler</en> thua phần <en>react angular</en> hơn <en>react</en>
+animation fade,1,vi-asr-tech-test 1,gg_tech_113272: mình sẽ thêm nốt cái <en>animation fade</en> vào nha
+application,1,vi-asr-edu-test 1,gg_edu_113719: <en>application</en> của em thì nó rất là nhiều đúng không
+arab telora,1,vi-asr-tech-test 1,gg_tech_113832: chỉ huấn luyện các đáp <en>arab telora</en> chúng sẽ vẫn ở <en>floper habit</en> để
+arbitrage,1,vi-asr-finance-test 1,gg_finance_113375: dùng <en>fama french</en> hay là dùng lý thuyết <en>arbitrage</en>
+archimedes,1,vi-asr-edu-test 1,gg_edu_115402: ví dụ như các trường tư đấy những khi bị <en>archimedes</en> hoặc là trường <en>alpha</en>
+architect,1,vi-asr-tech-test 1,gg_tech_114799: <en>design</en> tức là phần <en>architect</en> và <en>design</en> là đảm bảo cái
+arena,1,vi-asr-edu-test 1,gg_edu_115500: quay lại <en>arena</en> còn chưa đầy một tuần cơ hội
+asean,1,vi-asr-pubadmin-test 1,gg_pubadmin_114293: cái <en>form</en> này là <en>form</en> ưu đãi giữa <en>asean</en> và
+asset action,1,vi-asr-tech-test 1,gg_tech_114017: <en>asset action</en> rồi đi tới <en>bou edit vietroperty</en>
+assets,1,vi-asr-finance-test 1,gg_finance_115667: nó cuốn đó nó có tên là <en>crypto</en> <en>assets</en>
+assign total supply,1,vi-asr-tech-test 1,gg_tech_114705: đầu tiên là phải <en>set the riona</en> xong rồi phải <en>assign total supply</en>
+associate apply silence,1,vi-asr-edu-test 1,gg_edu_114776: còn cái chữ dưới này là <en>associate apply silence</en>
+ato atc,1,vi-asr-finance-test 1,gg_finance_114834: xuống dòng hợp đồng <en>ato atc</en> sau đó anh chị
+atomic,1,vi-asr-tech-test 1,gg_tech_115816: <en>awc</en> là <en>token</en> được phát hành bởi ví tiền điện tử <en>atomic</en>
+australia,1,vi-asr-edu-test 1,gg_edu_115359: và cái <en>curriculum</en> thì thật ra thì nó cũng <en>adapt</en> từ <en>australia</en> qua luôn trên
+authentic,1,vi-asr-tech-test 1,gg_tech_114984: đăng nhập của mình trên cái ứng dụng <en>authentic</en>
+auto scaling group,1,vi-asr-tech-test 1,gg_tech_114626: có <en>modify</en> cái <en>auto scaling group</en> ha chúng ta <en>replacement of for</en>
+autoburn,1,vi-asr-tech-test 1,gg_tech_113567: cơ chế <en>autoburn</en> gắn với hoạt động hệ sinh thái khiến <en>bnb</en> ngày càng mang tính <en>deflationary</en> rõ rệt
+automotive technology and production,1,vi-asr-edu-test 1,gg_edu_116492: có như là cái này cái đầu tiên là cái <en>automotive technology and production</en> chỗ này là
+available international students,1,vi-asr-edu-test 1,gg_edu_114742: <en>available international students</en> có nghĩa là những người như mình đây
+aws lambda,1,vi-asr-tech-test 1,gg_tech_114361: với những dịch vụ như <en>aws lambda</en> hay <en>vercel</en>
+azota,1,vi-asr-edu-test 1,gg_edu_113612: lục lại con lên <en>azota</en> con làm lại làm
+bachelor education,1,vi-asr-edu-test 1,gg_edu_115397: hy vọng <en>bachelor education</en> đó vào dạy <en>bachelor</en> luôn rồi
+back history,1,vi-asr-tech-test 1,gg_tech_113750: cái <en>back history</en> này để sau lên giao diện giúp
+balance sheet,1,vi-asr-finance-test 1,gg_finance_114256: xuất thôi mà chúng ta không xem <en>balance sheet</en> thì không ổn rồi đúng không nào
+banana smart,1,vi-asr-tech-test 1,gg_tech_113959: anh sẽ lấy một cái tên <en>testnet</en> của anh <en>banana smart</en> cho anh đây
+bangkok garden,1,consensus:B2 1,cons_public_0590_final: út lái xe ra khỏi bãi <en>bangkok garden</en> rồi tắt cái phiên gửi xe ở đó giùm tôi nghen
+barista,1,vi-asr-edu-test 1,gg_edu_114577: cô sẽ chắp cánh cho bạn trở thành một <en>bartender</en> hoặc là <en>barista</en> có danh tiếng
+bartender,1,vi-asr-edu-test 1,gg_edu_114577: cô sẽ chắp cánh cho bạn trở thành một <en>bartender</en> hoặc là <en>barista</en> có danh tiếng
+basic,1,vi-asr-finance-test 1,gg_finance_115043: thì cái đường <en>basic</en> cái đường ở giữa nó tính ở giữa đây nè
+basic machinist,1,vi-asr-edu-test 1,gg_edu_116371: tùy ha ở đây học cái <en>basic machinist</en> này chỉ có mười tín chỉ ba môn học
+bb bank,1,vi-asr-finance-test 1,gg_finance_115005: bản trên <en>tmo</en> của mình bây giờ nó đã có ở trên <en>bb bank</en>
+bci one,1,vi-asr-finance-test 1,gg_finance_114934: vẫn vẫn thích <en>bci one</en> vẫn thích <en>bci</en> một
+before,1,vi-asr-edu-test 1,gg_edu_116533: kinh nghiệm thực tập ấy <en>before</en> các bạn
+benjamin graham,1,vi-asr-finance-test 1,gg_finance_113912: về tác giả là <en>benjamin graham</en> và <en>david dodd</en>
+berkshire hathaway,1,vi-asr-finance-test 1,gg_finance_115016: đó là <en>berkshire hathaway</en> của ngài tỷ phú <en>warren buffett</en>
+bernoulli,1,vi-asr-tech-test 1,gg_tech_113595: trong cái dãy phép thử <en>bernoulli</en> đúng không
+big big three,1,vi-asr-finance-test 1,gg_finance_113715: hàng <en>big big three</en> ở trên thị trường ấy của khối nhà nước đúng không anh
+big net,1,vi-asr-finance-test 1,gg_finance_113107: <en>big net</en> trong câu chuyện của kênh <en>finance</en>
+binance,1,vi-asr-finance-test 1,gg_finance_114604: phát triển cái phần <en>nft</en> của <en>binance</en>
+binance binance labs,1,vi-asr-finance-test 1,gg_finance_114090: này <en>icp</en> này đây là <en>inj</en> này hay là đây là <en>binance binance labs</en> đúng không
+binance swap,1,vi-asr-finance-test 1,gg_finance_113284: được không có rất là nhiều <en>token</en> ở trên <en>binance swap</en> này
+bingo,1,vi-asr-tech-test 1,gg_tech_114127: ba nền tảng chứ không riêng gì <en>bingo</en>
+birthday,1,vi-asr-tech-test 1,gg_tech_115616: chỉ còn hai hướng dẫn cần điền đó là <en>name</en> và <en>birthday</en>
+bit banker,1,vi-asr-tech-test 1,gg_tech_113482: <en>bit banker</en> không bẻ khóa hệ thống bằng vũ lực
+bla bla,1,vi-asr-edu-test 1,gg_edu_116464: nói là trường đào quốc tế hồng bàng <en>bla bla</en> đó chị học chị thấy thì sao
+blender,1,vi-asr-tech-test 1,gg_tech_115835: cho nên là mọi người khi mà sử dụng <en>blender</en>
+blockchain platform,1,vi-asr-tech-test 1,gg_tech_115443: cái <en>blockchain platform</en> hay không nếu như anh em <en>hold blockchain platform</en>
+blockfolio,1,vi-asr-finance-test 1,gg_finance_114050: <en>blockfolio</en> đây nhá quý vị các bạn để ý nhá
+blue chip,1,vi-asr-finance-test 1,gg_finance_115039: chứng minh rằng đầu tư nhóm cổ phiếu <en>blue chip</en>
+bluebird coffee,1,consensus:B2 1,cons_public_0569_final: sáng ni cô pha hết bốn gói cà phê <en>bluebird coffee</en> rồi con trừ trong tủ bếp giùm cô nghe
+boarding school,1,vi-asr-edu-test 1,gg_edu_115575: hay là <en>boarding school</en> này hả thì thì
+bollinger band,1,vi-asr-finance-test 1,gg_finance_115573: những cái <en>bollinger band</en> hay là <en>rsi</en> chúng ta phải bỏ qua
+bollinger bands,1,vi-asr-finance-test 1,gg_finance_114418: thì trên <en>bollinger bands</en> này nó có ở giữa đó chính là đường ma 20 đây ạ
+bolo bala,1,vi-asr-tech-test 1,gg_tech_116446: ngoài ra thì <en>bolo bala</en> các thứ những thanh ghi này
+book value book value,1,vi-asr-finance-test 1,gg_finance_115719: thì em ra cái <en>book value book value</en> này thường được sử dụng trong cái ngành ngân hàng
+bookworm vnu ulis,1,vi-asr-edu-test 1,gg_edu_116528: được đăng tải trên <en>bookworm vnu ulis</en> theo yêu cầu từ phía khoa
+bou edit vietroperty,1,vi-asr-tech-test 1,gg_tech_114017: <en>asset action</en> rồi đi tới <en>bou edit vietroperty</en>
+breakout,1,vi-asr-finance-test 1,gg_finance_114991: hoặc một chu kỳ <en>breakout</en> và <en>pullback</en> hoàn chỉnh
+british council,1,vi-asr-edu-test 1,gg_edu_113770: rõ ràng là ở bên <en>british council</en> thì họ sẽ đặt mục tiêu rất rõ
+brownie,1,consensus:B2 1,cons_public_0592_final: à hôm qua con thảo khoe món <en>brownie</en> ngon lắm con lưu cái công thức <en>brownie</en> nớ vô cho cô với
+browser,1,vi-asr-tech-test 1,gg_tech_113758: rồi mình sẽ <en>refesh</en> lại cái <en>browser</en> nè
+bti education,1,vi-asr-edu-test 1,gg_edu_115577: để cuối cùng em chọn <en>bti education</en>
+bucket,1,vi-asr-tech-test 1,gg_tech_114746: tính năng này cho phép chúng ta <en>replicate</en> dữ liệu từ <en>bucket</en> nguồn từ <en>bucket</en> đích
+bucket static,1,vi-asr-tech-test 1,gg_tech_114207: ba <en>bucket static</en> <en>website</en> chính là cái đây chấm <en>id</en> chấm <en>id</en>
+builder,1,vi-asr-tech-test 1,gg_tech_115578: khai báo <en>tree</en> nè anh khai báo một cái <en>public builder tree</en> trả về kiểu <en>builder</en>
+bullish,1,vi-asr-finance-test 1,gg_finance_114493: <en>bullish</en> về cái dự án đồng pi <en>network</en> đấy
+business administration,1,vi-asr-edu-test 1,gg_edu_115834: thì đúng rồi mình đã vào được ngành <en>business administration</en> là cái ngành mà hồi đó anh mình
+business case,1,vi-asr-finance-test 1,gg_finance_114581: là nó có cái <en>business case</en> hay không
+business license,1,vi-asr-pubadmin-test 1,gg_pubadmin_114448: cấp cái <en>business license</en> chắc gì là <en>business license</en> đấy
+business solutions advanced fiber communications,1,vi-asr-finance-test 1,gg_finance_114635: công ty xếp hạng a đã bán một lượng lớn các cổ phiếu công thuyết <en>business solutions advanced fiber communications</en>
+business unit,1,vi-asr-finance-test 1,gg_finance_113075: phế liệu đó là một cái <en>business unit</en>
+button,1,vi-asr-tech-test 1,gg_tech_114962: tín hiệu trung gian <en>button mod</en> được cản bằng ngó vào <en>button</en> hai
+button mod,1,vi-asr-tech-test 1,gg_tech_114962: tín hiệu trung gian <en>button mod</en> được cản bằng ngó vào <en>button</en> hai
+cafef,1,vi-asr-finance-test 1,gg_finance_113821: <en>vietstock</en> hoặc <en>cafef</en> anh chị
+call margin call force sell,1,vi-asr-finance-test 1,gg_finance_115002: bị <en>call margin call force sell</en> rất nhiều
+calorimeter digital phoehenix,1,vi-asr-tech-test 1,gg_tech_114697: chúng ta <en>click</en> vào cái máy <en>calorimeter digital phoehenix</en> này <en>click</en> vào <en>setting</en>
+cambridge,1,vi-asr-edu-test 1,gg_edu_115839: <en>topo</en> này cũng có thể là thi <en>topo</en> cũng có thể tí về chứng chỉ <en>cambridge</en> này
+camera,1,consensus:B2 1,cons_public_0185_final: ơ hình như có ai bấm chuông bật <en>camera</en> hành lang lên xem ai đang đứng ngoài cửa giúp mình với
+campus housing,1,vi-asr-edu-test 1,gg_edu_113609: thứ hai là <en>campus housing</en> có nghĩa là ký túc xá
+canadian citizen,1,vi-asr-edu-test 1,gg_edu_113820: <en>status</en> có thể làm <en>clear</en> một là <en>canadian citizen</en> là có quốc tịch <en>canada</en>
+cannes,1,vi-asr-edu-test 1,gg_edu_114944: đại học tiếp theo đại học <en>cannes</en>
+canslim,1,vi-asr-finance-test 1,gg_finance_114540: như ông <en>canslim</en> ông có công thức ông <en>william</en> o <en>neil</en> có công thức <en>canslim</en> đúng không
+capcha,1,vi-asr-pubadmin-test 1,gg_pubadmin_114249: sau đó nhập mã <en>capcha</en> và bấm tìm kiếm
+capstone project,1,vi-asr-edu-test 1,gg_edu_114674: gọi là <en>capstone project</en> thì trường có thăm rất là nhiều các cái <en>partners industry partners</en>
+carbon,1,vi-asr-tech-test 1,gg_tech_113516: nên các <en>electronbie</en> chỉ sở khu trú trong vùng không gian giữa hai nguyên cửa <en>carbon</en> thành phần
+case officer,1,vi-asr-pubadmin-test 1,gg_pubadmin_115265: vì cái <en>case officer</en> thà là xét kỹ
+casena,1,vi-asr-pubadmin-test 1,gg_pubadmin_114184: dự án <en>casena</en> bắc tân uyên hợp tác với <en>thaco</en>
+cash flow,1,vi-asr-finance-test 1,gg_finance_114384: chơi <en>cash flow</en> của cái tài sản đó thì tốn
+casio,1,vi-asr-edu-test 1,gg_edu_114318: phương pháp nhá thì các em tham khảo cho anh trong khóa học <en>casio</en> miễn phí ở trên <en>tuvietanhviet</en> com
+category,1,vi-asr-tech-test 1,gg_tech_113811: những cái loại mà <en>category</en> như <en>utp tcp</en>
+centre,1,consensus:B2 1,cons_public_0514_u2: <en>book</en> hai ly trà đào giao tới nam đô <en>centre</en> trên lê lợi nha
+certifr,1,vi-asr-edu-test 1,gg_edu_113251: chứng chỉ <en>certifr</en> bằng tiếng việt thôi ạ thế còn chứng chỉ <en>dipifr</en> thì trên toàn
+challenge,1,vi-asr-edu-test 1,gg_edu_116539: <en>ceo</en> <en>challenge</en> năm hai không mười bảy
+channel,1,vi-asr-pubadmin-test 1,gg_pubadmin_113989: cửa đỏ z <en>channel</en> có hàng hóa cần khai
+chat gpt,1,vi-asr-tech-test 1,gg_tech_116551: bỏ yêu cầu vô <en>translate</en> bỏ vô cái thằng <en>chat gpt</en> nó
+chat token,1,vi-asr-finance-test 1,gg_finance_114968: đó <en>chat token</en> mới là <en>native token</en> mới là <en>token</en> chính của dự án
+check in,1,consensus:B2 1,cons_public_0668_final: tui ra <en>bluebird</en> café đón khách <en>check in</en> đây em bật chế độ ra khỏi nhà rồi đặt xe trong máy chở tui qua đó nghe
+check security,1,vi-asr-tech-test 1,gg_tech_113169: nó <en>check security</en> khi mà thiếu các <en>validator node</en> và nó sẽ
+chemistry,1,vi-asr-edu-test 1,gg_edu_116200: ừ đó ví dụ như là <en>chemistry</en> không hiểu sao năm nào việt nam cũng có người được
+chevening,1,vi-asr-edu-test 1,gg_edu_113355: trao cho các học bổng cho mình để đi học <en>finance</en> hay là đối với <en>chevening</en> học bổng chính phủ anh
+chip cyc clo,1,vi-asr-tech-test 1,gg_tech_114623: thì con <en>chip cyc clo</en> mười này
+chrome,1,vi-asr-tech-test 1,gg_tech_115343: trình duyệt là <en>microsoft edge</en> hoặc là <en>chrome</en> anh đừng xài
+cisco packet tracer,1,vi-asr-tech-test 1,gg_tech_113620: thực hiện cấu hình <en>nat</en> trên <en>cisco packet tracer</en>
+citizenship,1,vi-asr-edu-test 1,gg_edu_113491: à giấy khai sinh hoặc là <en>passport</en> hoặc là <en>citizenship</en>
+class,1,vi-asr-tech-test 1,gg_tech_115493: học <en>oop</en> chưa cái <en>class</en> hay còn gọi là cái <en>struct</en> trong c cộng
+classic world championship,1,vi-asr-finance-test 1,gg_finance_113204: trong đó năm trăm ngàn đô được chia cho giải <en>classic world championship</en>
+claude,1,vi-asr-tech-test 1,gg_tech_113187: hoặc là trên môi trường của nhà cung cấp thứ ba đó chính là <en>claude</en>
+clean,1,vi-asr-edu-test 1,gg_edu_113121: bạn siêu <en>clean</en> siêu gọn gàng <en>yeah</en> mẹo số ba để làm bài luận nhanh hơn
+clearwater pharma,1,consensus:B2 1,cons_public_0577_final: đặt giùm anh bốn vé buổi hội thảo của <en>clearwater pharma</en> nha em cho mấy bạn trong nhóm anh kẹt họp không đi được
+client side,1,vi-asr-tech-test 1,gg_tech_113566: <en>ulr link</en> ấy thì bản chất là cái <en>client side</en> ấy nó sẽ phải <en>query</en> vào trong hàm
+close,1,vi-asr-tech-test 1,gg_tech_113300: sau khi thiết lập xong thì mình sẽ ấn <en>close</en>
+cloud,1,vi-asr-edu-test 1,gg_edu_114909: lên thêm về cả <en>cloud</en> và <en>system</en> luôn em về <en>cloud</en> thì em
+cloud hub,1,vi-asr-tech-test 1,gg_tech_113442: đó là bộ kỹ năng <en>cloud hub</en> chấm ai
+cloudflare,1,vi-asr-tech-test 1,gg_tech_113098: <en>cloudflare</en> thay thế cho cái phần <en>workspace</en> này luôn
+cloudflare user name,1,vi-asr-tech-test 1,gg_tech_115574: một cái <en>domain</en> dùng <en>cloudflare user name</en> là <en>admin</en> và cái
+clowd,1,vi-asr-tech-test 1,gg_tech_113584: <en>ok</en> rồi đầu tiên thì mọi người sẽ vào cho mình cái trang <en>https</en> suộc chéo suộc chéo <en>clowd</en> chấm <en>bot</en>
+cobalt,1,consensus:B2 1,cons_public_0681_final: con gọi giùm cô chiếc xe máy từ tiệm qua <en>cobalt</en> <en>marketing</en> lấy mấy xấp <en>voucher</en> in cho tiệm nha
+coco meet,1,vi-asr-tech-test 1,gg_tech_115564: <en>coco meet</en> tại vì <en>coco meet</en> này đang chứa cái <en>platform template</en> của mình
+coin gecko,1,vi-asr-finance-test 1,gg_finance_113876: có người là thích chạy <en>coin gecko</en> có người thích
+coin season,1,vi-asr-finance-test 1,gg_finance_113889: mùa ăn <en>coin</en> hay ăn <en>coin season</en> là khoảng thời gian mà các ăn <en>coin</en> đồng loạt tăng giá rất
+coinbase staking,1,vi-asr-finance-test 1,gg_finance_114501: như là li đô <en>rocket pool</en> hay là <en>coinbase staking</en> nhiều <en>ethereum</en> nữa
+college campus,1,vi-asr-edu-test 1,gg_edu_113666: chuỗi <en>podcast</en> được thành lập bởi chương trình <en>college campus</en> của <en>everest education</en>
+college compus,1,vi-asr-edu-test 1,gg_edu_114531: chuỗi <en>podcast</en> được thành lập bởi chương trình <en>college compus</en>
+colum,1,vi-asr-tech-test 1,gg_tech_116443: một cái <en>row vector row</en> bằng một và <en>colum</en>
+column quality,1,vi-asr-tech-test 1,gg_tech_115650: mình đã <en>search</en> cái <en>column quality</en> để mình biết coi là <en>ok</en> cái <en>item</en> nào được <en>order</en>
+combine,1,vi-asr-tech-test 1,gg_tech_113269: cái <en>smart contract</en> bằng cái lệnh là <en>npx hardhat compile</en> thì khi mà mình <en>combine</en> nó sẽ lỗi ha
+comlist,1,vi-asr-tech-test 1,gg_tech_115840: và mình sẽ <en>comlist</en> cái <en>startup</en> này
+command,1,vi-asr-tech-test 1,gg_tech_114171: <en>ctrl</en> d hoặc là <en>command</en> d ở trên
+comment ireland,1,vi-asr-edu-test 1,gg_edu_115444: mình sẽ đi qua đến tổng quan về học bổng <en>comment ireland</en> trước ấy ạ
+comment toxic,1,vi-asr-tech-test 1,gg_tech_113499: cái nào nó là <en>comment toxic</en> tức là
+commerce,1,vi-asr-tech-test 1,gg_tech_114044: chẳng hạn ví dụ e <en>commerce</en> là một cái <en>website</en> mà có đầy đủ giỏ hàng vân vân
+commercial property,1,vi-asr-finance-test 1,gg_finance_114438: <en>infrastructure</en> này <en>commercial property</en> này <en>private evd</en> ở trong và ngoài nước úc
+commit,1,vi-asr-tech-test 1,gg_tech_114713: <en>commit</en> cái <en>code</en> này lên sau khi <en>commit</en> thì nó sẽ đưa đến <en>jenkins</en> và <en>jenkins</en>
+community plugin,1,vi-asr-tech-test 1,gg_tech_115171: đó thì hoặc là mình có thể vô đây có cái <en>community plugin</en>
+complete,1,vi-asr-tech-test 1,gg_tech_115452: <en>ok</en> ấn <en>complete</en> thì là nó sẽ hoàn thành cái khóa học này được chưa nhở
+complete sentences,1,vi-asr-edu-test 1,gg_edu_113048: thầy huy nhìn vào hoạt động đầu tiên nhé <en>complete sentences</en>
+composite,1,vi-asr-tech-test 1,gg_tech_113588: <en>composite</en> ở trong thì nó sẽ giúp cái
+compress,1,vi-asr-tech-test 1,gg_tech_115414: <en>kilobyte</en> dùng <en>compress</en> lại bằng <en>gzip</en> có ba <en>kilobyte</en> tại sao dùng <en>gzip</en>
+computer science,1,vi-asr-edu-test 1,gg_edu_114351: hỏi nữa của nguyễn anh tài là em có <en>background</en> thiên về <en>computer science</en> thì nên bổ trợ kiến thức
+computer science data science,1,vi-asr-edu-test 1,gg_edu_113617: <en>computer science data science</en> thực ra những cái ngành này nó cũng như nhau ấy mà
+config,1,vi-asr-tech-test 1,gg_tech_113144: nó sẽ giúp các bạn <en>config</en> cái <en>worker connections</en>
+connect metamask,1,vi-asr-tech-test 1,gg_tech_113386: bấm <en>connect metamask</en> để móc các tài khoản
+contact,1,vi-asr-edu-test 1,gg_edu_114640: <en>mentor</en> linh bùi thì có thể là <en>connect</en> với lại <en>contact</en> với lại <en>sparkon</en> để có thêm thông tin
+content,1,vi-asr-edu-test 1,gg_edu_115838: chuyên viên <en>digital</en> <en>marketing</en> chuyên viên <en>content</en> <en>marketing</en>
+contest,1,vi-asr-tech-test 1,gg_tech_114379: còn về <en>log</en> của về <en>user</en> họ <en>accept</en> với <en>contest</en> thì chúng ta hãy <en>lock</en> về <en>id</en>
+contribution,1,vi-asr-finance-test 1,gg_finance_113633: <en>super government</en> co <en>contribution</en> và <en>low income super tax offset</en> vậy thôi còn hãy chờ đến khi mà bạn
+control,1,vi-asr-tech-test 1,gg_tech_114621: sau đó là anh thực hiện cái lời <en>comment</en> là <en>control</en> v thực hiện lệnh <en>control</en> v
+convention,1,vi-asr-tech-test 1,gg_tech_115311: ấn dấu cách nhá thì đấy chính là cái <en>convention</en> của cái việc mà mình lấy
+coolwear,1,consensus:B2 1,cons_public_0277_final: à thôi em khỏi làm đơn trả nữa nhé chị mang ra cửa hàng <en>coolwear</en> người ta xử lý luôn tại quầy rồi
+correlation,1,vi-asr-finance-test 1,gg_finance_113415: tuy nhiên do là cái <en>correlation</en> giữa bidv và <en>vietcombank</en> nó lớn hơn <en>vinamilk</en> và
+coss of attendance,1,vi-asr-edu-test 1,gg_edu_114199: ghi chữ <en>coss of attendance</en> hoặc <en>international student google</en> cái này cho thầy
+course exam,1,vi-asr-edu-test 1,gg_edu_113582: thông qua các cái bài kiểm tra các môn học như là <en>course exam</en>
+coursera byte,1,vi-asr-tech-test 1,gg_tech_116521: đều quen thuộc với những tên sau <en>coursera byte</en>
+coursework,1,vi-asr-edu-test 1,gg_edu_116134: <en>master</en> by <en>coursework</en> còn cái <en>master</en> by <en>research</en> là cái <en>master</en> mà
+cover call,1,vi-asr-finance-test 1,gg_finance_114042: <en>cover call</en> là mười một đô mười <en>cent</en> cho mười
+covid,1,vi-asr-pubadmin-test 1,gg_pubadmin_114983: thông tin <en>vaccine</en> xét nghiệm <en>covid</en> mười chín
+cpi cpe cpe,1,vi-asr-finance-test 1,gg_finance_114240: ví dụ là cái <en>cpi cpe cpe</en> này
+cpm cpm,1,vi-asr-tech-test 1,gg_tech_114083: hạ <en>cpm cpm</en> của các ông là bao nhiêu tiền
+crawler,1,vi-asr-tech-test 1,gg_tech_115234: sẽ sinh ra cái <en>crawler</en> này tại vì cái <en>ide</en> này có có cả <en>dabase</en>
+creative and cultural,1,vi-asr-edu-test 1,gg_edu_116476: thực tế có tổng cộng hơn bảy mươi môn học <en>igcse</en> được chia thành các nhóm sau <en>creative and cultural</en>
+cred cash money,1,vi-asr-finance-test 1,gg_finance_113086: đó là cái <en>cred cash money</en> xong rồi
+credit,1,vi-asr-edu-test 1,gg_edu_114627: học năm tín chỉ lấy mười bốn <en>credit</en>
+crude lands,1,vi-asr-tech-test 1,gg_tech_114965: <en>crude lands</en> để hỗ trợ <en>intergity</en> đấu giá ba trên trên <en>kusama</en> bằng cách <en>lock token ksm</en>
+ctrl alt,1,vi-asr-tech-test 1,gg_tech_113596: thoát khỏi chế độ màn hình vẫn là <en>ctrl alt</en> f
+ctrl shift,1,vi-asr-tech-test 1,gg_tech_116450: <en>apply</en> là cái gì <en>ctrl shift</en> k đưa cái ảnh vào đưa vào cái
+curriculum,1,vi-asr-edu-test 1,gg_edu_115359: và cái <en>curriculum</en> thì thật ra thì nó cũng <en>adapt</en> từ <en>australia</en> qua luôn trên
+custom mode,1,vi-asr-tech-test 1,gg_tech_115026: còn <en>custom mode</en> thì dưới dạng là đám mây
+cute vip pro,1,vi-asr-finance-test 1,gg_finance_114020: có phần thảo <en>cute vip pro</en> em đu đỉnh <en>mana</en>
+cyber,1,vi-asr-finance-test 1,gg_finance_113387: nó tương tự có một cái lệnh của cái đồng <en>cyber</en>
+cyber acoustics ac,1,vi-asr-tech-test 1,gg_tech_113603: thứ ba là một tai nghe <en>cyber acoustics ac</en> 10
+cyber master,1,vi-asr-tech-test 1,gg_tech_113958: mình sẽ truy cập vào cái thằng <en>cyber master</en>
+dabase,1,vi-asr-tech-test 1,gg_tech_115234: sẽ sinh ra cái <en>crawler</en> này tại vì cái <en>ide</en> này có có cả <en>dabase</en>
+daily,1,vi-asr-tech-test 1,gg_tech_114260: có người thái lan <en>every twenty four hours</en> là mình sẽ có <en>daily</en>
+dallas college dallas college,1,vi-asr-edu-test 1,gg_edu_115873: <en>campus</en> là khuôn viên trường học nó có nhiều rất là nhiều <en>dallas college dallas college</en>
+dark rover,1,vi-asr-finance-test 1,gg_finance_113325: trường hợp thứ ba chúng ta còn đến <en>dark rover</en> và <en>piercing</en>
+dashi,1,vi-asr-tech-test 1,gg_tech_114081: cái cái <en>dashi</en> của nó cái cái <en>sector</en> nói anh chị nhá
+data analysis,1,vi-asr-edu-test 1,gg_edu_116418: từng cái nhóm ngành <en>data analysis</en>
+data analyst,1,vi-asr-tech-test 1,gg_tech_115661: và lương thấp nhất sẽ là <en>data analyst</en>
+data analytics,1,vi-asr-edu-test 1,gg_edu_114656: để biết được thứ nhất <en>ok</en> con học <en>data analytics</en> đây là một cái khóa cơ bản
+data frame,1,vi-asr-tech-test 1,gg_tech_115018: các bạn cái cái <en>data frame</en> bây giờ nha <en>df</en>
+data loss prevention,1,vi-asr-tech-test 1,gg_tech_113212: <en>data loss prevention</en> là chống thất thoát dữ liệu
+data mining,1,vi-asr-tech-test 1,gg_tech_113860: tức là bạn có thể xây dựng <en>data mining</en> trên trên tất cả nguồn dữ liệu khác
+data quiz,1,vi-asr-tech-test 1,gg_tech_113711: khi quét <en>data</en> thì mình gọi đến quét <en>data quiz</en>
+data set,1,vi-asr-tech-test 1,gg_tech_114320: <en>data set creation</en> tức là tạo ra cái <en>data set</en> luôn
+data set creation,1,vi-asr-tech-test 1,gg_tech_114320: <en>data set creation</en> tức là tạo ra cái <en>data set</en> luôn
+data transfer cost,1,vi-asr-tech-test 1,gg_tech_114522: quý vị là có ai quan tâm đến cái việc tối ưu về <en>data transfer cost</en> thì
+david dodd,1,vi-asr-finance-test 1,gg_finance_113912: về tác giả là <en>benjamin graham</en> và <en>david dodd</en>
+deakin,1,vi-asr-edu-test 1,gg_edu_115963: trường đại học <en>deakin</en> trường đại học <en>western sydney</en> trường <en>griffith</en>
+debug,1,vi-asr-tech-test 1,gg_tech_114380: đưa vào trong <en>debug</en> nè trong <en>folder debug</en> nó <en>build</en>
+debugger debugger,1,vi-asr-tech-test 1,gg_tech_115440: hay là những <en>debugger debugger</en> là giúp chúng ta có thể
+decoin chain,1,vi-asr-tech-test 1,gg_tech_115483: <en>decoin chain</en> là một cái <en>blockchain</en> hoạt động theo cơ chế <en>proof of stake</en>
+default,1,vi-asr-tech-test 1,gg_tech_114865: viên sẽ chọn là cái <en>root</en> này chọn cái <en>default</en> a <en>default</en> b
+default gateway,1,vi-asr-tech-test 1,gg_tech_115690: <en>default gateway</en> là một chín hai chấm một sáu tám chấm một chấm một
+deflationary,1,vi-asr-tech-test 1,gg_tech_113567: cơ chế <en>autoburn</en> gắn với hoạt động hệ sinh thái khiến <en>bnb</en> ngày càng mang tính <en>deflationary</en> rõ rệt
+deployment of two arm,1,vi-asr-tech-test 1,gg_tech_114782: sẽ được sử dụng đề là <en>deployment of two arm</en>
+desig,1,vi-asr-edu-test 1,gg_edu_114409: <en>desig</en> này nó là ngành thiết kế nghệ thuật này
+design pattern,1,vi-asr-tech-test 1,gg_tech_115725: thì chủ đề hôm nay tiếp theo là <en>design pattern</en> và sau đấy thì mình có thể có thêm vài
+design system,1,vi-asr-tech-test 1,gg_tech_115754: những công ty <en>outsouce</en> thì cái <en>design system</en> nó phục vụ cho nhiều cái
+deutsche bank,1,vi-asr-finance-test 1,gg_finance_113156: thế lần này chúng ta có <en>deutsche bank</en>
+development,1,vi-asr-tech-test 1,gg_tech_114898: quốc cơ bản trong đó có <en>tencer plolit</en> hỗ trợ trên nền tảng là am <en>development</en>
+device,1,vi-asr-tech-test 1,gg_tech_113727: các thiết bị <en>sensor</en> và <en>device</en> như thế này
+dictionary,1,vi-asr-tech-test 1,gg_tech_116523: nó sẽ là một cái <en>dictionary</en> đúng không mình có cái
+diesel,1,consensus:B2 1,cons_public_0686_u5: còn dầu <en>diesel</en> thì sao
+digital film and,1,vi-asr-edu-test 1,gg_edu_114399: đây là đi theo hướng <en>digital film and</en> vi đi ô
+digiworld,1,vi-asr-finance-test 1,gg_finance_113976: là hai con frt và con <en>digiworld</en> thì chạy hai
+dipifr,1,vi-asr-edu-test 1,gg_edu_113251: chứng chỉ <en>certifr</en> bằng tiếng việt thôi ạ thế còn chứng chỉ <en>dipifr</en> thì trên toàn
+direct link forward rate,1,vi-asr-tech-test 1,gg_tech_113139: như mình có cài rồi thì phải <en>direct link forward rate</en> các bạn <en>search</en> cái từ khóa này nha
+display name,1,vi-asr-tech-test 1,gg_tech_114445: hiển thị lên cái gì ví dụ như là <en>display name</en>
+distatement,1,vi-asr-edu-test 1,gg_edu_114778: <en>distatement</en> không thực ra viết được thì nếu các bạn muốn sáu chấm thì bằng
+distribution,1,vi-asr-finance-test 1,gg_finance_113542: tiếp tục là mình kéo xuống bấm vào <en>distribution</en> có nghĩa là phân phối
+dividend you,1,vi-asr-finance-test 1,gg_finance_114884: bạn sẽ thấy <en>dividend you</en> của j <en>and</en> j là ba chấm hai mươi bảy phần trăm
+docker command,1,vi-asr-tech-test 1,gg_tech_115009: và <en>docker command</en> nó sẽ sử dụng đến gọi là <en>docker</en> <en>api</en>
+docker daemon,1,vi-asr-tech-test 1,gg_tech_115378: với lại cục <en>docker daemon</en> thông qua giao thức <en>https</en>
+doctor house,1,vi-asr-finance-test 1,gg_finance_114924: là <en>inbox</en> cho <en>doctor house</en> xin tính giùm hai là nhờ nhờ các nhân viên tính dụng này
+document,1,vi-asr-tech-test 1,gg_tech_114897: cái cách mà nó viết <en>document</en> như <en>story</en> cũng chính là một cách thức ví như viết các <en>document</en> ha
+dogecoin,1,vi-asr-finance-test 1,gg_finance_113058: <en>dogecoin</en> <en>bitcoin</en> và x của <en>elon musk</en> có thực sự liên quan
+dohiko,1,vi-asr-pubadmin-test 1,gg_pubadmin_113011: công ty trách nhiệm mạng <en>dohiko</en>
+dollar,1,vi-asr-finance-test 1,gg_finance_114728: ờ ha một hai lời bốn trăm <en>dollar</en> mỗi lệnh
+dollar index,1,vi-asr-finance-test 1,gg_finance_114873: thì <en>ok</en> ví dụ như <en>dollar index</en> chẳng hạn nó cũng khá
+dollar post,1,vi-asr-tech-test 1,gg_tech_113454: chúng ta sẽ dùng cái phương thức <en>dollar post</en>
+donald trump,1,vi-asr-finance-test 1,gg_finance_113095: có tóm tắt lại những phỏng vấn của ông <en>donald trump</en> trên cái tạp chí <en>wall street</en> hay gì
+doping watson,1,vi-asr-tech-test 1,gg_tech_114698: chẳng hạn hệ số <en>doping watson</en>
+dotcom award winner,1,vi-asr-edu-test 1,gg_edu_116142: <en>dotcom award winner</en> hai ngàn không trăm linh tám hạng mục giáo dục và đào tạo <en>paca</en>
+double check double check menu,1,vi-asr-pubadmin-test 1,gg_pubadmin_114561: <en>double check double check menu</en> sáu một này
+double income,1,vi-asr-finance-test 1,gg_finance_114600: hông tức là có một cái cặp ông bà già chơi theo cái hệ là <en>double income</en> nâu kít
+down trend,1,vi-asr-finance-test 1,gg_finance_114878: <en>down trend</en> là gì <en>down trend</en> là đáy
+download,1,vi-asr-pubadmin-test 1,gg_pubadmin_114045: vào <en>website</en> luật việt nam chấm vn để tìm hiểu thêm cũng như <en>download</en> các mẫu biểu văn bản để thực hiện thủ tục
+download java,1,vi-asr-pubadmin-test 1,gg_pubadmin_114789: thì kéo xuống bên dưới này các bạn nhấn vào <en>download java</en>
+download upload,1,vi-asr-pubadmin-test 1,gg_pubadmin_113236: buộc phải <en>download upload</en> các cái tài liệu này để mà ký tá
+downlod,1,vi-asr-pubadmin-test 1,gg_pubadmin_114291: màu đỏ này thì sẽ <en>downlod</en> cái <en>form</en> báo cáo tháng năm về
+driver,1,vi-asr-tech-test 1,gg_tech_116240: những cái này là <en>driver</en> cho cái mặt trên ấy
+earning percent,1,vi-asr-finance-test 1,gg_finance_114068: liên quan đến <en>earning percent</en> của tôi
+ebook,1,vi-asr-edu-test 1,gg_edu_115136: mình để biên soạn sẵn cho bạn cuốn <en>ebook</en>
+economics,1,vi-asr-edu-test 1,gg_edu_114433: <en>economics</en> đó là một trong những cái trường nhỏ của mình ở cái cụm trường <en>erasmus</en>
+economics and management,1,vi-asr-edu-test 1,gg_edu_115525: học chuyên ngành <en>economics and management</en> ở trường đại học <en>oxford</en>
+education and migration knowledge global,1,vi-asr-edu-test 1,gg_edu_114839: <en>emk global</en> là viết tắt của <en>education and migration knowledge global</en>
+education group,1,vi-asr-edu-test 1,gg_edu_116107: ông lê trần chung giám đốc kinh doanh phân phối sao mai <en>education group</en>
+ee tok,1,vi-asr-edu-test 1,gg_edu_116260: bên cạnh đó học sinh hoàn thiện <en>ib core</en> gồm <en>ee tok</en> và <en>cas</en>
+electronbie,1,vi-asr-tech-test 1,gg_tech_113516: nên các <en>electronbie</en> chỉ sở khu trú trong vùng không gian giữa hai nguyên cửa <en>carbon</en> thành phần
+electronic,1,vi-asr-tech-test 1,gg_tech_113745: ê là chữ <en>electronic</en> đó dùng chữ ai là chữ <en>iot</en>
+elena,1,vi-asr-tech-test 1,gg_tech_113713: <en>background</en> về kỹ thuật của ông này còn lớn hơn cả <en>background</en> và <en>elena</en> nữa
+elliott,1,vi-asr-finance-test 1,gg_finance_113090: và sóng <en>elliott</en> kết hợp với các phương pháp phương tây khác
+elon musk,1,vi-asr-finance-test 1,gg_finance_113058: <en>dogecoin</en> <en>bitcoin</en> và x của <en>elon musk</en> có thực sự liên quan
+emeliot,1,vi-asr-tech-test 1,gg_tech_114226: <en>iot</en> đúng không <en>iot</en> cái <en>emeliot</en> nó lại là một cái ngách khác
+emk global,1,vi-asr-edu-test 1,gg_edu_114839: <en>emk global</en> là viết tắt của <en>education and migration knowledge global</en>
+emlyon business school,1,vi-asr-edu-test 1,gg_edu_114620: là ở <en>emlyon business school</en> là một trường
+empty,1,vi-asr-tech-test 1,gg_tech_115732: sau đó bạn đổi tên thôi chỗ này <en>empty</en> bạn viết thành <en>component</en>
+enable,1,vi-asr-tech-test 1,gg_tech_113635: <en>enable</en> những cái tính năng về <en>identity protection</en> để mình bảo vệ cái trong
+end port number,1,vi-asr-tech-test 1,gg_tech_113987: tiếp tục ở đây thì mình sẽ có <en>start port number</en> và <en>end port number</en>
+enroll,1,vi-asr-edu-test 1,gg_edu_114722: khi các bạn muốn <en>enroll</en> trường để mà lấy cái <en>itenty</en>
+entrepreneurship,1,vi-asr-edu-test 1,gg_edu_114741: có săn thì là học thạc sĩ <en>entrepreneurship</en>
+entropy,1,vi-asr-tech-test 1,gg_tech_114811: trụ giãn nở <en>entropy</en> của nó tăng lên khi vật
+entry,1,vi-asr-finance-test 1,gg_finance_115019: trong cái trường hợp này để để nó rớt về hàm <en>entry</en>
+erasmus,1,vi-asr-edu-test 1,gg_edu_114433: <en>economics</en> đó là một trong những cái trường nhỏ của mình ở cái cụm trường <en>erasmus</en>
+etax mobile,1,vi-asr-pubadmin-test 1,gg_pubadmin_113561: có cái bản <en>etax mobile</en> ấy để chị
+ethereum named service ens,1,vi-asr-finance-test 1,gg_finance_114700: đồng <en>coin</en> thứ tư là <en>ethereum named service ens</en>
+etherscan nansen,1,vi-asr-finance-test 1,gg_finance_114421: về cách mà mọi người dùng <en>etherscan nansen</en> và đề bóc cựt
+eur idr,1,vi-asr-finance-test 1,gg_finance_116554: <en>eur idr</en> và tiền điện tử như <en>bitcoin</en>
+event transfer,1,vi-asr-tech-test 1,gg_tech_115815: liên tiếp là nó sẽ có <en>event</en> nữa nè <en>event transfer</en>
+everest education,1,vi-asr-edu-test 1,gg_edu_113666: chuỗi <en>podcast</en> được thành lập bởi chương trình <en>college campus</en> của <en>everest education</en>
+every twenty four hours,1,vi-asr-tech-test 1,gg_tech_114260: có người thái lan <en>every twenty four hours</en> là mình sẽ có <en>daily</en>
+example,1,consensus:B2 1,cons_public_0234_final: đối tác bên nước ngoài cần biết gấp em dịch câu lịch giao hàng ngày đã thay đổi sang tiếng anh cất bản dịch vào ghi chú ghi chú tên là báo đối tác xong soạn sẵn cái thư nháp gửi <en>logistic</en> a còng <en>example</en> chấm test với đúng câu đó để anh xem lại đã
+exercise pro,1,vi-asr-pubadmin-test 1,gg_pubadmin_114519: là bên cái phần mềm <en>exercise pro</en> duyệt trình ký á
+eximbank,1,vi-asr-finance-test 1,gg_finance_113540: <en>eximbank</en> tăng gần bốn mươi bảy bảy phần trăm và <en>seabank</en> tăng gần hai mươi tám phần trăm
+experience,1,vi-asr-edu-test 1,gg_edu_115625: kể thêm về những cái <en>experience</en> của em không chỉ với
+expert advisor,1,vi-asr-finance-test 1,gg_finance_113919: như vậy trong cái mục <en>expert advisor</en> này đã xuất hiện công cụ <en>trade panel</en> này rồi
+explorer portal,1,vi-asr-finance-test 1,gg_finance_113789: đến quý một năm hai không hai hai sẽ phát triển các <en>explorer portal</en>
+export,1,vi-asr-tech-test 1,gg_tech_115626: chúng ta sẽ sử dụng cái <en>module</en> chấm <en>export</en>
+expose,1,vi-asr-edu-test 1,gg_edu_113248: tối đa là <en>maximum</en> là bảy bài <en>expose</en> là bảy bài thuyết trình ý
+express express,1,vi-asr-tech-test 1,gg_tech_115054: mình sẽ sử dụng <en>express express</en> thì tất nhiên rồi này <en>build</en> trên
+express validator,1,vi-asr-tech-test 1,gg_tech_113650: mình <en>import</en> hàm <en>body</en> từ thư viện <en>express validator</en>
+extra,1,vi-asr-finance-test 1,gg_finance_114313: <en>voucher</en> <en>extra</en> thì giá trị đơn tối thiểu là một trăm bảy mươi chín k này
+extra volume,1,vi-asr-finance-test 1,gg_finance_114094: hai cây trần hôm nay <en>extra volume</en> khổng lồ của <en>vinhomes</en> trông cũng rất là khiếp
+f b,1,vi-asr-finance-test 1,gg_finance_114543: bao gồm cả <en>f b</en> đúng không
+factory,1,vi-asr-finance-test 1,gg_finance_116549: và pho rách <en>factory</en> một cách cụ thể nhất
+fail brack,1,vi-asr-finance-test 1,gg_finance_113177: mà <en>fail brack</en> nhưng mà lỗ bảy phần trăm là chúng
+fake attention user,1,vi-asr-tech-test 1,gg_tech_114243: <en>user</en> đấy thì liên quan tới <en>fake attention user</en> như thế nào thì tôi sẽ đưa ra bên dưới
+fama french,1,vi-asr-finance-test 1,gg_finance_113375: dùng <en>fama french</en> hay là dùng lý thuyết <en>arbitrage</en>
+farming,1,vi-asr-finance-test 1,gg_finance_113222: chấp nhận <en>farming</en> là chúng ta bỏ mười <en>show</en> chúng ta <en>farming</en> với <en>leverage</en> nhân ba
+faster and morgate,1,vi-asr-tech-test 1,gg_tech_114601: và thứ hai là <en>faster and morgate</en> đã nói rồi
+federated department store,1,vi-asr-finance-test 1,gg_finance_114814: chủ tịch và <en>ceo</en> của công ty <en>federated department store</en> lời khuyên
+fentanyl,1,vi-asr-finance-test 1,gg_finance_113239: mỹ giảm thuế quan liên quan đến <en>fentanyl</en>
+festival,1,vi-asr-edu-test 1,gg_edu_115405: ủa anh đang kiếm tọa đàm mà sao tự nhiên nó gửi cái <en>festival</en> vô
+file boot model,1,vi-asr-tech-test 1,gg_tech_115260: đây bạn sẽ đặt tên như là <en>file boot model</en> chấm <en>sh</en>
+file demo playwright,1,vi-asr-tech-test 1,gg_tech_114052: nó sử dụng test ở trên cái <en>file demo playwright</en> chấm <en>dev</en>
+file excel,1,vi-asr-pubadmin-test 1,gg_pubadmin_113496: <en>file word</en> hoặc là <en>file excel</en> vào đồng thời đính kèm luôn cái bản <en>scan</en>
+file firmware,1,vi-asr-tech-test 1,gg_tech_113953: ấy vũ đạo đời là gì thì mình sẽ nói sau thứ hai là một cái <en>file firmware</en> chứa cái <en>app</en>
+file process,1,vi-asr-tech-test 1,gg_tech_113015: mình xem nè khi mà trang <en>web</en> hiển thị lên thì mình <en>load</en> cái <en>file process</en>
+file with error,1,vi-asr-tech-test 1,gg_tech_115075: nhảy qua bên này cho này <en>file with error</en> là <en>no available</en>
+fill up,1,vi-asr-tech-test 1,gg_tech_114414: <en>peter</en> chính là mình sẽ <en>fill up</en> những cái <en>missing value</en>
+filnet,1,vi-asr-tech-test 1,gg_tech_114087: thì chúng ta sẽ <en>filnet</en> bằng <en>module relay</en>
+final,1,vi-asr-edu-test 1,gg_edu_113110: tập trung là là <en>final</en> nữ hết từ bậc <en>high school</en> cho tới bậc <en>graduate</en>
+finance example test,1,consensus:B2 1,cons_public_0212_final: em ơi dịch giúp chị câu hóa đơn đã được thanh toán sang tiếng anh lưu bản dịch vào ghi chú tên đối soát xong soạn sẵn <en>email</en> nháp gửi <en>finance example test</en> với nội dung đó nha chị xem lại rồi mới gửi
+financial aid,1,vi-asr-edu-test 1,gg_edu_113401: để xin tiền <en>financial aid</en> thì các bạn phải vào trang <en>web</en> <en>studentaid gov</en> và điền đơn <en>online</en>
+finish,1,vi-asr-tech-test 1,gg_tech_115617: các bạn cứ bấm <en>next next next</en> liên tục như vậy sẽ bấm <en>finish</en>
+fintech,1,vi-asr-edu-test 1,gg_edu_114575: ví dụ <en>fintech</en> quản trị doanh nghiệp hay là những ngành khác
+fintech sandbox,1,vi-asr-pubadmin-test 1,gg_pubadmin_114518: hai nghị định chín mươi tư về <en>fintech sandbox</en> việc chuẩn hóa
+firmware,1,vi-asr-tech-test 1,gg_tech_114412: sự khác nhau giữa <en>firmware</en> và <en>kernel</en> ạ
+flash,1,vi-asr-tech-test 1,gg_tech_114344: hiện thời thì <en>gpt</en> bốn ô hay là <en>gemini</en> hai chấm không <en>flash</en>
+floper habit,1,vi-asr-tech-test 1,gg_tech_113832: chỉ huấn luyện các đáp <en>arab telora</en> chúng sẽ vẫn ở <en>floper habit</en> để
+flower pollen,1,vi-asr-tech-test 1,gg_tech_114131: khả khởi tạo cái đối tượng <en>flower pollen</en> truyền vào đây thông số là gì
+flyballoonpad,1,vi-asr-finance-test 1,gg_finance_114913: bạn vào trang <en>flyballoonpad</en> chấm com sẽ thấy đang có sự kiện <en>ideal token fbs</en> bạn <en>connect</en> ví chọn buy <en>now</en>
+folder debug,1,vi-asr-tech-test 1,gg_tech_114380: đưa vào trong <en>debug</en> nè trong <en>folder debug</en> nó <en>build</en>
+foundation foundation,1,vi-asr-edu-test 1,gg_edu_115102: <en>foundation foundation</en> học kỳ tiếp theo á bạn sẽ được đào tạo những kiến thức ai
+four year undergraduate,1,vi-asr-edu-test 1,gg_edu_115238: chính xác từ trên <en>website</en> của họ thì <en>harvard college offers</en> a <en>four year undergraduate</en>
+fpt fpt,1,vi-asr-edu-test 1,gg_edu_114694: thì trường mình <en>fpt fpt</en> là dạy cái gì quốc tế
+fpt polytechnic,1,vi-asr-edu-test 1,gg_edu_115242: thạc sĩ chu thị thùy dung giám đốc phổ thông cao đẳng <en>fpt polytechnic</en>
+france visa gov fr,1,vi-asr-pubadmin-test 1,gg_pubadmin_113013: các bạn truy cập vào trang <en>web</en> <en>france visa gov fr</en>
+frequency,1,vi-asr-finance-test 1,gg_finance_114860: cái hai <en>frequency</en> <en>trading</en> để để <en>trade arbitrage</en> cân bằng trạng thái
+from price,1,vi-asr-tech-test 1,gg_tech_116434: tìm này tức là <en>from price</en> và <en>to price</en>
+front end,1,vi-asr-tech-test 1,gg_tech_113349: <en>front end</en> thì nó là những gì <en>user</en> thấy
+full hd,1,vi-asr-tech-test 1,gg_tech_115370: nhưng mà con bên này thì ra lại <en>full hd</en>
+full stack developer,1,vi-asr-tech-test 1,gg_tech_113587: có <en>doc</en> là <en>full stack developer</en> hai ba <en>stack</en>
+function,1,vi-asr-tech-test 1,gg_tech_113078: <en>sql</en> chấm than tức là cái <en>function</en> ở <en>macro sql</en>
+future,1,vi-asr-finance-test 1,gg_finance_113027: sẽ có <en>bot</en> lưới giao ngay <en>bot</en> lưới <en>future</en>
+game file,1,vi-asr-tech-test 1,gg_tech_115309: tự bấm <en>link zone</en> nha thì cứ hỏi về cái <en>team</en> về đường <en>link zone</en> nhóm các nhóm <en>game file</en>
+game room gourna oncros,1,vi-asr-tech-test 1,gg_tech_114866: rồi tựa <en>game</en> thứ hai là tựa <en>game room gourna oncros</en>
+gas bot,1,vi-asr-tech-test 1,gg_tech_115181: với <en>gas bot</en> thì mình sẽ gọi cái <en>smart contract</en>
+gaufana prometheus,1,vi-asr-tech-test 1,gg_tech_114124: còn đâu <en>gaufana prometheus</en> thì nó lại mạnh về kiểu dáng sát <en>server</en> ròi
+gemini,1,vi-asr-tech-test 1,gg_tech_114344: hiện thời thì <en>gpt</en> bốn ô hay là <en>gemini</en> hai chấm không <en>flash</en>
+general education,1,vi-asr-edu-test 1,gg_edu_113299: cương hay là ở bang <en>missouri</en> thì người ta sẽ dùng thuật ngữ <en>general education</en>
+general major,1,vi-asr-edu-test 1,gg_edu_114027: liên quan đến các học phần <en>general major</en> và <en>core</en>
+genes,1,vi-asr-tech-test 1,gg_tech_114018: <en>genes</en> như vậy <en>genes</en> sẽ bằng x ba
+ghost,1,vi-asr-tech-test 1,gg_tech_114013: à nó là một cái kiểu <en>technic</en> về <en>ghost</en> gì đó anh quên mất tên rồi
+git client,1,vi-asr-tech-test 1,gg_tech_114950: à liên quan đến <en>git</en> đấy bao gồm có <en>git client</en> rồi
+global bright,1,vi-asr-finance-test 1,gg_finance_113092: về sản phẩm giao dịch tại sàn <en>global bright</en> gồm những gì
+global citizen,1,vi-asr-edu-test 1,gg_edu_115425: em yêu nhau em chia sẻ thêm là chương trình <en>global citizen</en> thì
+godot,1,vi-asr-tech-test 1,gg_tech_115755: trong <en>godot</en> chuỗi nằm giữa hai dấu ngoặc kép
+google maps,1,vi-asr-pubadmin-test 1,gg_pubadmin_113526: bản đồ <en>google maps</en> tôi không <en>wrap</en> vào quy hoạch nữa thì các anh chị sẽ nhìn xem nè
+google search google search,1,vi-asr-tech-test 1,gg_tech_113035: đây là <en>google search google search</en> rất tận dụng
+gradient,1,vi-asr-tech-test 1,gg_tech_113244: được tối ưu hóa bằng <en>gradient</en>
+gradient descent,1,vi-asr-tech-test 1,gg_tech_114211: và cuối cùng cập nhật <en>gradient descent</en> sẽ là cập nhật <en>vekf</en> một <en>new vekf</en> một trừ <en>alpha</en>
+graduate,1,vi-asr-edu-test 1,gg_edu_113110: tập trung là là <en>final</en> nữ hết từ bậc <en>high school</en> cho tới bậc <en>graduate</en>
+griffith,1,vi-asr-edu-test 1,gg_edu_115963: trường đại học <en>deakin</en> trường đại học <en>western sydney</en> trường <en>griffith</en>
+grilled snakehead fish,1,consensus:B2 1,cons_public_0622_u2: trên thực đơn ghi <en>grilled snakehead fish</en> là món gì vậy
+h a h,1,vi-asr-finance-test 1,gg_finance_114325: nghìn không trăm hai sáu cước vận tải thì giá cổ phiếu <en>h a h</en> đây
+hacker,1,vi-asr-tech-test 1,gg_tech_114016: những cái <en>hacker</en> để các họ có thể xâm nhập vào rồi
+hamburg,1,vi-asr-edu-test 1,gg_edu_116159: ở <en>hamburg</en> thì với những cái ngành như là ngành của cháu chẳng hạn
+hands dirty,1,vi-asr-tech-test 1,gg_tech_113894: <en>hands dirty</en> đấy tức là không cài đặt
+happy life,1,vi-asr-finance-test 1,gg_finance_115059: <en>happy life</en> xin chào quý nhà đầu tư
+harvard college offers,1,vi-asr-edu-test 1,gg_edu_115238: chính xác từ trên <en>website</en> của họ thì <en>harvard college offers</en> a <en>four year undergraduate</en>
+hatch again,1,vi-asr-finance-test 1,gg_finance_115663: có thể <en>hatch again</en> chống lại cái lạm phát đó
+head up display,1,vi-asr-tech-test 1,gg_tech_114709: cho cái phần tiếp theo <en>head up display</en>
+heading,1,vi-asr-tech-test 1,gg_tech_116423: thì cái dấu căn này tương ứng với lại là <en>heading</en> một
+healthcare management,1,vi-asr-edu-test 1,gg_edu_113675: ví dụ như là chương trình về <en>healthcare management</en> ở với
+hectrison,1,vi-asr-tech-test 1,gg_tech_114853: về phần <en>hectrison</en> một số tính năng như <en>tech renson</en> nên anh chị thấy dễ
+hello,1,vi-asr-tech-test 1,gg_tech_114816: <en>hello</en> anh em đã quay trở lại với kênh <en>tip java script</en>
+high priority,1,consensus:B2 1,cons_public_0542_u3: <en>check</en> giùm chị <en>task</en> nào <en>high priority</en> mà chưa xong
+highlight,1,vi-asr-edu-test 1,gg_edu_114168: thì những cái cái điểm <en>highlight</en> của của khóa học của bác sĩ thần kinh giờ là
+hip fpt edu,1,vi-asr-edu-test 1,gg_edu_116118: giao <en>hip fpt edu</en> việt nam <en>ffv</en> ba <en>https</en>
+hobi premium,1,vi-asr-finance-test 1,gg_finance_113766: nó là cái gì và thằng <en>hobi premium</en> hay gọi bằng <en>hobi</en> rim á các bạn
+hold blockchain platform,1,vi-asr-tech-test 1,gg_tech_115443: cái <en>blockchain platform</en> hay không nếu như anh em <en>hold blockchain platform</en>
+holder hold token,1,vi-asr-finance-test 1,gg_finance_114926: à thì khi mà <en>holder hold token</en> rút thì sẽ nhận được cái lợi nhuận cao nhất trong <en>pool</en>
+hollen,1,vi-asr-edu-test 1,gg_edu_114606: cái bài test về <en>personality</en> rồi là ngành học ở <en>hollen</en> test các thứ vân vân
+homeone,1,consensus:B2 1,cons_public_0190_u1: cái ấm điện <en>homeone</en> giao sáng nay ấy anh mở hộp ra thì thấy thân ấm nứt một đường em kiểm tra đơn đó giúp anh xem nào
+hospitality management,1,vi-asr-edu-test 1,gg_edu_114289: <en>hospitality management</en> là ngành quản trị khách sạn nhà hàng
+hotline,1,vi-asr-edu-test 1,gg_edu_116073: nếu gặp vướng mắc thí sinh và điểm tiếp nhận hồ sơ liên hệ <en>hotline</en>
+houston community college,1,vi-asr-edu-test 1,gg_edu_114198: có <en>review</en> một lần đó là trường <en>houston community college</en>
+html table,1,vi-asr-tech-test 1,gg_tech_115495: ngoài <en>web</en> <en>app</en> <en>html table</en> máy ảo vân vân thì ở đây còn có <en>cdn</en>
+http tsnh,1,vi-asr-edu-test 1,gg_edu_115824: <en>http tsnh</en> chấm <en>hict</en> chấm <en>edu</en> chấm vn và ấn nút đăng nhập
+humbo mext,1,vi-asr-edu-test 1,gg_edu_113819: dự án a <en>humbo mext</en> ở dự án <en>top global university japan</en> thì có tên là <en>mext sgu</en>
+hybrid model,1,vi-asr-tech-test 1,gg_tech_113670: hệ thống của khách hàng <en>ony man</en> và <en>hybrid model</en> tức là trên cả nền tảng <en>online</en>
+ib core,1,vi-asr-edu-test 1,gg_edu_116260: bên cạnh đó học sinh hoàn thiện <en>ib core</en> gồm <en>ee tok</en> và <en>cas</en>
+ic ic,1,vi-asr-tech-test 1,gg_tech_115413: <en>ic ic</en> này là mức mà hiện nay
+icmp echo request,1,vi-asr-tech-test 1,gg_tech_114431: thì các bạn <en>bing</en> nó sẽ gửi một cái gói <en>icmp echo request</en> đến máy b
+id gatfornia,1,vi-asr-tech-test 1,gg_tech_114969: con thấy là này là <en>deploy</en> nè <en>token</en> test <en>id gatfornia</en> con đó
+ideal token fbs,1,vi-asr-finance-test 1,gg_finance_114913: bạn vào trang <en>flyballoonpad</en> chấm com sẽ thấy đang có sự kiện <en>ideal token fbs</en> bạn <en>connect</en> ví chọn buy <en>now</en>
+identity protection,1,vi-asr-tech-test 1,gg_tech_113635: <en>enable</en> những cái tính năng về <en>identity protection</en> để mình bảo vệ cái trong
+ielst,1,vi-asr-edu-test 1,gg_edu_114193: thì bài thi <en>ielst</en> gồm có bốn kỹ năng
+igcse,1,vi-asr-edu-test 1,gg_edu_116476: thực tế có tổng cộng hơn bảy mươi môn học <en>igcse</en> được chia thành các nhóm sau <en>creative and cultural</en>
+image picker controller,1,vi-asr-tech-test 1,gg_tech_115089: đó sẽ là một ui <en>image picker controller</en>
+import,1,vi-asr-tech-test 1,gg_tech_113650: mình <en>import</en> hàm <en>body</en> từ thư viện <en>express validator</en>
+import product,1,vi-asr-tech-test 1,gg_tech_114554: thường ấy khi <en>import product</en> mình sẽ hay <en>air speedy</en>
+income,1,vi-asr-finance-test 1,gg_finance_115655: này có <en>income</en> là ba mươi sáu phẩy bảy lăm e
+indie games,1,vi-asr-tech-test 1,gg_tech_115345: tuyệt vời tuyệt vời <en>ok</en> thì để kết thúc thì thường cái câu cửa miệng của <en>indie games</en>
+infinion st,1,vi-asr-edu-test 1,gg_edu_114086: em ci ở đài loan hay <en>infinion st</en>
+infrastructure,1,vi-asr-finance-test 1,gg_finance_114438: <en>infrastructure</en> này <en>commercial property</en> này <en>private evd</en> ở trong và ngoài nước úc
+infrastructure provision,1,vi-asr-tech-test 1,gg_tech_115758: ví dụ như <en>terraform</en> được <en>design</en> đúng tính băng đảo là nó chỉ là là <en>infrastructure provision</en>
+input,1,vi-asr-tech-test 1,gg_tech_116440: còn bằng <en>all</en> thì nó sẽ <en>input</en> luôn
+insert page number,1,vi-asr-pubadmin-test 1,gg_pubadmin_114894: để đánh dấu trang chúng ta vào <en>insert page number</en> đánh ở trên và <en>top of page</en>
+instance,1,vi-asr-tech-test 1,gg_tech_113716: <en>multi az db instance</en> chúng ta chỉ chọn <en>instance</en> nhưng mà có bật <en>multi az</en>
+integer,1,vi-asr-tech-test 1,gg_tech_113422: hoặc là <en>string</en> hoặc là <en>char</en> hoặc là <en>integer</en> vân vân được hết nhá
+intergity,1,vi-asr-tech-test 1,gg_tech_114965: <en>crude lands</en> để hỗ trợ <en>intergity</en> đấu giá ba trên trên <en>kusama</en> bằng cách <en>lock token ksm</en>
+intern part time,1,vi-asr-edu-test 1,gg_edu_116151: thế thôi thì họ sẽ tuyển <en>intern part time</en>
+international,1,vi-asr-edu-test 1,gg_edu_113918: kể cả nó có là bà thi <en>international</en>
+international student,1,vi-asr-edu-test 1,gg_edu_116060: <en>international student</en> <en>scholarship</en> gần như là không có mấy biết tại sao
+international student google,1,vi-asr-edu-test 1,gg_edu_114199: ghi chữ <en>coss of attendance</en> hoặc <en>international student google</en> cái này cho thầy
+internet explorer,1,vi-asr-tech-test 1,gg_tech_113583: hồi xưa thì ví dụ <en>internet explorer</en> thì làm
+interview,1,vi-asr-edu-test 1,gg_edu_114074: dạ thể hiện hay không còn về chuẩn bị như thế nào cho cái <en>interview</en> thì
+intest,1,vi-asr-tech-test 1,gg_tech_114065: bao giờ mà <en>tester ok</en> thì <en>tester</en> sẽ tự kéo mình về <en>intest</en> để <en>tester</en> có thể test
+investor,1,vi-asr-finance-test 1,gg_finance_113943: bảy phẩy bốn triệu đô hả với mười mười <en>investor</en>
+invitation letter,1,vi-asr-pubadmin-test 1,gg_pubadmin_113939: đấy phần nếu chọn mục du lịch nó sẽ không có <en>invitation letter</en> đâu
+ios xtz xlm,1,vi-asr-finance-test 1,gg_finance_115030: <en>top coin</en> của hai không mười bảy như là <en>xrp</en> này bch này <en>ios xtz xlm</en> này kia
+ip address,1,vi-asr-tech-test 1,gg_tech_113066: là đưa ra ngoài này và nó <en>translate</en> cái <en>ip address</en> luôn
+ireland,1,vi-asr-edu-test 1,gg_edu_116067: <en>ok</en> nộp học bổng <en>ireland</en> nộp bảo bổng chính phủ cái gì cần gì cần <en>ielts</en>
+island visa,1,vi-asr-edu-test 1,gg_edu_113488: bước thứ năm là sinh <en>visa</en> du học <en>island visa</en> d <en>stady</en>
+it helpdesk,1,vi-asr-tech-test 1,gg_tech_113606: <en>kit</en> cho cái đội ngũ và <en>it helpdesk</en>
+itenty,1,vi-asr-edu-test 1,gg_edu_114722: khi các bạn muốn <en>enroll</en> trường để mà lấy cái <en>itenty</en>
+ivy league,1,vi-asr-edu-test 1,gg_edu_116135: <en>ok</en> rốt cuộc thì vào một <en>waitlist</en> của một trường <en>ivy league</en> cũng
+jailbreak,1,vi-asr-tech-test 1,gg_tech_116516: bên cạnh đó kỹ thuật <en>jailbreak</en> được áp dụng để đối phó với các cuộc tấn công <en>ddos</en>
+java script framework,1,vi-asr-tech-test 1,gg_tech_114468: chúng ta tìm hiểu sâu về một cái <en>java script framework</en> như là <en>react angular</en> hoặc là <en>vue</en>
+java virtual machine,1,vi-asr-tech-test 1,gg_tech_115597: thì <en>jvm</en> là việc tắt của <en>java virtual machine</en>
+javascript,1,vi-asr-tech-test 1,gg_tech_114574: có thể <en>facebook</en> hỗ trợ <en>javascript</en> tốt hơn
+jupiter notebook,1,vi-asr-tech-test 1,gg_tech_113573: các bạn thấy đây là <en>jupiter notebook</en> thì các bạn chưa có bấm nút <en>launch</en>
+kagoshima,1,vi-asr-edu-test 1,gg_edu_114080: <en>vti education</en> đã bắt tay cùng cao đẳng <en>kagoshima</en>
+kalisperner,1,vi-asr-tech-test 1,gg_tech_113797: <en>kalisperner</en> này đúng không và cái <en>on ready stage</en> này
+kaplan,1,vi-asr-edu-test 1,gg_edu_115137: <en>university</en> á nếu mà con học đã học <en>diploma</en> của <en>kaplan</en> rồi thì con sẽ
+katot,1,vi-asr-tech-test 1,gg_tech_115450: <en>module led</en> bảy không chấm ba sáu bốn số <en>katot</en>
+kematex,1,vi-asr-tech-test 1,gg_tech_113270: <en>kematex</en> như thế này ấy là các bạn viết
+kernel,1,vi-asr-tech-test 1,gg_tech_114412: sự khác nhau giữa <en>firmware</en> và <en>kernel</en> ạ
+kevin,1,vi-asr-tech-test 1,gg_tech_115674: <en>ok</en> các bạn thấy <en>sent</en> không ạ <en>sent</en> trả việc cái <en>body</en> là <en>name</en> là <en>kevin</en> này
+key add,1,vi-asr-tech-test 1,gg_tech_113572: thực hiện đánh giá lại <en>key add</en> thêm <en>key</en> dùng hàm
+kilobyte,1,vi-asr-tech-test 1,gg_tech_115414: <en>kilobyte</en> dùng <en>compress</en> lại bằng <en>gzip</en> có ba <en>kilobyte</en> tại sao dùng <en>gzip</en>
+kimbo,1,vi-asr-edu-test 1,gg_edu_114868: đàn của trường <en>uvb</en> là đàn <en>kimbo</en> mọi người
+kisso,1,vi-asr-pubadmin-test 1,gg_pubadmin_114041: kết xuất tờ khai định dạng <en>xml</en> và nộp qua cổng thư điện tử <en>kisso</en> bằng <en>usb token</en>
+knowledge cutoff,1,vi-asr-tech-test 1,gg_tech_116414: thì <en>knowledge cutoff</en> của thằng này là tháng tám hai ngàn không trăm hai mươi
+korea fair,1,vi-asr-edu-test 1,gg_edu_115795: vừa mới xong <en>korea fair</en> mình về nhà mình làm đơn xin việc mình gửi
+korea university,1,vi-asr-edu-test 1,gg_edu_114303: nay thì là trường <en>top</en> ba của hàn thì có <en>so university</en> ca là <en>korea university</en> còn <en>why</en> là <en>yonsei</en>
+kusama,1,vi-asr-tech-test 1,gg_tech_114965: <en>crude lands</en> để hỗ trợ <en>intergity</en> đấu giá ba trên trên <en>kusama</en> bằng cách <en>lock token ksm</en>
+lambda function work file,1,vi-asr-tech-test 1,gg_tech_113592: vậy có nghĩa là <en>lambda function work file</en>
+landing,1,vi-asr-finance-test 1,gg_finance_113848: kẹt <en>makerdao</en> này là cái nền tảng <en>landing</en> hàng đầu ở trên <en>ethereum</en>
+landing page,1,vi-asr-tech-test 1,gg_tech_114515: <en>website</en> vậy nên là mấy ông ở <en>website</en> mà <en>landing page</en> ngây nga ngây ngô ngây nga ngây ngô
+launch,1,vi-asr-tech-test 1,gg_tech_113573: các bạn thấy đây là <en>jupiter notebook</en> thì các bạn chưa có bấm nút <en>launch</en>
+launchpad,1,vi-asr-finance-test 1,gg_finance_114980: có cái lịch là lúc nào sẽ <en>launchpad</en> hay là <en>launchpool</en>
+launchpool,1,vi-asr-finance-test 1,gg_finance_114980: có cái lịch là lúc nào sẽ <en>launchpad</en> hay là <en>launchpool</en>
+layer photoshop,1,vi-asr-tech-test 1,gg_tech_113645: thì nó là <en>layer</en> thôi nó <en>layer</en> giống như <en>layer photoshop</en> ấy
+layer zero,1,vi-asr-finance-test 1,gg_finance_114651: còn <en>layer</en> hai thì <en>layer zero</en> là tích hợp là <en>optimisum abitum metis</en> và <en>polygon</en>
+layout,1,vi-asr-pubadmin-test 1,gg_pubadmin_113341: <en>page layout</en> và <en>size</en> chúng ta chọn khổ <en>layout</en> bốn
+lazi predict,1,vi-asr-tech-test 1,gg_tech_113902: xem kết quả của <en>lazi predict</en> nhưng mà
+lazy file,1,vi-asr-tech-test 1,gg_tech_114724: gọi là <en>lazy file</en> mà dạng truy hơn
+legal studies,1,vi-asr-edu-test 1,gg_edu_115372: hêm là <en>legal studies</en> tại vì em rất là thích <en>law</en>
+leverage,1,vi-asr-finance-test 1,gg_finance_113222: chấp nhận <en>farming</en> là chúng ta bỏ mười <en>show</en> chúng ta <en>farming</en> với <en>leverage</en> nhân ba
+library,1,vi-asr-tech-test 1,gg_tech_113863: ở trong <en>library</en> mà chúng ta để bọt ở đây
+license,1,vi-asr-tech-test 1,gg_tech_114559: bởi vì vì một số lý do về <en>license</en>
+life spirit,1,vi-asr-edu-test 1,gg_edu_113202: câu lạc bộ kỹ năng <en>life spirit</en> là câu lạc bộ học thuật trực thuộc hội sinh viên trường
+light forestation,1,vi-asr-tech-test 1,gg_tech_114872: gì đó từ từ <en>light forestation</en> thì anh có
+limit,1,vi-asr-tech-test 1,gg_tech_114650: xin <en>limit</en> này ra phía trái hơn một chút nữa
+link acber,1,vi-asr-edu-test 1,gg_edu_115677: nó không sử dụng đường <en>link acber</en> chấm com chấm vn sử dụng là đường <en>link acber</en> chấm
+link input,1,vi-asr-pubadmin-test 1,gg_pubadmin_113155: thì đầu tiên nó có cái <en>link input</en> để ta nhập
+link landing page,1,vi-asr-tech-test 1,gg_tech_115540: đăng ký trên cái <en>link landing page</en> tuyển dụng
+link zone,1,vi-asr-tech-test 1,gg_tech_115309: tự bấm <en>link zone</en> nha thì cứ hỏi về cái <en>team</en> về đường <en>link zone</en> nhóm các nhóm <en>game file</en>
+linux,1,vi-asr-tech-test 1,gg_tech_113552: hoặc là một con <en>ubuntu</en> <en>server</en> hay <en>linux</en> <en>server</en> có hỗ trợ
+liquid,1,vi-asr-finance-test 1,gg_finance_113722: cái <en>liquid</en> của nó này <en>liquid</en> ở đây các bạn để ý này
+liquidity pool,1,vi-asr-finance-test 1,gg_finance_113101: đó là cái <en>liquidity pool</en> của nó đang cao thấp
+listen,1,vi-asr-tech-test 1,gg_tech_115654: đặt vào đây <en>listen</en> xong là chọn một nốt bất kỳ
+listening,1,vi-asr-edu-test 1,gg_edu_116437: trời ơi điểm <en>listening</en> và <en>reading</en> của mình bị tụt so với hồi ôn thi một điểm
+listening reading speaking writing,1,vi-asr-edu-test 1,gg_edu_115623: phần ít nhất của mỗi một mỗi một cái điểm thành phần <en>listening reading speaking writing</en>
+liverpool john moores,1,vi-asr-edu-test 1,gg_edu_114455: em sẽ đi qua trường <en>liverpool john moores</en>
+lizzy,1,vi-asr-tech-test 1,gg_tech_114331: chúng ta đăng nhập vào tài khoản tài khoản cá nhân của <en>lizzy</en> chúng ta sẽ thấy
+load more,1,vi-asr-tech-test 1,gg_tech_115738: <en>load more</en> cái gì đó mình tìm xuống mình bấm <en>load more</en>
+local,1,vi-asr-tech-test 1,gg_tech_113696: bây giờ máy <en>local</en> của mình ở đây chậm nha
+localhost,1,vi-asr-tech-test 1,gg_tech_113453: chín không chín hai mình kéo sang của <en>localhost</en>
+location service,1,vi-asr-tech-test 1,gg_tech_116369: thì mình sẽ cần phải nhiều <en>location service</en>
+lock token ksm,1,vi-asr-tech-test 1,gg_tech_114965: <en>crude lands</en> để hỗ trợ <en>intergity</en> đấu giá ba trên trên <en>kusama</en> bằng cách <en>lock token ksm</en>
+logistic,1,consensus:B2 1,cons_public_0234_final: đối tác bên nước ngoài cần biết gấp em dịch câu lịch giao hàng ngày đã thay đổi sang tiếng anh cất bản dịch vào ghi chú ghi chú tên là báo đối tác xong soạn sẵn cái thư nháp gửi <en>logistic</en> a còng <en>example</en> chấm test với đúng câu đó để anh xem lại đã
+logistics,1,vi-asr-pubadmin-test 1,gg_pubadmin_115162: giải quyết nó như thế nào <en>logistics</en> cho cái các khu vực
+logitech,1,consensus:B2 1,cons_public_0505_final: huỷ đơn tai nghe đi em xong cho anh hai con chuột <en>logitech</en> vào giỏ
+logout,1,vi-asr-tech-test 1,gg_tech_113641: <en>logout</en> thì sẽ mất tất cả những cái <en>progress</en>
+london,1,vi-asr-finance-test 1,gg_finance_114232: ở cái <en>trading</en> <en>session</en> của <en>london</en> là nguyên cái cục này nhưng mà kiu <en>jon</en>
+lone star community college college,1,vi-asr-edu-test 1,gg_edu_115227: <en>lone star community college college</en> trường này nó cũng là của này cũng có
+lost and found,1,vi-asr-pubadmin-test 1,gg_pubadmin_113012: cô chú nhìn quanh khu vực đó tim quầy <en>lost and found</en> thất lạc hành
+lotus,1,consensus:B2 1,cons_public_0457_final: hai khay nhé thật luôn tắt đèn phòng khách xem xem từ nhà ra <en>lotus</en> liễu giai bao nhiêu
+low income super tax offset,1,vi-asr-finance-test 1,gg_finance_113633: <en>super government</en> co <en>contribution</en> và <en>low income super tax offset</en> vậy thôi còn hãy chờ đến khi mà bạn
+lumina studio,1,consensus:B2 1,cons_public_0689_final: thói quen luyện nói tiếng anh với <en>lumina studio</en> giữ được mấy ngày rồi em đánh dấu hôm nay anh luyện xong luôn nghe
+lumina tech,1,consensus:B2 1,cons_public_0549_final: duyệt giùm anh nội dung ghi chú <en>lumina tech</en> qua tiếng anh nha anh gửi cho khách
+lusawel,1,vi-asr-edu-test 1,gg_edu_114238: anh ấy chọn cái ngành <en>mba</en> của đại học <en>lusawel</en>
+macca,1,consensus:B2 1,cons_public_0241_final: lấy <en>macca</en> nha cho mình ba hộp
+machine learning,1,vi-asr-tech-test 1,gg_tech_114759: về <en>machine learning</en> về <en>deep learning</en> như là <en>sagemaker</en> hay là <en>pytorch</en> chẳng hạn
+macro sql,1,vi-asr-tech-test 1,gg_tech_113078: <en>sql</en> chấm than tức là cái <en>function</en> ở <en>macro sql</en>
+magic,1,vi-asr-tech-test 1,gg_tech_114550: <en>magic number</en> thôi thì mở con <en>bot</en> nó một cái <en>magic</en>
+magic number,1,vi-asr-tech-test 1,gg_tech_114550: <en>magic number</en> thôi thì mở con <en>bot</en> nó một cái <en>magic</en>
+mainstream,1,vi-asr-tech-test 1,gg_tech_114077: tức là chúng ta chỉ ra cái <en>mainstream</en>
+make up,1,vi-asr-edu-test 1,gg_edu_114133: và cái ngành nghề không nói thất nghiệp là cái ngành <en>make up</en> và trang điểm
+makerdao,1,vi-asr-finance-test 1,gg_finance_113848: kẹt <en>makerdao</en> này là cái nền tảng <en>landing</en> hàng đầu ở trên <en>ethereum</en>
+manage,1,vi-asr-tech-test 1,gg_tech_113544: đối với mỗi <en>server</en> thì mình sẽ có cách <en>manage</en> khác nhau
+manager,1,vi-asr-tech-test 1,gg_tech_115729: <en>stakeholder</en> khác đúng không với <en>team</en> <en>member</en> hay là với <en>manager</en> hay là với <en>ceo</en> thì họ
+manager attention,1,vi-asr-tech-test 1,gg_tech_113980: người sẽ chọn vào các phần làm <en>manager attention</en> nè
+manager it manager,1,vi-asr-tech-test 1,gg_tech_114305: hoặc là tài khoản <en>manager it manager</en> đã tạo được hay thôi
+maple grove residence,1,consensus:B2 1,cons_public_0564_final: huỷ vé xe lúc nãy giúp em rồi giữ chỗ gửi xe gần <en>maple grove residence</en> bốn tiếng từ bảy rưỡi sáng mai nha
+mapping level,1,vi-asr-finance-test 1,gg_finance_113430: nó được gọi là <en>mpl</en> tức là <en>mapping level</en>
+margin call,1,vi-asr-finance-test 1,gg_finance_113185: còn gọi là <en>margin call</en> xuất hiện
+market,1,vi-asr-finance-test 1,gg_finance_115826: phân chia <en>market</en> đi vào thị trường <en>msci emerging market</en>
+market data,1,vi-asr-finance-test 1,gg_finance_115676: <en>dashboard</en> của mình nè chỉ số <en>market data</en> của <en>btc</en>
+maskin,1,vi-asr-tech-test 1,gg_tech_114132: nếu sử dụng <en>maskin</en> người ta hoàn toàn chuyển vang
+master thesis,1,vi-asr-edu-test 1,gg_edu_114736: bạn thanh thảo học <en>master thesis</en> ở
+match,1,vi-asr-tech-test 1,gg_tech_113189: đúng không ạ tức là những cái <en>node</en> này đã được <en>match</en>
+materials,1,vi-asr-edu-test 1,gg_edu_115151: liên quan đến khoa học về <en>materials</en> là
+matic,1,vi-asr-tech-test 1,gg_tech_114573: rồi các anh chị chuyển qua <en>matic</en> giùm em
+max supply,1,vi-asr-finance-test 1,gg_finance_113396: tôi cho <en>supply max supply</en> là khoảng ba tỷ <en>max supply</en> nó khoảng ba tỷ ba đó các bạn
+maybe,1,vi-asr-finance-test 1,gg_finance_114392: nó sẽ rướng lên nó cần tầm khoảng là <en>maybe</en> là hai mươi bảy ngàn sáu trăm nè
+mebo mid up,1,vi-asr-tech-test 1,gg_tech_114440: kỳ hai hay là <en>mebo mid up</en> hai hay là
+media,1,vi-asr-edu-test 1,gg_edu_113085: nãy giờ mình đang trao đổi ví dụ như <en>engineering</en> nè <en>business</en> nè kiến trúc thiết kế hay <en>media</en>
+media entertainment,1,vi-asr-edu-test 1,gg_edu_114648: là trong cái mục của chuyên ngành <en>media entertainment</en> thì trường có <en>suggest</en> những cái
+medical lab,1,vi-asr-edu-test 1,gg_edu_113790: chị hỏi chị chị chị chị tham khảo cái ngành này <en>medical lab</en>
+medium,1,vi-asr-tech-test 1,gg_tech_114233: <en>medium</en> là bốn cây thì trong đây mình chọn <en>small</en>
+megahertz,1,vi-asr-tech-test 1,gg_tech_113880: dạ bốn tám <en>megahertz</en> và các âm đi thiêu của nó lên
+mekong riverside grill,1,consensus:B2 1,cons_public_0622_u1: coi trên <en>app</en> đồ ăn có quán <en>mekong riverside grill</en> không tôi đang ngồi đó nè
+melbourne,1,vi-asr-edu-test 1,gg_edu_113945: tiếp theo á là bạn muốn đi <en>sydney</en> hiện tại mình đang ở <en>melbourne</en> mình
+mension,1,vi-asr-edu-test 1,gg_edu_115684: làm <en>mension</en> cái <en>ict</en> nha tại vì <en>ict</en>
+mentor,1,vi-asr-edu-test 1,gg_edu_114640: <en>mentor</en> linh bùi thì có thể là <en>connect</en> với lại <en>contact</en> với lại <en>sparkon</en> để có thêm thông tin
+message signature,1,vi-asr-tech-test 1,gg_tech_114771: ra cho chúng ta một cái <en>message signature</en>
+messenger sender,1,vi-asr-tech-test 1,gg_tech_114071: và <en>messenger sender</en> mọi thương hiệu cơ bản là cái người mà đã gửi đến cái lịch thực thi đó
+metamat,1,vi-asr-tech-test 1,gg_tech_114236: ngay lập tức sẽ đây trang chủ của <en>metamat</en> chấm <en>io</en> nhé các bạn <en>click</en> vào <en>metamat</en>
+metamon,1,vi-asr-finance-test 1,gg_finance_114819: cái việc là bán <en>metamon</en> ra ngay cả không không cần lấy đồng <en>usd</en>
+metatrader,1,vi-asr-finance-test 1,gg_finance_114078: <en>thinkmarkets</en> có hai loại nền tảng giao dịch là <en>metatrader</en> 4 và <en>metatrader</en> 5
+mexico,1,vi-asr-finance-test 1,gg_finance_114092: nghìn không trăm bảy mươi bốn đô la người <en>mexico</en> là năm nghìn bốn
+mext sgu,1,vi-asr-edu-test 1,gg_edu_113819: dự án a <en>humbo mext</en> ở dự án <en>top global university japan</en> thì có tên là <en>mext sgu</en>
+microsoft learn,1,vi-asr-tech-test 1,gg_tech_114345: học các bạn chỉ học trên <en>microsoft learn</en> là cũng khá là ổn
+microsoft teams,1,vi-asr-tech-test 1,gg_tech_116361: trên <en>microsoft teams</en> ví dụ như <en>sharepoint</en> này
+midcap,1,vi-asr-finance-test 1,gg_finance_115086: nó là <en>list</en> của những cái con <en>midcap</en> đấy ạ
+midcap blue chip,1,vi-asr-finance-test 1,gg_finance_114332: ờ đây không chỉ riêng nhóm <en>penny</en> mà những nhóm <en>midcap blue chip</en> cũng có
+mililit,1,vi-asr-pubadmin-test 1,gg_pubadmin_113363: điều khiển xe trên đường mà có nồng độ cồn vượt quá tám mươi <en>miligam</en> trên một trăm <en>mililit</en> máu
+mindset,1,vi-asr-edu-test 1,gg_edu_115643: ở <en>official guide to</en> <en>ielts</en> bạn có thể học cuốn <en>official guide</en> chung với lại cuốn <en>mindset</en> số hai
+minhmart,1,consensus:B2 1,cons_public_0583_u1: em mở cái <en>email</en> <en>voucher</en> đi chợ của <en>minhmart</en> đọc anh nghe với
+minimix,1,consensus:B2 1,cons_public_0225_u1: <en>shop</en> vừa nhắn bảo đơn máy xay <en>minimix</en> của anh vẫn còn trong hà nội đấy em
+minimum,1,vi-asr-finance-test 1,gg_finance_115736: đó <en>maximum</en> là giá trần của <en>minimum</en> là giá sàn
+missing value,1,vi-asr-tech-test 1,gg_tech_114414: <en>peter</en> chính là mình sẽ <en>fill up</en> những cái <en>missing value</en>
+missouri,1,vi-asr-edu-test 1,gg_edu_113299: cương hay là ở bang <en>missouri</en> thì người ta sẽ dùng thuật ngữ <en>general education</en>
+ml flow,1,vi-asr-tech-test 1,gg_tech_114427: <en>ml flow</en> thì em <en>deploy</en> lên một cái
+mobi money vnpt,1,vi-asr-pubadmin-test 1,gg_pubadmin_113857: công dân chọn thanh toán qua <en>mobi money vnpt</en>
+mobile,1,vi-asr-edu-test 1,gg_edu_113040: là lập trình <en>mobile</en> cơ bản <en>mobile</en> nâng cao chuyên gia
+model,1,vi-asr-tech-test 1,gg_tech_115344: <en>rm</en> đúng không <en>model</en> ấy thay chữ f được chữ m thôi
+model analysis,1,vi-asr-tech-test 1,gg_tech_114551: ngoài ra các công cụ thiết kế như <en>survey modeling parallel assembly modeling</en> và <en>model analysis</en>
+modify,1,vi-asr-tech-test 1,gg_tech_114626: có <en>modify</en> cái <en>auto scaling group</en> ha chúng ta <en>replacement of for</en>
+mods install,1,vi-asr-tech-test 1,gg_tech_114435: bảy tháng ba năm bốn <en>ok</en> nó lên nè <en>mods install</en>
+module bluetooth,1,vi-asr-tech-test 1,gg_tech_115161: thì ngoài các cái <en>module bluetooth</en> hay là <en>module</en>
+module led,1,vi-asr-tech-test 1,gg_tech_115450: <en>module led</en> bảy không chấm ba sáu bốn số <en>katot</en>
+module qr,1,vi-asr-tech-test 1,gg_tech_113173: để có thể cài đặt được <en>module qr</en> <en>code</en> về máy của mình
+module relay,1,vi-asr-tech-test 1,gg_tech_114087: thì chúng ta sẽ <en>filnet</en> bằng <en>module relay</en>
+module slot,1,vi-asr-tech-test 1,gg_tech_113405: <en>module slot</en> này cái mô đun này nó sẽ to gấp đôi
+money supply,1,vi-asr-finance-test 1,gg_finance_113311: nhỏ <en>money supply</en> tăng lên nhưng mà v nhỏ
+monster hunter,1,vi-asr-tech-test 1,gg_tech_115167: đây mình đang vào <en>game</en> cho anh em đây rồi mình đang chơi ở đây đấy chính là <en>monster hunter</en>
+msci emerging market,1,vi-asr-finance-test 1,gg_finance_115826: phân chia <en>market</en> đi vào thị trường <en>msci emerging market</en>
+multi az,1,vi-asr-tech-test 1,gg_tech_113716: <en>multi az db instance</en> chúng ta chỉ chọn <en>instance</en> nhưng mà có bật <en>multi az</en>
+multi az db instance,1,vi-asr-tech-test 1,gg_tech_113716: <en>multi az db instance</en> chúng ta chỉ chọn <en>instance</en> nhưng mà có bật <en>multi az</en>
+name from,1,vi-asr-tech-test 1,gg_tech_113993: muốn lấy cái gì là lấy cột <en>name from</en> sau <en>from</en> là tên bảng ông muốn lấy
+nat coffee,1,vi-asr-finance-test 1,gg_finance_114684: cổ phiếu <en>nat coffee</en> có pe chín lần
+national sydney,1,vi-asr-edu-test 1,gg_edu_115037: điều cho <en>national sydney</en> nhiều hơn hoặc là những cái sinh viên của bên khối y học châu âu
+national university,1,vi-asr-edu-test 1,gg_edu_115315: trường này thì <en>ranking</en> rất là cao <en>ranking</en> là một trăm lẻ ba <en>national university</en>
+native token,1,vi-asr-finance-test 1,gg_finance_114968: đó <en>chat token</en> mới là <en>native token</en> mới là <en>token</en> chính của dự án
+neill,1,vi-asr-finance-test 1,gg_finance_113547: đầu tư của ông o <en>neill</en> thì có một quyển
+network,1,vi-asr-finance-test 1,gg_finance_114493: <en>bullish</en> về cái dự án đồng pi <en>network</en> đấy
+neural check,1,vi-asr-tech-test 1,gg_tech_115248: ở đây ví dụ mình tạo nên một cái <en>neural check</en> <en>web</en>
+new south wales,1,vi-asr-edu-test 1,gg_edu_116241: ở đại học <en>queensland</en> và đại học <en>new south wales</en>
+new vekf,1,vi-asr-tech-test 1,gg_tech_114211: và cuối cùng cập nhật <en>gradient descent</en> sẽ là cập nhật <en>vekf</en> một <en>new vekf</en> một trừ <en>alpha</en>
+new york,1,vi-asr-edu-test 1,gg_edu_114072: cảm ơn em hân ơi ở <en>new york</en> thì có trường <en>queens college</en>
+newberg,1,vi-asr-edu-test 1,gg_edu_114765: vi <en>you</en> vi du <en>adult basic education</en> nó nằm không có nằm ngay cái chỗ <en>newberg</en> của chị
+newcastle university,1,vi-asr-edu-test 1,gg_edu_113712: chủ động nhưng mà lên đến năm mươi phần trăm ở đây có <en>newcastle university</en> là trường thuộc nhóm <en>russell group</en>
+next next next,1,vi-asr-tech-test 1,gg_tech_115617: các bạn cứ bấm <en>next next next</en> liên tục như vậy sẽ bấm <en>finish</en>
+nft market,1,vi-asr-tech-test 1,gg_tech_113625: <en>ok</en> hướng dẫn cách sử dụng <en>nft market</en> trên <en>pancakeswap</en>
+nitori international,1,vi-asr-edu-test 1,gg_edu_114849: tiếp theo đó chính là học bổng <en>nitori international</en> <en>scholarship</en>
+nixon,1,vi-asr-finance-test 1,gg_finance_114299: trong tháng tám năm một chín bảy mốt của tổng thống mỹ <en>richard</en> m <en>nixon</en>
+normal way under normal,1,vi-asr-pubadmin-test 1,gg_pubadmin_114579: từ c cho nhà thầu đó là cái trường hợp <en>normal way under normal</en>
+northwind,1,consensus:B2 1,cons_public_0672_final: đặt giùm anh một vé đi cho kịp buổi gặp <en>northwind</en> <en>trading</en> nha tàu hay xe gì cũng được
+northwind travel gear,1,consensus:B2 1,cons_public_0588_final: em tìm trên mua đồ giúp anh ổ cắm chuyển đổi của <en>northwind travel gear</en> dưới bốn trăm rưỡi nghìn đó nghe
+not found,1,vi-asr-tech-test 1,gg_tech_113323: à nó báo <en>sheet</en> 2 <en>not found</en> tức là không tìm thấy <en>sheet</en> 2
+nova novaland,1,vi-asr-finance-test 1,gg_finance_115773: khóa này chưa ví dụ một vài cổ phiếu điển hình đi như <en>nova novaland</en> nửa chừng
+npx hardhat compile,1,vi-asr-tech-test 1,gg_tech_113269: cái <en>smart contract</en> bằng cái lệnh là <en>npx hardhat compile</en> thì khi mà mình <en>combine</en> nó sẽ lỗi ha
+number,1,vi-asr-tech-test 1,gg_tech_114267: để kiểm tra có phải số hai hay không nha y <en>desk</en> một này <en>number</en> là hai này
+oatday,1,consensus:B2 1,cons_public_0382_u1: ờ tôi muốn mua lại cái sữa hạt <en>oatday</en> loại không đường ấy tìm thử xem còn hàng không
+object,1,vi-asr-tech-test 1,gg_tech_113883: muốn có một <en>object</en> thôi của lớp đấy thì mọi người cứ triển khai <en>singleton</en>
+ocean pearl theatre,1,consensus:B2 1,cons_public_0575_final: nhẫn vàng dưới hai trăm triệu một lượng thì thêm vô danh sách mua sắm không thì đặt hai vé bên <en>ocean pearl theatre</en> nghe
+off train,1,vi-asr-finance-test 1,gg_finance_115760: <en>on train</en> và <en>off train</en> như thế nào
+offer,1,vi-asr-edu-test 1,gg_edu_116451: cái <en>offer</en> bi si ti <en>scholarship</en> từ trường đại học <en>wisconsin</en>
+office office,1,vi-asr-tech-test 1,gg_tech_115338: văn phòng trình chiếu các thứ này nọ <en>office office</en>
+official guide,1,vi-asr-edu-test 1,gg_edu_115643: ở <en>official guide to</en> <en>ielts</en> bạn có thể học cuốn <en>official guide</en> chung với lại cuốn <en>mindset</en> số hai
+offset,1,vi-asr-finance-test 1,gg_finance_115660: tổng những cái bí ở trên thị trường nó đều <en>offset</en> vào tất cả sàn là bao nhiêu
+omega,1,consensus:B2 1,cons_public_0243_u1: bác sĩ dặn tôi sáng chủ nhật này đúng bảy giờ phải uống <en>omega</en> ba đấy
+omega zh,1,vi-asr-tech-test 1,gg_tech_113511: thì mình đã cài <en>omega zh</en> rồi thì giống ha
+onboarding,1,consensus:B2 1,cons_public_0601_u2: mai tớ lên hải phòng <en>onboarding</en> sáng mai có tàu nào đi không
+one settings,1,vi-asr-tech-test 1,gg_tech_113206: bỏ qua định cấu hình trước cho <en>one settings</en>
+one sided bet,1,vi-asr-finance-test 1,gg_finance_114054: nếu mà các bạn giao dịch theo <en>one sided bet</en> thì
+onenote,1,vi-asr-tech-test 1,gg_tech_114218: đơn giản đúng không các bạn không thích này thì các bạn gộp nó vào được <en>onenote</en> các bạn cho này
+op bnb,1,vi-asr-finance-test 1,gg_finance_114842: đây này bài đen xây dựng <en>op bnb</en>
+opacity,1,vi-asr-tech-test 1,gg_tech_113334: số một trăm đây tương ứng với cũng <en>opacity</en> đây
+open work commit,1,vi-asr-pubadmin-test 1,gg_pubadmin_114000: nếu như người nộp đơn chính không nộp hồ sơ <en>open work commit</en> này
+optimisum abitum metis,1,vi-asr-finance-test 1,gg_finance_114651: còn <en>layer</en> hai thì <en>layer zero</en> là tích hợp là <en>optimisum abitum metis</en> và <en>polygon</en>
+option,1,vi-asr-finance-test 1,gg_finance_113738: thì cái <en>option</en> ba á cái rau ba của nó
+oracle,1,vi-asr-tech-test 1,gg_tech_114230: <en>oracle</en> cũng thế <en>postgres</en> cũng thế các loại <en>atoi</en> khác nó đều tận dụng kiểu vậy
+orion tech,1,consensus:B2 1,cons_public_0595_final: em coi hóa đơn <en>orion tech</en> gửi qua <en>mail</en> bao nhiêu tiền lấy số dư ví chị trừ ra thì còn bao nhiêu
+output value,1,vi-asr-tech-test 1,gg_tech_115730: cột thứ hai là cột về <en>pull up</en> gạch chéo <en>output value</en> là cột bên phải này
+outsouce,1,vi-asr-tech-test 1,gg_tech_115754: những công ty <en>outsouce</en> thì cái <en>design system</en> nó phục vụ cho nhiều cái
+over supply,1,vi-asr-finance-test 1,gg_finance_113763: hàng vẫn có thể sáng nhưng mà mà ba năm tới thì <en>over supply</en> khá nhiều thế còn bất động sản
+overview,1,vi-asr-tech-test 1,gg_tech_115499: đây các bạn cũng có thể lên đây lấy lệnh <en>docker</en> run này tại <en>overview</en> của <en>reddit</en>
+owe newzeland,1,vi-asr-edu-test 1,gg_edu_115594: còn đi học phí hay sao học phí thì anh thấy học phí và <en>canada</en> rẻ hơn học phí <en>owe newzeland</en>
+oxford,1,vi-asr-edu-test 1,gg_edu_115525: học chuyên ngành <en>economics and management</en> ở trường đại học <en>oxford</en>
+p e,1,vi-asr-tech-test 1,gg_tech_114477: bỏ hoặc là mức <en>p e</en> chưa từng bỏ
+package contribute,1,vi-asr-tech-test 1,gg_tech_114235: khi là <en>package contribute</en> như này là xong rồi
+page layout,1,vi-asr-pubadmin-test 1,gg_pubadmin_113341: <en>page layout</en> và <en>size</en> chúng ta chọn khổ <en>layout</en> bốn
+painting,1,vi-asr-edu-test 1,gg_edu_113903: cái là bán tranh cho nên em định sắp tới học ngành <en>painting</en> luôn coi như để bồi
+pancakeswap,1,vi-asr-tech-test 1,gg_tech_113625: <en>ok</en> hướng dẫn cách sử dụng <en>nft market</en> trên <en>pancakeswap</en>
+partners industry partners,1,vi-asr-edu-test 1,gg_edu_114674: gọi là <en>capstone project</en> thì trường có thăm rất là nhiều các cái <en>partners industry partners</en>
+passing,1,vi-asr-finance-test 1,gg_finance_114945: trong <en>vip</en> thì lệnh <en>passing</en> bên em có thể mở phần mô tả <en>video</en> lên
+passport,1,vi-asr-edu-test 1,gg_edu_113491: à giấy khai sinh hoặc là <en>passport</en> hoặc là <en>citizenship</en>
+pauline,1,vi-asr-finance-test 1,gg_finance_114691: <en>pauline</en> đang <en>unlock</en> một trăm bảy mươi lăm nghìn <en>png</en> mỗi ngày
+penny,1,vi-asr-finance-test 1,gg_finance_114332: ờ đây không chỉ riêng nhóm <en>penny</en> mà những nhóm <en>midcap blue chip</en> cũng có
+performance,1,vi-asr-tech-test 1,gg_tech_114034: về <en>scale</en> về <en>performance</en> về <en>security</en>
+personal detail,1,vi-asr-pubadmin-test 1,gg_pubadmin_113364: ví dụ như trong cái mục <en>personal detail</en> là thông tin
+personal stipman,1,vi-asr-edu-test 1,gg_edu_115570: bài luận cá nhân <en>personal stipman</en>
+personal support worker,1,vi-asr-edu-test 1,gg_edu_113016: <en>personal support worker</en> và có thể tiếp tục học tiếp lên <en>practice nursing</en>
+personality,1,vi-asr-edu-test 1,gg_edu_114606: cái bài test về <en>personality</en> rồi là ngành học ở <en>hollen</en> test các thứ vân vân
+peter,1,vi-asr-tech-test 1,gg_tech_114414: <en>peter</en> chính là mình sẽ <en>fill up</en> những cái <en>missing value</en>
+phd proposal,1,vi-asr-edu-test 1,gg_edu_114824: có cần <en>phd proposal</en> rồi hay không tùy
+physical address,1,vi-asr-tech-test 1,gg_tech_114599: <en>physical address</en> thì này ừ các bạn chuyển được quá nhãn hai mũ mười này đây đấy hai
+piano,1,consensus:B2 1,cons_public_0576_final: vé nghe <en>sophie martin</en> đánh <en>piano</en> cộng một tô bún bò giò quán mệ kéo hai trăm có đủ không em
+picnic,1,consensus:B2 1,cons_public_0349_u1: buổi <en>picnic</en> của nhóm thiết kế chiều thứ năm này đang để ở đâu ấy nhỉ
+piercing,1,vi-asr-finance-test 1,gg_finance_113325: trường hợp thứ ba chúng ta còn đến <en>dark rover</en> và <en>piercing</en>
+pilgrim village,1,consensus:B2 1,cons_public_0540_final: chiều ni tui dẫn hai khách từ nhà đi xe buýt qua <en>pilgrim village</en> em nạp thẻ đúng tiền vé khứ hồi ba người nghe
+planding,1,vi-asr-tech-test 1,gg_tech_114108: sau khi mình <en>planding</en> và <en>planding</en> gọi
+planning,1,vi-asr-edu-test 1,gg_edu_114567: số lượng bán tại trường sẽ là bao nhiêu là trường lên <en>planning</en>
+platform template,1,vi-asr-tech-test 1,gg_tech_115564: <en>coco meet</en> tại vì <en>coco meet</en> này đang chứa cái <en>platform template</en> của mình
+plus sport,1,consensus:B2 1,cons_public_0057_u6: bật kênh s <en>plus sport</en> lên coi
+policyhold,1,vi-asr-finance-test 1,gg_finance_113210: yên thọ á thì mình giúp em gái mình bỏ một cái tài khoản bỏ một cái <en>policyhold</en>
+pomina,1,vi-asr-finance-test 1,gg_finance_113164: mười lần quy mô của hòa phát lớn hơn thép <en>pomina</en> hơn mười
+portfolio manager management,1,vi-asr-edu-test 1,gg_edu_113969: môn <en>portfolio manager management</en> tức là môn quan cũng là những cái môn
+postcard,1,vi-asr-edu-test 1,gg_edu_114526: chào các bạn khán thính giả đang lắng nghe <en>postcard</en> của khoa công nghệ thông tin
+postgres,1,vi-asr-tech-test 1,gg_tech_114230: <en>oracle</en> cũng thế <en>postgres</en> cũng thế các loại <en>atoi</en> khác nó đều tận dụng kiểu vậy
+postman,1,vi-asr-tech-test 1,gg_tech_114286: cái chương trình kiểm thử các <en>api</en> nó tương tự như <en>postman</en>
+power,1,vi-asr-finance-test 1,gg_finance_114719: đúng không <en>power</en> luôn <en>power</en> luôn nó là trên bốn mươi
+power ase,1,vi-asr-tech-test 1,gg_tech_115519: khởi động <en>script</en> này lên thì mình sẽ gắn cái nguồn <en>power ase</en> vào
+power shell,1,vi-asr-tech-test 1,gg_tech_114720: chúng ta chạy ở trên <en>window</en> chúng ta có <en>power shell</en>
+powerpoint,1,vi-asr-tech-test 1,gg_tech_113626: tuy nhiên tôi phải khởi động lại <en>powerpoint</en> cho anh chị
+practice,1,vi-asr-tech-test 1,gg_tech_114931: thi đó các bạn ha cái hệ thống mà nó có thể phần <en>practice</en> này là rất hay
+practice nursing,1,vi-asr-edu-test 1,gg_edu_113016: <en>personal support worker</en> và có thể tiếp tục học tiếp lên <en>practice nursing</en>
+private evd,1,vi-asr-finance-test 1,gg_finance_114438: <en>infrastructure</en> này <en>commercial property</en> này <en>private evd</en> ở trong và ngoài nước úc
+private school,1,vi-asr-edu-test 1,gg_edu_114565: có khả năng rất giàu thì trường hãy chọn vào các trường là <en>private school</en>
+private subnet,1,vi-asr-tech-test 1,gg_tech_113569: ở <en>public subnet</en> và <en>private subnet</en> nó trải dài trên
+proce,1,vi-asr-tech-test 1,gg_tech_114939: <en>store</en> để lưu trữ <en>proce</en> để xử lý
+procedure,1,vi-asr-edu-test 1,gg_edu_113480: tôi chấp nhận coi cái lít sam sưng <en>automatic</en> rồi thì họ không phải qua một cái <en>procedure</en> đặc biệt
+process net,1,vi-asr-tech-test 1,gg_tech_115527: và các <en>process net</en> dịch này trong <en>node js</en> này
+profile,1,vi-asr-tech-test 1,gg_tech_115373: mình sẽ <en>edit</en> cái <en>profile</en> ví dụ thêm các <en>link</en> như <en>twitter</en> thêm <en>link</en>
+profit,1,vi-asr-tech-test 1,gg_tech_114192: cái cái sum <en>profit</en> là lớn nhất
+program outcomes assessment system,1,vi-asr-edu-test 1,gg_edu_113693: hay ở thục ngữ ở bên mỹ hay chúng ta hay có sử dụng là cụm từ là <en>program outcomes assessment system</en>
+progress,1,vi-asr-tech-test 1,gg_tech_113641: <en>logout</en> thì sẽ mất tất cả những cái <en>progress</en>
+project,1,vi-asr-tech-test 1,gg_tech_114113: bây giờ ví dụ mình làm một cái <en>project</en> cũng vậy
+promet,1,vi-asr-tech-test 1,gg_tech_114687: đúng không nó là cái <en>promet</en> nó là cái <en>promet</en> nếu <en>promet</en> thì bạn biết
+proof of work,1,vi-asr-finance-test 1,gg_finance_114473: chạy <en>proof of stake</en> và một bản <en>ethereum</en> chạy <en>proof of work</en>
+protocon,1,vi-asr-finance-test 1,gg_finance_115011: ống nia <en>protocon</en> này những đồng <en>coin</en> này tìm những cái <en>coin</en> nó thuộc hệ sinh thái nia đây này
+prototype,1,vi-asr-tech-test 1,gg_tech_114481: <en>demo</en> những cái <en>mvp</en> những cái <en>prototype</en>
+ps project,1,vi-asr-tech-test 1,gg_tech_113246: mình đã chui vào cái <en>ps project</en> mọi người thấy không
+public builder tree,1,vi-asr-tech-test 1,gg_tech_115578: khai báo <en>tree</en> nè anh khai báo một cái <en>public builder tree</en> trả về kiểu <en>builder</en>
+public subnet,1,vi-asr-tech-test 1,gg_tech_113569: ở <en>public subnet</en> và <en>private subnet</en> nó trải dài trên
+publication,1,vi-asr-edu-test 1,gg_edu_115465: ứng tuyển các ứng viên á thì cái <en>publication</en> cũng khá
+pull up,1,vi-asr-tech-test 1,gg_tech_115730: cột thứ hai là cột về <en>pull up</en> gạch chéo <en>output value</en> là cột bên phải này
+pullback,1,vi-asr-finance-test 1,gg_finance_114991: hoặc một chu kỳ <en>breakout</en> và <en>pullback</en> hoàn chỉnh
+pv parameter,1,vi-asr-tech-test 1,gg_tech_115772: tham số của nó sẽ mặc định là <en>pv parameter</en> thì mình cũng không dùng
+python developer,1,vi-asr-edu-test 1,gg_edu_113875: cái khóa về <en>ai specialist</en> còn cái khóa về ai về <en>python developer</en>
+pytorch,1,vi-asr-tech-test 1,gg_tech_114759: về <en>machine learning</en> về <en>deep learning</en> như là <en>sagemaker</en> hay là <en>pytorch</en> chẳng hạn
+qd ub,1,vi-asr-pubadmin-test 1,gg_pubadmin_113301: bản <en>qd ub</en> ngày hai mươi tháng hai năm hai nghìn không trăm
+qs world university rankings,1,vi-asr-edu-test 1,gg_edu_115094: theo bảng xếp hạng uy tín <en>qs world university rankings</en> và <en>the rankings</en>
+qualitative research,1,vi-asr-tech-test 1,gg_tech_114428: nghiên cứu định tính trong tiếng anh là <en>qualitative research</en>
+quantitative research method,1,vi-asr-edu-test 1,gg_edu_113291: <en>research method</en> và <en>quantitative research method</en> và mình sẽ phải hoàn thành hai khóa học
+queens college,1,vi-asr-edu-test 1,gg_edu_114072: cảm ơn em hân ơi ở <en>new york</en> thì có trường <en>queens college</en>
+queensland,1,vi-asr-edu-test 1,gg_edu_116241: ở đại học <en>queensland</en> và đại học <en>new south wales</en>
+quochoitv,1,vi-asr-pubadmin-test 1,gg_pubadmin_113318: <en>quochoitv</en> vn trên <en>fanpage</en> truyền hình quốc hội việt nam
+r m i t,1,vi-asr-edu-test 1,gg_edu_115326: <en>r m i t</en> hay mình gọi tiếng việt là <en>rmit</en> đấy ạ mình giảng dạy ở khoa quản trị kinh doanh
+rabbit mq,1,vi-asr-tech-test 1,gg_tech_114645: đáng lẽ ra cái <en>video</en> này thì nó nói về <en>rabbit mq</en>
+radicle,1,vi-asr-finance-test 1,gg_finance_114456: thì ra đi sồ <en>radicle</en> này thì được các quỹ lớn đầu tư như là <en>coinbase ventures</en>
+radio,1,consensus:B2 1,cons_public_0416_final: gửi <en>email</en> biểu hằng gửi cái <en>radio</en> về nhà cho ba nhe à lộn thằng út mới phải
+random,1,vi-asr-edu-test 1,gg_edu_116513: đề hai thì anh sẽ <en>random</en> chỗ thi thử là anh xem sẽ thi thử ở tỉnh nào
+ranking,1,vi-asr-edu-test 1,gg_edu_115315: trường này thì <en>ranking</en> rất là cao <en>ranking</en> là một trăm lẻ ba <en>national university</en>
+react,1,vi-asr-tech-test 1,gg_tech_114301: bảo mật là như vậy <en>anguler</en> thua phần <en>react angular</en> hơn <en>react</en>
+real time,1,vi-asr-finance-test 1,gg_finance_113432: số liệu này là số liệu <en>real time</en>
+realtime,1,vi-asr-tech-test 1,gg_tech_113304: nó là dữ liệu cập nhật <en>realtime</en> đúng không
+reddit,1,vi-asr-tech-test 1,gg_tech_115499: đây các bạn cũng có thể lên đây lấy lệnh <en>docker</en> run này tại <en>overview</en> của <en>reddit</en>
+redwood analytics,1,consensus:B2 1,cons_public_0597_final: em đặt cảnh báo cho mã <en>redwood analytics</en> ngay đúng giá vốn của mạ nghe
+reference,1,vi-asr-tech-test 1,gg_tech_115099: các bạn vào phần <en>reference</en> của <en>third person controller</en>
+refesh,1,vi-asr-tech-test 1,gg_tech_113758: rồi mình sẽ <en>refesh</en> lại cái <en>browser</en> nè
+refly,1,vi-asr-tech-test 1,gg_tech_113856: đó còn cái gói tên <en>refly</en> trở về á
+refresh,1,vi-asr-tech-test 1,gg_tech_115088: mình chọn vào nếu bạn nào chưa có bạn chỉ cần ấn <en>refresh</en> thôi
+register,1,vi-asr-tech-test 1,gg_tech_115843: và các bạn bấm <en>continue</en> sau khi <en>confirm</en> lại một lần nữa đây các bạn sẽ bấm <en>register</en>
+reinvent,1,vi-asr-tech-test 1,gg_tech_113235: khách hàng ngay trong hội nghị <en>reinvent</en> năm hai không mười hai
+release,1,vi-asr-tech-test 1,gg_tech_114254: thì sẽ tự động được <en>release</en> cho khách hàng
+remitstore,1,consensus:B2 1,cons_public_0350_u1: tuần sau anh định thuê cái ngăn s mười tám bên <en>remitstore</en> để gửi đồ em nhớ giúp anh nhé
+remote,1,vi-asr-tech-test 1,gg_tech_115590: là nhập <en>ip</en> của máy kia xong rồi <en>remote</en> thôi
+remote computer,1,vi-asr-tech-test 1,gg_tech_113815: sau khi <en>push</en> thì nó mới <en>push</en> lên <en>remote computer</en>
+remove,1,vi-asr-tech-test 1,gg_tech_114548: vẫn để <en>remove</en> các điểm xa nhất ra
+render,1,vi-asr-tech-test 1,gg_tech_115632: thôi chứ không làm <en>teacher</en> hay <en>render</en> gì
+renew,1,vi-asr-pubadmin-test 1,gg_pubadmin_115160: và lần thứ ba đó mà ảnh <en>renew</en> cái <en>visa</en> của ảnh á thì
+renew release,1,vi-asr-tech-test 1,gg_tech_114283: trừ rồi trừ rồi có nghĩa là <en>renew release</en> á các bạn à
+repeat,1,vi-asr-tech-test 1,gg_tech_116383: đi theo cái <en>flow</en> là có <en>idea</en> test <en>analyze optimize</en> và <en>repeat</en> không
+repeatability,1,vi-asr-tech-test 1,gg_tech_114513: khả năng mà lặp lại á việc nói từ <en>repeatability</en>
+replacement of for,1,vi-asr-tech-test 1,gg_tech_114626: có <en>modify</en> cái <en>auto scaling group</en> ha chúng ta <en>replacement of for</en>
+replicate,1,vi-asr-tech-test 1,gg_tech_114746: tính năng này cho phép chúng ta <en>replicate</en> dữ liệu từ <en>bucket</en> nguồn từ <en>bucket</en> đích
+reply,1,consensus:B2 1,cons_public_0539_u2: thêm giúp tớ việc <en>reply</en> <en>mail</en> thầy phong trước tám giờ tối nay nhé
+request,1,vi-asr-tech-test 1,gg_tech_115701: để nó một giây có thể chịu được cả triệu <en>request</en> mà
+requirement,1,vi-asr-tech-test 1,gg_tech_113950: tức là <en>scrum</en> thì cái cách viết <en>requirement</en> ấy
+research and development credit,1,vi-asr-finance-test 1,gg_finance_114338: nó gọi là <en>research and development credit</en> có nghĩa là quý vị
+research method,1,vi-asr-edu-test 1,gg_edu_113291: <en>research method</en> và <en>quantitative research method</en> và mình sẽ phải hoàn thành hai khóa học
+response,1,vi-asr-tech-test 1,gg_tech_116477: <en>backend</en> sẽ gửi trả lại cho bạn <en>api</en> <en>response</en>
+richard,1,vi-asr-finance-test 1,gg_finance_114299: trong tháng tám năm một chín bảy mốt của tổng thống mỹ <en>richard</en> m <en>nixon</en>
+rick rick management,1,vi-asr-tech-test 1,gg_tech_113728: là <en>rick rick management</en> tức là thai thù của họ nếu
+rip iagp stop,1,vi-asr-tech-test 1,gg_tech_114727: thế nên <en>swift</en> sẽ hỗ trợ các giao thức <en>layer</en> ba như <en>rip iagp stop</en>
+rocket pool,1,vi-asr-finance-test 1,gg_finance_114501: như là li đô <en>rocket pool</en> hay là <en>coinbase staking</en> nhiều <en>ethereum</en> nữa
+role scrum master,1,vi-asr-tech-test 1,gg_tech_115371: và cái <en>role</en> cuối cùng đó là <en>role scrum master</en>
+rollback,1,vi-asr-tech-test 1,gg_tech_115348: bước này là thực hiện <en>rollback</en> từ bản <en>snapshot</en>
+roth ira,1,vi-asr-finance-test 1,gg_finance_113879: chú cái tiền mà bạn đóng vào trong <en>roth ira</en> ấy là cái tiền bạn đã đóng thuế rồi
+route,1,vi-asr-tech-test 1,gg_tech_114024: là gì thay vì hai ổ cứng mình chạy <en>route</en> một thì mình chỉ chạy
+router wan,1,vi-asr-tech-test 1,gg_tech_115226: sau đấu ra ngoài một con <en>router wan</en>
+row vector row,1,vi-asr-tech-test 1,gg_tech_116443: một cái <en>row vector row</en> bằng một và <en>colum</en>
+rudder iceland,1,vi-asr-edu-test 1,gg_edu_114956: và ma thế ma tích toán học là ý tưởng sáng tạo ban đầu của trường thiết kế <en>rudder iceland</en>
+ruijie,1,vi-asr-tech-test 1,gg_tech_114960: thì lúc này <en>modem</en> nhà mạng sẽ cấp một <en>ip</en> cho <en>router</en> <en>wifi</en> của <en>ruijie</en>
+rule set,1,vi-asr-tech-test 1,gg_tech_113739: gọi là có một cái <en>rule set</en> á quy
+rumic,1,vi-asr-finance-test 1,gg_finance_113292: hiện tại <en>rumic</en> đi lại phát sinh bên em đấy
+russell group,1,vi-asr-edu-test 1,gg_edu_113712: chủ động nhưng mà lên đến năm mươi phần trăm ở đây có <en>newcastle university</en> là trường thuộc nhóm <en>russell group</en>
+sacombank,1,vi-asr-finance-test 1,gg_finance_114135: là <en>sacombank</en> trong phiên giao dịch hôm thứ sáu khớp bảy mươi tư triệu cổ phiếu
+sagemaker,1,vi-asr-tech-test 1,gg_tech_114759: về <en>machine learning</en> về <en>deep learning</en> như là <en>sagemaker</en> hay là <en>pytorch</en> chẳng hạn
+sakura,1,vi-asr-edu-test 1,gg_edu_114783: ngày hôm nay thì thầy dũng <en>sakura</en> sẽ gửi tới quý phụ huynh các em học sinh
+saotel,1,consensus:B2 1,cons_public_0675_u8: đóng luôn cái <en>saotel</en> bằng ví đi em
+saskatchewan,1,vi-asr-edu-test 1,gg_edu_116482: em thấy là cộng đồng du học sinh ở <en>saskatchewan</en> thì cũng rất là
+scale,1,vi-asr-tech-test 1,gg_tech_114034: về <en>scale</en> về <en>performance</en> về <en>security</en>
+scan scan,1,vi-asr-pubadmin-test 1,gg_pubadmin_113046: <en>scan scan</en> và mình lưu vào cái <en>laptop</en> mình sẽ gắn vào đây kiểu như mình nộp <en>online</en> á
+school,1,vi-asr-edu-test 1,gg_edu_114820: <en>school</en> và bậc học thứ hai là <en>secondary school</en>
+school of media arts and science,1,vi-asr-edu-test 1,gg_edu_114690: tiếng anh đang dùng để ghi tên của nó <en>school of media arts and science</en>
+scientist,1,vi-asr-tech-test 1,gg_tech_116517: thì sẽ làm sao nếu các bạn chỉ là một người <en>analyst</en> hay là <en>scientist</en>
+script,1,vi-asr-tech-test 1,gg_tech_115519: khởi động <en>script</en> này lên thì mình sẽ gắn cái nguồn <en>power ase</en> vào
+script hhcompile,1,vi-asr-tech-test 1,gg_tech_115588: cài đặt <en>build</en> với <en>script hhcompile</en> và test với <en>script hhtest</en>
+script hhtest,1,vi-asr-tech-test 1,gg_tech_115588: cài đặt <en>build</en> với <en>script hhcompile</en> và test với <en>script hhtest</en>
+scrum,1,vi-asr-tech-test 1,gg_tech_113950: tức là <en>scrum</en> thì cái cách viết <en>requirement</en> ấy
+seabank,1,vi-asr-finance-test 1,gg_finance_113540: <en>eximbank</en> tăng gần bốn mươi bảy bảy phần trăm và <en>seabank</en> tăng gần hai mươi tám phần trăm
+search visual studio,1,vi-asr-tech-test 1,gg_tech_115579: rồi sau khi các bạn cài đặt xong thì các bạn chỉ cần <en>search visual studio</en> <en>code</en> và nhấn <en>enter</en>
+secondary distribution,1,vi-asr-finance-test 1,gg_finance_114275: nó bơn luôn và <en>secondary distribution</en> nó bơn luôn nha cả nhà nó bơn luôn mười phẩy tư
+secondary school,1,vi-asr-edu-test 1,gg_edu_114820: <en>school</en> và bậc học thứ hai là <en>secondary school</en>
+sector,1,vi-asr-tech-test 1,gg_tech_114081: cái cái <en>dashi</en> của nó cái cái <en>sector</en> nói anh chị nhá
+security,1,vi-asr-tech-test 1,gg_tech_114034: về <en>scale</en> về <en>performance</en> về <en>security</en>
+sekiry group,1,vi-asr-tech-test 1,gg_tech_114833: <en>sekiry group</en> thì hiện tại thì <en>sekiry group</en> thì bên có cái <en>web</en> <en>dmz</en> này
+self service password reset,1,vi-asr-tech-test 1,gg_tech_116457: <en>self service password reset</en> nó cho phép người dùng có thể thay đổi <en>password</en> và đồng bộ một số tài khoản
+sender,1,vi-asr-tech-test 1,gg_tech_113765: mình sẽ <en>add</en> cái <en>account</en> vô để mình làm cái thằng <en>sender</en>
+sensor,1,vi-asr-tech-test 1,gg_tech_113727: các thiết bị <en>sensor</en> và <en>device</en> như thế này
+series,1,vi-asr-finance-test 1,gg_finance_114088: sét pa rồi bây giờ thì với ví me ta mát á bên kênh của mình mình có một <en>series</en>
+serva,1,vi-asr-tech-test 1,gg_tech_115092: cho các bạn sẽ có thể <en>skip</en> qua những cái <en>serva</en> này cho nhanh
+set dragon config,1,vi-asr-tech-test 1,gg_tech_113835: thì mình có thể sử dụng cái hàm <en>set dragon config</en> này
+setting,1,vi-asr-tech-test 1,gg_tech_114697: chúng ta <en>click</en> vào cái máy <en>calorimeter digital phoehenix</en> này <en>click</en> vào <en>setting</en>
+setup short,1,vi-asr-finance-test 1,gg_finance_114588: seo và một cái <en>setup short</en> ở đây
+sevis,1,vi-asr-edu-test 1,gg_edu_116426: rồi biên lai <en>sevis</en> rồi thư mời phỏng vấn
+shanghai jiao,1,vi-asr-edu-test 1,gg_edu_114533: đại học giao thông thượng hải <en>shanghai jiao</en> tong <en>university</en>
+sharepoint,1,vi-asr-tech-test 1,gg_tech_116361: trên <en>microsoft teams</en> ví dụ như <en>sharepoint</en> này
+sharing,1,vi-asr-finance-test 1,gg_finance_114792: tom đó là một bạn ở trong trong công ty của em thì bạn sẽ <en>sharing</en> về <en>blockchain</en> cũng như
+sheet,1,vi-asr-tech-test 1,gg_tech_113323: à nó báo <en>sheet</en> 2 <en>not found</en> tức là không tìm thấy <en>sheet</en> 2
+shin jung,1,vi-asr-finance-test 1,gg_finance_114149: ví dụ anh <en>shin jung</en> này đã bán là hai trăm bảy hai này
+shooting star,1,vi-asr-finance-test 1,gg_finance_115681: búa này hay một cái cây <en>shooting star</en>
+sideways,1,vi-asr-finance-test 1,gg_finance_114446: đặc thù khác hay là thị trường <en>sideways</en> là mọi người đúng đó
+sign into console,1,vi-asr-tech-test 1,gg_tech_114224: và mình sẽ <en>sign into console</en> thôi
+signo candle,1,vi-asr-finance-test 1,gg_finance_116531: thì đây cũng là một cái nến <en>signo candle</en> thể hiện cho lực mua lây rất là mạnh
+silicon valley bank,1,vi-asr-finance-test 1,gg_finance_113535: là gì rắc rối ở <en>silicon valley bank</en> đã khiến giới đầu tư đứng ngồi
+singleton,1,vi-asr-tech-test 1,gg_tech_113883: muốn có một <en>object</en> thôi của lớp đấy thì mọi người cứ triển khai <en>singleton</en>
+skill lab,1,vi-asr-edu-test 1,gg_edu_116417: khả năng cơ bản ở <en>skill lab</en> chúng
+sky line,1,vi-asr-edu-test 1,gg_edu_114475: giám đốc của hệ thống giáo dục <en>sky line</en>
+slide,1,vi-asr-pubadmin-test 1,gg_pubadmin_114416: thông tin được xác minh rồi trong <en>slide</en> của tôi thì có
+slimkey,1,consensus:B2 1,cons_public_0240_final: lấy cái <en>slimkey</en> bảy lăm đi em
+small,1,vi-asr-tech-test 1,gg_tech_114233: <en>medium</en> là bốn cây thì trong đây mình chọn <en>small</en>
+small and medium enterprises,1,vi-asr-finance-test 1,gg_finance_114406: <en>sme</en> là viết tắt của cụm từ <en>small and medium enterprises</en>
+smart,1,vi-asr-edu-test 1,gg_edu_115339: và <en>combo</en> cả khóa <en>smart</en> sẽ là một triệu hai trăm năm mươi ca bạn nào muốn
+snapshot,1,vi-asr-tech-test 1,gg_tech_115348: bước này là thực hiện <en>rollback</en> từ bản <en>snapshot</en>
+social media,1,vi-asr-edu-test 1,gg_edu_115139: ở học kỳ một <en>social media educating</en> cung cấp kiến thức nền tảng và tư duy về <en>social media</en>
+social media educating,1,vi-asr-edu-test 1,gg_edu_115139: ở học kỳ một <en>social media educating</en> cung cấp kiến thức nền tảng và tư duy về <en>social media</en>
+software,1,vi-asr-tech-test 1,gg_tech_113316: giống như mình xuất thân là dân làm <en>developer</en> hoặc làm <en>software</en>
+software engineer,1,vi-asr-edu-test 1,gg_edu_115383: mà nhiên đang ở hệ đại học của <en>software engineer</en> mà muốn
+software engineering,1,vi-asr-edu-test 1,gg_edu_115919: nếu bạn học ai song song với <en>software engineering</en>
+solution architect,1,vi-asr-tech-test 1,gg_tech_114465: nếu mà làm <en>solution architect</en> cũng có <en>dev</en> <en>team</en> bàn hai chục người
+soundgo,1,consensus:B2 1,cons_public_0372_final: ờ đặt cho em một cái tai nghe <en>soundgo</en> nha à với cái loa <en>mini</en> em mới nhận hôm trước bị hỏng rồi làm luôn yêu cầu trả hàng giúp em
+soure,1,vi-asr-tech-test 1,gg_tech_114030: có hai <en>soure</en> <en>code</en> trên này với nhau
+sparkon,1,vi-asr-edu-test 1,gg_edu_114640: <en>mentor</en> linh bùi thì có thể là <en>connect</en> với lại <en>contact</en> với lại <en>sparkon</en> để có thêm thông tin
+speaking dollar,1,vi-asr-finance-test 1,gg_finance_113140: bạn bác hoàng vũ nguyễn hỏi là mình <en>speaking dollar</en> trên <en>crypto</en> đúng
+speaking listening,1,vi-asr-edu-test 1,gg_edu_114683: tiếp này <en>speaking listening</en> là những cái kỹ năng nó
+spread,1,vi-asr-finance-test 1,gg_finance_113014: nó thấp hơn nhiều so với cái thằng <en>standard</en> với phí <en>spread</en> là không phẩy chín <en>pip</en>
+spread global,1,vi-asr-finance-test 1,gg_finance_113483: ngoài ra thì <en>spread global</en> sẽ áp dụng
+spring,1,vi-asr-finance-test 1,gg_finance_113845: xem là gì nếu như là phiên <en>spring</en> thì nó là <en>fake</en>
+spv special purpose vehicle,1,vi-asr-finance-test 1,gg_finance_114195: giá trị họ đã tạo ra các <en>spv special purpose vehicle</en>
+square life cycle,1,vi-asr-tech-test 1,gg_tech_113730: thì hôm nay mình sẽ học chữ về <en>square life cycle</en> ha để mình
+stack,1,vi-asr-tech-test 1,gg_tech_113587: có <en>doc</en> là <en>full stack developer</en> hai ba <en>stack</en>
+stacking landing saving,1,vi-asr-finance-test 1,gg_finance_114521: hay các sản phẩm thu nhập thụ động như <en>stacking landing saving</en>
+stady,1,vi-asr-edu-test 1,gg_edu_113488: bước thứ năm là sinh <en>visa</en> du học <en>island visa</en> d <en>stady</en>
+stakeholder,1,vi-asr-tech-test 1,gg_tech_115729: <en>stakeholder</en> khác đúng không với <en>team</en> <en>member</en> hay là với <en>manager</en> hay là với <en>ceo</en> thì họ
+standard,1,vi-asr-finance-test 1,gg_finance_113014: nó thấp hơn nhiều so với cái thằng <en>standard</en> với phí <en>spread</en> là không phẩy chín <en>pip</en>
+standby,1,vi-asr-tech-test 1,gg_tech_115656: <en>stop</en> hay chế độ <en>standby</en> thì nó sẽ mắc
+stanford,1,vi-asr-edu-test 1,gg_edu_114610: quá giỏi chứ gì nữa nó trụ được hai khóa của <en>stanford</en>
+start port number,1,vi-asr-tech-test 1,gg_tech_113987: tiếp tục ở đây thì mình sẽ có <en>start port number</en> và <en>end port number</en>
+starters flyers movers,1,vi-asr-edu-test 1,gg_edu_115314: để đánh giá cấp độ ví dụ như <en>starters flyers movers</en> rồi là vân vân
+startup,1,vi-asr-tech-test 1,gg_tech_115840: và mình sẽ <en>comlist</en> cái <en>startup</en> này
+steakking,1,vi-asr-finance-test 1,gg_finance_113574: <en>robot</en> này nó là một cái nhà xác thực khi mà <en>steakking</en> coi
+steam,1,vi-asr-edu-test 1,gg_edu_114777: định hướng cái cuộc <en>steam</en> trong nhà trường được lập trình <en>robot</en> lĩnh vực ngôn ngữ lập trình
+stop lost,1,vi-asr-finance-test 1,gg_finance_115090: à nó <en>stop lost</en> ở trên này xíu nè
+store,1,vi-asr-tech-test 1,gg_tech_114939: <en>store</en> để lưu trữ <en>proce</en> để xử lý
+story,1,vi-asr-tech-test 1,gg_tech_114897: cái cách mà nó viết <en>document</en> như <en>story</en> cũng chính là một cách thức ví như viết các <en>document</en> ha
+stream,1,vi-asr-tech-test 1,gg_tech_113888: <en>stream</en> đấy vào trong các cái <en>rule</en> thì ngay lập tức <en>block</en>
+string,1,vi-asr-tech-test 1,gg_tech_113422: hoặc là <en>string</en> hoặc là <en>char</en> hoặc là <en>integer</en> vân vân được hết nhá
+stripe edc,1,vi-asr-tech-test 1,gg_tech_114595: do lúc nãy tôi làm cái <en>stripe edc</en> này
+struct,1,vi-asr-tech-test 1,gg_tech_115493: học <en>oop</en> chưa cái <en>class</en> hay còn gọi là cái <en>struct</en> trong c cộng
+structure,1,vi-asr-tech-test 1,gg_tech_114654: mà có cái <en>event</en> mà có còn <en>structure</en>
+student life,1,vi-asr-edu-test 1,gg_edu_113076: ngoài ra thì những cái mảng mà gọi là ngoại khóa cái mảng <en>student life</en> của trường
+studentaid gov,1,vi-asr-edu-test 1,gg_edu_113401: để xin tiền <en>financial aid</en> thì các bạn phải vào trang <en>web</en> <en>studentaid gov</en> và điền đơn <en>online</en>
+students live and study ino,1,vi-asr-edu-test 1,gg_edu_115975: <en>students live and study ino</en> cái gì đó
+study plan,1,vi-asr-edu-test 1,gg_edu_114362: ờ tiếp theo là về phần <en>study plan</en> thì
+style,1,vi-asr-finance-test 1,gg_finance_113233: khuyên nha khó khuyên thì nếu mà <en>style</en> mà đầu cơ thì sẽ khác <en>style</en> đầu
+subclass,1,vi-asr-edu-test 1,gg_edu_113628: cái xin <en>visa</en> sáu trăm á bạn cái <en>subclass</en> sáu trăm làm cái diện <en>visa</en> đó
+subnet mask,1,vi-asr-tech-test 1,gg_tech_116370: hai trăm năm mươi tư <en>host</en> mỗi <en>subnet mask</en> thôi đúng không
+sudico,1,vi-asr-finance-test 1,gg_finance_113537: đấy cổ phiếu ngày xưa năm hai linh bảy có những con như <en>sudico</en> nó trượt cả băng
+suggest,1,vi-asr-edu-test 1,gg_edu_114648: là trong cái mục của chuyên ngành <en>media entertainment</en> thì trường có <en>suggest</en> những cái
+sunrise retail,1,consensus:B2 1,cons_public_0665_final: cổ phiếu <en>sunrise retail</en> của cô giờ bao nhiêu con lên thêm năm nghìn hay xuống năm nghìn thì báo cô nha
+super government,1,vi-asr-finance-test 1,gg_finance_113633: <en>super government</en> co <en>contribution</en> và <en>low income super tax offset</en> vậy thôi còn hãy chờ đến khi mà bạn
+supply max supply,1,vi-asr-finance-test 1,gg_finance_113396: tôi cho <en>supply max supply</en> là khoảng ba tỷ <en>max supply</en> nó khoảng ba tỷ ba đó các bạn
+survey modeling parallel assembly modeling,1,vi-asr-tech-test 1,gg_tech_114551: ngoài ra các công cụ thiết kế như <en>survey modeling parallel assembly modeling</en> và <en>model analysis</en>
+suto clem airrop,1,vi-asr-finance-test 1,gg_finance_113599: <en>suto clem airrop</en> nhưng yêu cầu <en>connect</en> ví
+suwon,1,vi-asr-edu-test 1,gg_edu_114469: đặc biệt nhắc đến <en>suwon</en> là phải nhắc đến cơ hội việc làm thêm <en>anbar</en>
+swift,1,vi-asr-tech-test 1,gg_tech_114727: thế nên <en>swift</en> sẽ hỗ trợ các giao thức <en>layer</en> ba như <en>rip iagp stop</en>
+swing trader,1,vi-asr-finance-test 1,gg_finance_114933: còn đối bạn nào mà đánh theo phong cách là <en>swing trader</en> theo hình theo tháng
+switch,1,vi-asr-tech-test 1,gg_tech_114029: cái con <en>switch</en> đó con <en>switch</en> này đó
+system,1,vi-asr-edu-test 1,gg_edu_114909: lên thêm về cả <en>cloud</en> và <en>system</en> luôn em về <en>cloud</en> thì em
+tab usb,1,vi-asr-pubadmin-test 1,gg_pubadmin_114675: bạn chuyển sang mục <en>usb</en> ký số rồi các bạn phải chuyển sang <en>tab usb</en> ký số
+tag name,1,vi-asr-tech-test 1,gg_tech_116244: nó chỉ thay đổi cái <en>tag name</en> này và nó thêm <en>security group so</en> với
+taipei,1,consensus:B2 1,cons_public_0686_u2: vé <en>taipei</en> chiều nay làm thủ tục <en>online</en> luôn giùm cô
+task one,1,vi-asr-edu-test 1,gg_edu_113489: <en>task one</en> là mô tả số liệu <en>the task two</en>
+teacher,1,vi-asr-tech-test 1,gg_tech_115632: thôi chứ không làm <en>teacher</en> hay <en>render</en> gì
+teacombank,1,vi-asr-finance-test 1,gg_finance_113460: <en>techcombank</en> thì tầm nhìn của <en>teacombank</en> đó là
+tech brofit tech brofit stop,1,vi-asr-finance-test 1,gg_finance_113565: xác định vị trí <en>tech brofit tech brofit stop</en>
+tech profit,1,vi-asr-finance-test 1,gg_finance_115831: tại sao phải đặt <en>top rod</en> và <en>tech profit</en>
+tech renson,1,vi-asr-tech-test 1,gg_tech_114853: về phần <en>hectrison</en> một số tính năng như <en>tech renson</en> nên anh chị thấy dễ
+techcombank security,1,vi-asr-finance-test 1,gg_finance_113277: thì cái pe và <en>pb</en> là ngang cơ với lại cái <en>techcombank security</en>
+technic,1,vi-asr-tech-test 1,gg_tech_114013: à nó là một cái kiểu <en>technic</en> về <en>ghost</en> gì đó anh quên mất tên rồi
+technical way,1,vi-asr-tech-test 1,gg_tech_114876: và cái <en>stop</en> nó sẽ bị <en>technical way</en>
+telescope,1,vi-asr-tech-test 1,gg_tech_115120: và cách cấu hình <en>telescope</en> hay là cách để gán các địa chỉ <en>mac</en>
+tencer plolit,1,vi-asr-tech-test 1,gg_tech_114898: quốc cơ bản trong đó có <en>tencer plolit</en> hỗ trợ trên nền tảng là am <en>development</en>
+terraform,1,vi-asr-tech-test 1,gg_tech_115758: ví dụ như <en>terraform</en> được <en>design</en> đúng tính băng đảo là nó chỉ là là <en>infrastructure provision</en>
+tester ok,1,vi-asr-tech-test 1,gg_tech_114065: bao giờ mà <en>tester ok</en> thì <en>tester</en> sẽ tự kéo mình về <en>intest</en> để <en>tester</en> có thể test
+testing,1,vi-asr-pubadmin-test 1,gg_pubadmin_113193: đi <en>testing</en> được thì tư vấn phải cấp chứng chỉ
+testnet,1,vi-asr-tech-test 1,gg_tech_113959: anh sẽ lấy một cái tên <en>testnet</en> của anh <en>banana smart</en> cho anh đây
+texas,1,vi-asr-edu-test 1,gg_edu_114755: hiện tại <en>texas</en> bên <en>idp</en> có
+thaco,1,vi-asr-pubadmin-test 1,gg_pubadmin_114184: dự án <en>casena</en> bắc tân uyên hợp tác với <en>thaco</en>
+thanhdo,1,vi-asr-edu-test 1,gg_edu_115988: bạn có thể đăng ký xét tuyển học bạ tại <en>website</en> <en>www</en> chấm <en>thanhdo</en> chấm <en>edu</en> chấm vn
+thank you,1,vi-asr-edu-test 1,gg_edu_115012: <en>thank you</en> con <en>thank you</en> con có bạn nào chưa điền nữa không ta
+theta,1,vi-asr-finance-test 1,gg_finance_113354: dự án này nè thì <en>theta</en> đã tăng đến vài trăm
+thinkmarkets,1,vi-asr-finance-test 1,gg_finance_114078: <en>thinkmarkets</en> có hai loại nền tảng giao dịch là <en>metatrader</en> 4 và <en>metatrader</en> 5
+third person controller,1,vi-asr-tech-test 1,gg_tech_115099: các bạn vào phần <en>reference</en> của <en>third person controller</en>
+time frame,1,vi-asr-finance-test 1,gg_finance_113388: gì phương pháp gì <en>time frame</en> nào
+tip java script,1,vi-asr-tech-test 1,gg_tech_114816: <en>hello</en> anh em đã quay trở lại với kênh <en>tip java script</en>
+toeic,1,vi-asr-edu-test 1,gg_edu_115804: tiếng anh họ yêu cầu có <en>toefl</en> họ yêu cầu có <en>ielts</en> hay là <en>toeic</en> hay bất kỳ một
+token cods,1,vi-asr-finance-test 1,gg_finance_113525: chúng ta sẽ <en>add</en> thêm cái <en>token cods</en>
+tokyo,1,vi-asr-edu-test 1,gg_edu_113343: còn trường đại học xây dựng hà nội thì có liên kết với trường là trường địa lý khoa <en>tokyo</en>
+top coin,1,vi-asr-finance-test 1,gg_finance_115030: <en>top coin</en> của hai không mười bảy như là <en>xrp</en> này bch này <en>ios xtz xlm</en> này kia
+top global university japan,1,vi-asr-edu-test 1,gg_edu_113819: dự án a <en>humbo mext</en> ở dự án <en>top global university japan</en> thì có tên là <en>mext sgu</en>
+top of page,1,vi-asr-pubadmin-test 1,gg_pubadmin_114894: để đánh dấu trang chúng ta vào <en>insert page number</en> đánh ở trên và <en>top of page</en>
+top ranking,1,vi-asr-edu-test 1,gg_edu_113806: là trường <en>top ranking</en> rất là cao đó nhưng
+top rod,1,vi-asr-finance-test 1,gg_finance_115831: tại sao phải đặt <en>top rod</en> và <en>tech profit</en>
+topload,1,vi-asr-finance-test 1,gg_finance_113623: có sự <en>topload</en> thì thông thường sẽ dành
+toronto,1,vi-asr-edu-test 1,gg_edu_113791: nộp hồ sơ vào các trường đại học tại thành phố <en>toronto</en>
+total assets,1,vi-asr-finance-test 1,gg_finance_113374: sản là dòng đầu tiên này <en>total assets</en> của <en>cs</en>
+total sales,1,vi-asr-tech-test 1,gg_tech_114228: <en>total sales</en> và mình sẽ sum này là mình dùng hàmsum sum <en>over</en>
+toto mouse tech,1,vi-asr-finance-test 1,gg_finance_115638: <en>toto mouse tech</en> của mình là không chấm hai <en>neal</en>
+tourism,1,vi-asr-edu-test 1,gg_edu_114704: hồi nãy có bạn hỏi về <en>tourism</en> và
+tplink,1,vi-asr-tech-test 1,gg_tech_116362: mình vào tên <en>wifi</en> này ha <en>tplink</en> này
+track,1,vi-asr-finance-test 1,gg_finance_113899: lại không <en>sell</en> ở đây cũng vậy <en>track</en> xuống cái đường đỏ là <en>sell</en>
+trade arbitrage,1,vi-asr-finance-test 1,gg_finance_114860: cái hai <en>frequency</en> <en>trading</en> để để <en>trade arbitrage</en> cân bằng trạng thái
+trade panel,1,vi-asr-finance-test 1,gg_finance_113919: như vậy trong cái mục <en>expert advisor</en> này đã xuất hiện công cụ <en>trade panel</en> này rồi
+trader vote,1,vi-asr-finance-test 1,gg_finance_113924: đây là một cái vấn đề mà không <en>trader vote</en> cả
+training,1,vi-asr-edu-test 1,gg_edu_114402: chỉnh chu mọi người cần <en>training</en> trước cái cái buổi phỏng vấn đó
+transfer,1,vi-asr-edu-test 1,gg_edu_113339: các bạn <en>transfer</en> được bạn thấy đánh giá bảng điểm còn nếu mà các bạn <en>transfer</en> từ
+transistor,1,vi-asr-tech-test 1,gg_tech_115767: thứ người ta dùng <en>transistor</en> người ta nối thành những cái cổng <en>logic</en> rồi
+translation,1,vi-asr-tech-test 1,gg_tech_114322: cái sa cái cái <en>table</en> nào cần <en>translation</en> thì tạo ra cái
+transmission,1,vi-asr-tech-test 1,gg_tech_113259: các gói <en>transmission</en> trong <en>wireshark</en> là sẽ hiện là màu đen
+treasury note,1,vi-asr-finance-test 1,gg_finance_115710: thì người ta gọi đó là <en>treasury note</en>
+trending view,1,vi-asr-finance-test 1,gg_finance_113260: khi đó thì <en>trending view</en> sẽ gửi cho các bạn một cái mã xác minh
+true true value,1,vi-asr-tech-test 1,gg_tech_113190: <en>value</en> và <en>true true value</en> ở đây các cái dự đoán này
+trust,1,vi-asr-finance-test 1,gg_finance_113818: đây chúng ta có thể ấn <en>trust</en> này
+tt bgddt,1,vi-asr-edu-test 1,gg_edu_116339: thông tư một hai nghìn không trăm hai mươi mốt <en>tt bgddt</en>
+tuvietanhviet,1,vi-asr-edu-test 1,gg_edu_114318: phương pháp nhá thì các em tham khảo cho anh trong khóa học <en>casio</en> miễn phí ở trên <en>tuvietanhviet</en> com
+twenty,1,vi-asr-edu-test 1,gg_edu_116427: ngay cả là cái thư mời cũng như là cái i <en>twenty</en> hay còn gọi là i hai mươi
+twitter,1,vi-asr-tech-test 1,gg_tech_115373: mình sẽ <en>edit</en> cái <en>profile</en> ví dụ thêm các <en>link</en> như <en>twitter</en> thêm <en>link</en>
+ubuntu,1,vi-asr-tech-test 1,gg_tech_113552: hoặc là một con <en>ubuntu</en> <en>server</en> hay <en>linux</en> <en>server</en> có hỗ trợ
+ulr link,1,vi-asr-tech-test 1,gg_tech_113566: <en>ulr link</en> ấy thì bản chất là cái <en>client side</en> ấy nó sẽ phải <en>query</en> vào trong hàm
+undo undo,1,vi-asr-tech-test 1,gg_tech_115164: lưu lại các <en>action undo</en> thì anh <en>undo undo</en> lại
+unique,1,vi-asr-tech-test 1,gg_tech_113568: <en>unique</en> và <en>unique</en> thì nó cũng sẽ được
+university of melbourne,1,vi-asr-edu-test 1,gg_edu_116455: của trường đại học <en>university of melbourne</en> tại úc
+unlock,1,vi-asr-finance-test 1,gg_finance_114691: <en>pauline</en> đang <en>unlock</en> một trăm bảy mươi lăm nghìn <en>png</en> mỗi ngày
+up trend,1,vi-asr-finance-test 1,gg_finance_114711: dài hạn và bên phải <en>video</en> chính là <en>up trend</en> dài hạn
+upcoming,1,vi-asr-finance-test 1,gg_finance_116550: sắp sửa <en>upcoming</en> sắp tới này này đấy sắp tới được <en>ido</en> hoặc <en>ico</en>
+update,1,vi-asr-finance-test 1,gg_finance_114616: là mình <en>update</en> năm ngoái nhá là <en>hose</en> là hai trăm năm
+upgrade,1,vi-asr-tech-test 1,gg_tech_115582: nhá nó là phiên bản cũ tí mình sẽ <en>upgrade</en> lên
+us investing championship,1,vi-asr-finance-test 1,gg_finance_113536: <en>us investing championship</en> với cái khoản lợi nhuận ba trăm ba mươi lăm phần trăm với một cái
+user iam,1,vi-asr-tech-test 1,gg_tech_114774: <en>user iam</en> chứ không phải <en>user root</en> đâu
+user macbook desktop openstack,1,vi-asr-tech-test 1,gg_tech_113658: nó có cái đường dẫn là <en>user macbook desktop openstack</en>
+user root,1,vi-asr-tech-test 1,gg_tech_114774: <en>user iam</en> chứ không phải <en>user root</en> đâu
+utc ae utc,1,vi-asr-edu-test 1,gg_edu_116126: tám <en>utc</en> và mười <en>utc ae utc</en>
+utp tcp,1,vi-asr-tech-test 1,gg_tech_113811: những cái loại mà <en>category</en> như <en>utp tcp</en>
+vaccine,1,vi-asr-pubadmin-test 1,gg_pubadmin_114983: thông tin <en>vaccine</en> xét nghiệm <en>covid</en> mười chín
+validator node,1,vi-asr-tech-test 1,gg_tech_113169: nó <en>check security</en> khi mà thiếu các <en>validator node</en> và nó sẽ
+value,1,vi-asr-tech-test 1,gg_tech_113190: <en>value</en> và <en>true true value</en> ở đây các cái dự đoán này
+venezuela,1,vi-asr-finance-test 1,gg_finance_114451: bởi vì mình hiểu cái tính chất giàu của <en>venezuela</en>
+vercel,1,vi-asr-tech-test 1,gg_tech_114361: với những dịch vụ như <en>aws lambda</en> hay <en>vercel</en>
+verify,1,vi-asr-tech-test 1,gg_tech_114147: có cái <en>verify</en> và cái <en>token</en>
+version,1,vi-asr-tech-test 1,gg_tech_114001: ở trong cái <en>jenkins</en> mới này nhé <en>version</en>
+vga gigabyte aorus rtx,1,vi-asr-tech-test 1,gg_tech_114059: cắm <en>vga</en> hay không ví dụ <en>vga gigabyte aorus rtx</en>
+vietcombank bid,1,vi-asr-finance-test 1,gg_finance_115533: đó là <en>vietcombank bid</en> là gán
+vietinbank,1,vi-asr-finance-test 1,gg_finance_113211: <en>vietinbank</en> và bidv đều đã nhập cuộc từ trước
+vietinbank otp,1,vi-asr-pubadmin-test 1,gg_pubadmin_115651: gửi mã kích hoạt <en>vietinbank otp</en>
+vietstock,1,vi-asr-finance-test 1,gg_finance_113821: <en>vietstock</en> hoặc <en>cafef</en> anh chị
+vietstock vneconomy vniz,1,vi-asr-finance-test 1,gg_finance_115750: các trang báo tài chính chính thống <en>cafe</en> f <en>vietstock vneconomy vniz</en> ở mục kinh doanh
+viettel,1,vi-asr-pubadmin-test 1,gg_pubadmin_113455: bước kết nối <en>token</en> với trang hóa điện tử <en>viettel</en> đến đây là xong
+vinamilk,1,vi-asr-finance-test 1,gg_finance_113415: tuy nhiên do là cái <en>correlation</en> giữa bidv và <en>vietcombank</en> nó lớn hơn <en>vinamilk</en> và
+vingroup,1,vi-asr-finance-test 1,gg_finance_115108: chỉ cần <en>vingroup</en> tăng ba phiên là vn <en>index</en>
+vinhome ocean park,1,vi-asr-finance-test 1,gg_finance_115649: hiện nay nếu anh chị đầu tư vào <en>vinhome ocean park</en> hai <en>the empire</en> hưng yên ý
+vinschool royal city,1,vi-asr-edu-test 1,gg_edu_114708: trường mầm non <en>vinschool royal city</en> hà nội
+visa stem,1,vi-asr-pubadmin-test 1,gg_pubadmin_113729: cái hộ chiếu của ảnh là cái <en>visa stem</en> của ảnh á
+visana,1,vi-asr-pubadmin-test 1,gg_pubadmin_114639: mới nhất năm hai không hai tư cùng <en>visana</en>
+vision check copy,1,vi-asr-tech-test 1,gg_tech_115190: đúng tên nhá <en>vision check copy</en> cho nhanh
+visual studio,1,vi-asr-tech-test 1,gg_tech_113137: tìm nhá nhưng mà ở đây mình chọn <en>visual studio</en>
+vitam,1,vi-asr-tech-test 1,gg_tech_113774: <en>vitam</en> thì từ <en>java script</en> <en>code</en> của mình á
+vneid,1,vi-asr-pubadmin-test 1,gg_pubadmin_114530: đăng ký tạm trú trên ứng dụng <en>vneid</en> mà không cần phải tới cơ quan công an
+voice machine,1,vi-asr-tech-test 1,gg_tech_115230: hay còn gọi là sử dụng <en>voice machine</en>
+volume spike,1,vi-asr-finance-test 1,gg_finance_114007: <en>volume spike</en> nghĩa là trong trường hợp này khi mà giá giảm
+vssid,1,vi-asr-pubadmin-test 1,gg_pubadmin_114758: sử dụng <en>vssid</en> ha bảo hiểm xã hội số
+vti education,1,vi-asr-edu-test 1,gg_edu_114080: <en>vti education</en> đã bắt tay cùng cao đẳng <en>kagoshima</en>
+vuihoc,1,vi-asr-edu-test 1,gg_edu_114032: <en>video</en> này <en>vuihoc</en> chấm vn sẽ hướng dẫn các bạn học <en>online</en> trên <en>app</en> <en>vuihoc</en> nhé
+vuri ranking,1,vi-asr-edu-test 1,gg_edu_115480: theo xếp hạng của <en>vuri ranking</en> năm hai ngàn không trăm hai mươi hai
+waitlist,1,vi-asr-edu-test 1,gg_edu_116135: <en>ok</en> rốt cuộc thì vào một <en>waitlist</en> của một trường <en>ivy league</en> cũng
+wall street,1,vi-asr-finance-test 1,gg_finance_113095: có tóm tắt lại những phỏng vấn của ông <en>donald trump</en> trên cái tạp chí <en>wall street</en> hay gì
+wallet,1,vi-asr-tech-test 1,gg_tech_114491: gọi là <en>wallet</en> chúng ta <en>search</en>
+warren buffett,1,vi-asr-finance-test 1,gg_finance_115016: đó là <en>berkshire hathaway</en> của ngài tỷ phú <en>warren buffett</en>
+webinar,1,consensus:B2 1,cons_public_0620_u2: còn cái <en>webinar</en> thì răng
+webpay,1,vi-asr-tech-test 1,gg_tech_115735: <en>login</en> bằng <en>webpay</en> trên một cái đường <en>link</en> đã về địa chỉ <en>ip</en> để có thể
+wecha,1,vi-asr-pubadmin-test 1,gg_pubadmin_113847: và cái thứ hai là cái phần mềm kiểm soát <en>wecha</en> này bắt buộc phải còn hạn
+welcome,1,vi-asr-tech-test 1,gg_tech_113786: <en>welcome</en> <en>email</en> nè tức là cái đơn hàng mới thì mình sẽ gỡ cái <en>welcome</en> <en>email</en>
+western sydney,1,vi-asr-edu-test 1,gg_edu_115963: trường đại học <en>deakin</en> trường đại học <en>western sydney</en> trường <en>griffith</en>
+westgate mall,1,consensus:B2 1,cons_public_0594_final: dịch qua tiếng anh giùm anh câu tối mai bảy rưỡi gặp nhau ở <en>westgate mall</en> à thôi khỏi ảnh biết tiếng việt mà
+whale,1,vi-asr-finance-test 1,gg_finance_115124: vậy nấm thì có không phẩy hai phần trăm tổng số người còn lại là <en>whale</en>
+while true,1,vi-asr-tech-test 1,gg_tech_114280: cứ ghi cho mình <en>while true</en> chữ t này phải viết hoa
+who tech,1,vi-asr-edu-test 1,gg_edu_115507: học <en>marketing</en> chọn <en>who tech</en> chọn thành công
+wikistan,1,vi-asr-edu-test 1,gg_edu_115807: đại học <en>wikistan</en> có ngành <en>digital</en> <en>marketing</en> và ngành
+william,1,vi-asr-finance-test 1,gg_finance_114540: như ông <en>canslim</en> ông có công thức ông <en>william</en> o <en>neil</en> có công thức <en>canslim</en> đúng không
+willowbrook residence,1,consensus:B2 1,cons_public_0640_final: <en>willowbrook residence</en> nha em căn hộ của ảnh đó mà khoan giao liền để chiều mai hãy giao giùm chị
+window,1,vi-asr-tech-test 1,gg_tech_114720: chúng ta chạy ở trên <en>window</en> chúng ta có <en>power shell</en>
+wireshark,1,vi-asr-tech-test 1,gg_tech_113259: các gói <en>transmission</en> trong <en>wireshark</en> là sẽ hiện là màu đen
+wisconsin,1,vi-asr-edu-test 1,gg_edu_116451: cái <en>offer</en> bi si ti <en>scholarship</en> từ trường đại học <en>wisconsin</en>
+work launcher,1,vi-asr-tech-test 1,gg_tech_114576: ủa <en>work launcher</en> nè nó sẽ có cái màn hình <en>work launcher</en> mọi người thấy trên màn hình nè
+worker connections,1,vi-asr-tech-test 1,gg_tech_113144: nó sẽ giúp các bạn <en>config</en> cái <en>worker connections</en>
+workspace,1,vi-asr-tech-test 1,gg_tech_113098: <en>cloudflare</en> thay thế cho cái phần <en>workspace</en> này luôn
+world ranking,1,vi-asr-edu-test 1,gg_edu_114125: hai tờ <en>university</en> hay là <en>world ranking</en> ghép được sắp xếp bảng xếp hạng
+xanhsm platform,1,vi-asr-finance-test 1,gg_finance_113785: rất là lợi cho anh em nào mà đăng ký <en>xanhsm platform</en> hiện nay
+xiaomi,1,vi-asr-tech-test 1,gg_tech_113113: ý thứ ba là pin xạc dự phòng <en>xiaomi</en>
+xiaomi smart,1,vi-asr-tech-test 1,gg_tech_114662: coi trực tiếp ở trên <en>xiaomi smart</en> bên chính nha
+yonsei,1,vi-asr-edu-test 1,gg_edu_114303: nay thì là trường <en>top</en> ba của hàn thì có <en>so university</en> ca là <en>korea university</en> còn <en>why</en> là <en>yonsei</en>
+zero touch automation,1,vi-asr-tech-test 1,gg_tech_113616: khả năng mà tôi xin gọi là <en>zero touch automation</en>

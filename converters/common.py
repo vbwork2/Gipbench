@@ -109,14 +109,21 @@ def load_vi_words(paths: Optional[Sequence] = None, same_surface: bool = True) -
 
 
 def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence[str] = (),
-             vi_words: Optional[Iterable[str]] = None, heuristic: bool = True) -> Dict:
+             vi_words: Optional[Iterable[str]] = None, heuristic: bool = True,
+             term_dec: Optional[Dict[str, str]] = None) -> Dict:
     """Trả về {"text_tagged", "confidence": catalog|heuristic|none, "flags": [...], "spans": [...]}.
 
     vi_words: từ không bao giờ gắn <en> trừ khi khớp catalog (viết tắt đọc kiểu Việt, từ mượn); None = đọc
     configs/vi_abbrev.txt + configs/vi_loanwords.txt. Thuật ngữ đi kèm dataset (known_terms) mà mặt chữ khớp
     nằm trong vi_words cũng không được gắn. heuristic=False: chỉ gắn theo catalog + known_terms.
+    term_dec: quyết định theo thuật ngữ {term: en|vi|drop_tag} (lib/term_decisions.py); None = configs/term_decisions.tsv,
+    {} = tắt. en = gắn như mục catalog (thắng vi_words); vi / drop_tag = không bao giờ gắn (thắng catalog).
     """
+    from lib.term_decisions import NO_TAG, load_term_decisions
     vi_words = load_vi_words() if vi_words is None else vi_words
+    term_dec = load_term_decisions() if term_dec is None else term_dec
+    dec_en = {tuple(t.split()) for t, d in term_dec.items() if d == "en"}
+    dec_no = {tuple(t.split()) for t, d in term_dec.items() if d in NO_TAG}
     raw = text.split()
     parts = [_EDGE.match(w).groups() for w in raw]
     core = [unicodedata.normalize("NFC", p[1]).lower() for p in parts]
@@ -125,11 +132,26 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
     span_id = [-1] * n
     spans: List[Tuple[int, int, str]] = []  # (start, end, kiểu)
 
-    # 1) catalog (n-gram dài nhất, kể cả biến thể chính tả) rồi thuật ngữ đi kèm dataset
-    keys = set()
-    max_n = 1
+    # 0) quyết định vi / drop_tag theo thuật ngữ (n-gram dài nhất): nhãn V, thắng catalog
+    multi_no = set()
+    if dec_no:
+        mx = max(len(k) for k in dec_no)
+        i = 0
+        while i < n:
+            for L in range(min(mx, n - i), 0, -1):
+                if tuple(core[i:i + L]) in dec_no:
+                    for j in range(i, i + L):
+                        lab[j] = "V"
+                        if L > 1:
+                            multi_no.add(j)  # cụm nhiều từ đã chốt: không gắn cờ vi_word cho từng từ
+                    i += L - 1
+                    break
+            i += 1
+    # 1) catalog + quyết định en (n-gram dài nhất, kể cả biến thể chính tả) rồi thuật ngữ đi kèm dataset
+    keys = set(dec_en)
+    max_n = max([len(k) for k in keys] or [1])
     if catalog and catalog.strict_map:
-        keys = set(catalog.strict_map)
+        keys |= set(catalog.strict_map)
         max_n = max(len(k) for k in keys)
     known = [tuple(basic_tokens(k)) for k in known_terms if k and k.strip()]
     known = [k for k in known if k]
@@ -137,18 +159,23 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
     while i < n:
         hit = 0
         for L in range(min(max_n, n - i), 0, -1):
-            if tuple(core[i:i + L]) in keys:
+            if tuple(core[i:i + L]) in keys and not any(lab[i:i + L]):
                 hit = L
                 break
         if not hit:
             for k in sorted(known, key=len, reverse=True):
                 L = len(k)
-                if i + L <= n and all(_fuzzy(core[i + j], k[j]) for j in range(L)) and not all(
+                if i + L <= n and not any(lab[i:i + L]) and all(_fuzzy(core[i + j], k[j]) for j in range(L)) and not all(
                         is_vietnamese_token(core[i + j]) and core[i + j] != k[j] for j in range(L)) \
                         and " ".join(core[i:i + L]) not in vi_words:
                     hit = L
                     break
-        if hit:
+        if hit and not (catalog and catalog.strict_map and tuple(core[i:i + hit]) in catalog.strict_map)                 and tuple(core[i:i + hit]) in dec_en:
+            # quyết định en (không phải catalog): nhãn D, được ghép với từ Anh liền kề như heuristic (stop loss, new york)
+            for j in range(i, i + hit):
+                lab[j] = "D"
+            i += hit
+        elif hit:
             for j in range(i, i + hit):
                 lab[j] = "C"
             spans.append((i, i + hit, "C"))
@@ -177,27 +204,27 @@ def auto_tag(text: str, catalog: Optional[Catalog] = None, known_terms: Sequence
         i = max(j, i + 1)
     # 3) từ mơ hồ đứng cạnh từ Anh
     # vi_word:<từ> = từ chữ Latin được coi là tiếng Việt nhờ danh sách: câu B5 có cờ này phải qua người duyệt
-    flags = {f"vi_word:{core[i]}" for i in range(n) if lab[i] == "V"}
+    flags = {f"vi_word:{core[i]}" for i in range(n) if lab[i] == "V" and i not in multi_no}
     changed = True
     while changed:
         changed = False
         for i in range(n):
             if not lab[i] and core[i] in AMBIG_EN and (
-                    (i > 0 and lab[i - 1] in "HA" and lab[i - 1]) or (i + 1 < n and lab[i + 1] in "HA" and lab[i + 1])):
+                    (i > 0 and lab[i - 1] in "HAD" and lab[i - 1]) or (i + 1 < n and lab[i + 1] in "HAD" and lab[i + 1])):
                 lab[i] = "A"
                 flags.add("ambiguous_joined")
                 changed = True
     for i in range(n):
         if not lab[i] and core[i] in SUSPECT_ALONE:
             flags.add(f"suspect:{core[i]}")
-    # gộp H/A liền nhau thành span
+    # gộp H/A/D liền nhau thành span (D = quyết định en; span chỉ gồm D có kiểu D: đã chốt, không cờ abbr_reading)
     i = 0
     while i < n:
-        if lab[i] in ("H", "A"):
+        if lab[i] in ("H", "A", "D"):
             j = i
-            while j < n and lab[j] in ("H", "A"):
+            while j < n and lab[j] in ("H", "A", "D"):
                 j += 1
-            spans.append((i, j, "H"))
+            spans.append((i, j, "H" if any(lab[k] != "D" for k in range(i, j)) else "D"))
             i = j
         else:
             i += 1
@@ -398,3 +425,5 @@ def add_vi_words_arg(ap):
     ap.add_argument("--vi-words", nargs="*", default=None,
                     help="file danh sách từ không gắn <en> (mặc định configs/vi_abbrev.txt configs/vi_loanwords.txt; "
                          "truyền rỗng để tắt)")
+    ap.add_argument("--term-decisions", default=None,
+                    help="quyết định gắn tag theo thuật ngữ (mặc định configs/term_decisions.tsv; '' = tắt)")

@@ -4,7 +4,7 @@
 # người duyệt gắn <en> trong câu đó.
 # Cột (TAB): viết tắt | nhóm | dạng đầy đủ | nguồn. Dòng '#-' = ứng viên bị loại tự động (lý do ở cột cuối);
 # bỏ '#-' để bật lại, thêm '#' đầu dòng để tắt.
-# Số mục: 622 dùng, 91 bị loại.
+# Số mục: 614 dùng, 102 bị loại.
 abbr	group	full	source
 yeg	mã chứng khoán	Tập đoàn Yeah1	vietcap symbols/getAll board=HSX (2026-11-15)
 ybm	mã chứng khoán	Khoáng sản CN Yên Bái	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -12,7 +12,6 @@ wss	mã chứng khoán	Chứng khoán Phố Wall	vietcap symbols/getAll board=HN
 wcs	mã chứng khoán	Bến xe Miền Tây	vietcap symbols/getAll board=HNX (2026-11-15)
 vvs	mã chứng khoán	Đầu tư Phát triển Máy Việt Nam	vietcap symbols/getAll board=HSX (2026-11-15)
 vtz	mã chứng khoán	Nhựa Việt Thành	vietcap symbols/getAll board=HNX (2026-11-15)
-vtv	mã chứng khoán, viết tắt	Năng lượng và Môi trường VICEM | Đài Truyền hình Việt Nam	vietcap symbols/getAll board=HNX (2026-11-15); vi.wiktionary: VTV (2026-11-15)
 vtp	mã chứng khoán	Bưu chính Viettel	vietcap symbols/getAll board=HSX (2026-11-15)
 vto	mã chứng khoán	VITACO	vietcap symbols/getAll board=HSX (2026-11-15)
 vtj	mã chứng khoán	TM và Đầu tư VINATABA	vietcap symbols/getAll board=HNX (2026-11-15)
@@ -99,7 +98,6 @@ trc	mã chứng khoán	Cao su Tây Ninh	vietcap symbols/getAll board=HSX (2026-1
 tpp	mã chứng khoán	Nhựa Tân Phú VN	vietcap symbols/getAll board=HNX (2026-11-15)
 tpc	mã chứng khoán	Nhựa Tân Đại Hưng	vietcap symbols/getAll board=HSX (2026-11-15)
 tpb	mã chứng khoán, ngân hàng	TPBank | Ngân hàng Tiên Phong	vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Danh sách ngân hàng tại Việt Nam (2026-11-15)
-tot	mã chứng khoán	Vận tải Transimex	vietcap symbols/getAll board=HNX (2026-11-15)
 tnt	mã chứng khoán	Tập đoàn TNT	vietcap symbols/getAll board=HSX (2026-11-15)
 tni	mã chứng khoán	Tập đoàn Thành Nam	vietcap symbols/getAll board=HSX (2026-11-15)
 tnh	mã chứng khoán	Tập đoàn Bệnh viện TNH	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -322,7 +320,6 @@ lss	mã chứng khoán	Mía đường Lam Sơn	vietcap symbols/getAll board=HSX 
 lps	mã chứng khoán	Chứng khoán LPS	vietcap symbols/getAll board=HSX (2026-11-15)
 lpb	mã chứng khoán, ngân hàng	LPBank | Ngân hàng Lộc Phát Việt Nam	vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Danh sách ngân hàng tại Việt Nam (2026-11-15)
 lix	mã chứng khoán	Bột Giặt LIX	vietcap symbols/getAll board=HSX (2026-11-15)
-lig	mã chứng khoán	Licogi 13	vietcap symbols/getAll board=HNX (2026-11-15)
 lhg	mã chứng khoán	KCN Long Hậu	vietcap symbols/getAll board=HSX (2026-11-15)
 lhc	mã chứng khoán	XD Thủy lợi Lâm Đồng	vietcap symbols/getAll board=HNX (2026-11-15)
 lgl	mã chứng khoán	Long Giang Land	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -368,7 +365,6 @@ hvt	mã chứng khoán	Hóa chất Việt trì	vietcap symbols/getAll board=HNX 
 hvn	mã chứng khoán	Vietnam Airlines	vietcap symbols/getAll board=HSX (2026-11-15)
 hvh	mã chứng khoán	Đầu tư và Công nghệ HVC	vietcap symbols/getAll board=HSX (2026-11-15)
 hut	mã chứng khoán	Tasco- CTCP	vietcap symbols/getAll board=HNX (2026-11-15)
-htv	mã chứng khoán	Logistics Vicem	vietcap symbols/getAll board=HSX (2026-11-15)
 htn	mã chứng khoán	Hưng Thịnh Incons	vietcap symbols/getAll board=HSX (2026-11-15)
 htl	mã chứng khoán	Ô tô Trường Long	vietcap symbols/getAll board=HSX (2026-11-15)
 hti	mã chứng khoán	PT Hạ tầng IDICO	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -407,7 +403,6 @@ hcc	mã chứng khoán	Bê tông Hòa Cầm	vietcap symbols/getAll board=HNX (20
 hbs	mã chứng khoán	Chứng khoán Hòa Bình	vietcap symbols/getAll board=HNX (2026-11-15)
 hax	mã chứng khoán	Ô tô Hàng Xanh	vietcap symbols/getAll board=HSX (2026-11-15)
 har	mã chứng khoán	BĐS An Dương Thảo Điền	vietcap symbols/getAll board=HSX (2026-11-15)
-hap	mã chứng khoán	Tập đoàn Hapaco	vietcap symbols/getAll board=HSX (2026-11-15)
 hah	mã chứng khoán	Vận tải và Xếp dỡ Hải An	vietcap symbols/getAll board=HSX (2026-11-15)
 hag	mã chứng khoán	Hoàng Anh Gia Lai	vietcap symbols/getAll board=HSX (2026-11-15)
 gvr	mã chứng khoán	Tập đoàn CN Cao su VN	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -430,10 +425,7 @@ gdt	mã chứng khoán	Gỗ Đức Thành	vietcap symbols/getAll board=HSX (2026
 gda	mã chứng khoán	Tôn Đông Á	vietcap symbols/getAll board=HSX (2026-11-15)
 fts	mã chứng khoán	Chứng khoán FPT	vietcap symbols/getAll board=HSX (2026-11-15)
 frt	mã chứng khoán	Bán lẻ FPT	vietcap symbols/getAll board=HSX (2026-11-15)
-fpt	mã chứng khoán	FPT Corp	vietcap symbols/getAll board=HSX (2026-11-15)
 fmc	mã chứng khoán	Thực phẩm Sao Ta	vietcap symbols/getAll board=HSX (2026-11-15)
-fir	mã chứng khoán	Địa ốc First Real	vietcap symbols/getAll board=HSX (2026-11-15)
-fid	mã chứng khoán	Đầu tư và PT doanh nghiệp VN	vietcap symbols/getAll board=HNX (2026-11-15)
 fdc	mã chứng khoán	FIDECO	vietcap symbols/getAll board=HSX (2026-11-15)
 fcn	mã chứng khoán	FECON CORP	vietcap symbols/getAll board=HSX (2026-11-15)
 fcm	mã chứng khoán	Bê tông Phan Vũ Hà Nam	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -548,7 +540,6 @@ bmi	mã chứng khoán	Bảo hiểm Bảo Minh	vietcap symbols/getAll board=HSX 
 bmc	mã chứng khoán	Khoáng sản Bình Định	vietcap symbols/getAll board=HSX (2026-11-15)
 bkg	mã chứng khoán	Đầu tư BKG Việt Nam	vietcap symbols/getAll board=HSX (2026-11-15)
 bkc	mã chứng khoán	Khoáng sản Bắc Kạn	vietcap symbols/getAll board=HNX (2026-11-15)
-bic	mã chứng khoán	Bảo hiểm BIDV	vietcap symbols/getAll board=HSX (2026-11-15)
 bhn	mã chứng khoán	HABECO	vietcap symbols/getAll board=HSX (2026-11-15)
 bfc	mã chứng khoán	Phân bón Bình Điền	vietcap symbols/getAll board=HSX (2026-11-15)
 bcm	mã chứng khoán	Becamex Group	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -558,16 +549,12 @@ bcc	mã chứng khoán	Xi măng Bỉm Sơn	vietcap symbols/getAll board=HNX (202
 bax	mã chứng khoán	Công ty Thống Nhất	vietcap symbols/getAll board=HNX (2026-11-15)
 baf	mã chứng khoán	Nông nghiệp BAF Việt Nam	vietcap symbols/getAll board=HSX (2026-11-15)
 bab	mã chứng khoán, ngân hàng	Ngân hàng Bắc Á	vietcap symbols/getAll board=HNX (2026-11-15); vi.wikipedia: Danh sách ngân hàng tại Việt Nam (2026-11-15)
-ats	mã chứng khoán	Tập đoàn Đầu tư ATS	vietcap symbols/getAll board=HNX (2026-11-15)
-ast	mã chứng khoán	Dịch vụ Hàng không Taseco	vietcap symbols/getAll board=HSX (2026-11-15)
-asm	mã chứng khoán	Tập đoàn Sao Mai	vietcap symbols/getAll board=HSX (2026-11-15)
 asg	mã chứng khoán	Tập đoàn ASG	vietcap symbols/getAll board=HSX (2026-11-15)
 aps	mã chứng khoán	CK Châu Á - TBD	vietcap symbols/getAll board=HNX (2026-11-15)
 aph	mã chứng khoán	Tập đoàn An Phát Holdings	vietcap symbols/getAll board=HSX (2026-11-15)
 apg	mã chứng khoán	Chứng khoán APG	vietcap symbols/getAll board=HSX (2026-11-15)
 anv	mã chứng khoán	Thủy sản Nam Việt	vietcap symbols/getAll board=HSX (2026-11-15)
 amv	mã chứng khoán	Dược-TB Y tế Việt Mỹ	vietcap symbols/getAll board=HNX (2026-11-15)
-ame	mã chứng khoán	Cơ điện Alphanam	vietcap symbols/getAll board=HNX (2026-11-15)
 amc	mã chứng khoán	Khoáng sản Á Châu	vietcap symbols/getAll board=HNX (2026-11-15)
 agr	mã chứng khoán	Agriseco	vietcap symbols/getAll board=HSX (2026-11-15)
 agg	mã chứng khoán	Bất động sản An Gia	vietcap symbols/getAll board=HSX (2026-11-15)
@@ -628,6 +615,11 @@ csgt	viết tắt (quy ước dự án)	Cảnh sát giao thông	quy ước dự 
 tphcm	viết tắt (quy ước dự án)	Thành phố Hồ Chí Minh	quy ước dự án, đọc kiểu Việt
 hcm	viết tắt (quy ước dự án), mã chứng khoán, tỉnh thành	Hồ Chí Minh | Chứng khoán HSC | TP. Hồ Chí Minh	quy ước dự án, đọc kiểu Việt; vietcap symbols/getAll board=HSX (2026-11-15); vi.wikipedia: Đơn vị hành chính cấp tỉnh (Việt Nam), chữ cái đầu (2026-11-15)
 tp	viết tắt (quy ước dự án), viết tắt	thành phố | thành phần	quy ước dự án, đọc kiểu Việt; bật lại (trước bị loại vì trùng google-10000); vi.wiktionary: tp (2026-11-15)
+sjc	viết tắt (quy ước dự án)	Công ty Vàng bạc Đá quý Sài Gòn	quyết định 15/11 (§12.3): đọc kiểu Việt
+tv	viết tắt (quy ước dự án)	ti vi	quyết định 15/11 (§12.3): đọc kiểu Việt
+vtv	viết tắt (quy ước dự án), mã chứng khoán, viết tắt	Năng lượng và Môi trường VICEM | Đài Truyền hình Việt Nam	quyết định 15/11 (§12.3): đọc kiểu Việt; vietcap symbols/getAll board=HNX (2026-11-15); vi.wiktionary: VTV (2026-11-15)
+htv	viết tắt (quy ước dự án), mã chứng khoán	Đài Truyền hình TP.HCM | Logistics Vicem	quyết định 15/11 (§12.3): đọc kiểu Việt; vietcap symbols/getAll board=HSX (2026-11-15)
+sctv	viết tắt (quy ước dự án)	Truyền hình cáp Saigontourist	quyết định 15/11 (§12.3): đọc kiểu Việt
 
 # ---- ứng viên bị loại tự động
 #-vip	mã chứng khoán	Vận tải Xăng dầu VIPCO	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
@@ -721,3 +713,14 @@ tp	viết tắt (quy ước dự án), viết tắt	thành phố | thành phần
 #-bs	viết tắt	Bác sĩ viết tắt	vi.wiktionary: BS (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-ch	viết tắt	Cộng hoà viết tắt	vi.wiktionary: CH (2026-11-15)	LOẠI: trùng từ tiếng Anh phổ biến (google-10000)
 #-cdn	mã chứng khoán	Cảng Đà Nẵng	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: loại tay: bỏ theo quyết định dự án: trong vi-asr-tech là CDN đọc kiểu Anh
+#-tot	mã chứng khoán	Vận tải Transimex	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: mã chứng khoán gặp 362 lần trong text không phải tài chính (>= 20)
+#-fir	mã chứng khoán	Địa ốc First Real	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 348 lần trong text không phải tài chính (>= 20)
+#-hap	mã chứng khoán	Tập đoàn Hapaco	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 120 lần trong text không phải tài chính (>= 20)
+#-fid	mã chứng khoán	Đầu tư và PT doanh nghiệp VN	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: mã chứng khoán gặp 56 lần trong text không phải tài chính (>= 20)
+#-ame	mã chứng khoán	Cơ điện Alphanam	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: mã chứng khoán gặp 39 lần trong text không phải tài chính (>= 20)
+#-ats	mã chứng khoán	Tập đoàn Đầu tư ATS	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: mã chứng khoán gặp 34 lần trong text không phải tài chính (>= 20)
+#-asm	mã chứng khoán	Tập đoàn Sao Mai	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 30 lần trong text không phải tài chính (>= 20)
+#-fpt	mã chứng khoán	FPT Corp	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 26 lần trong text không phải tài chính (>= 20)
+#-ast	mã chứng khoán	Dịch vụ Hàng không Taseco	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 25 lần trong text không phải tài chính (>= 20)
+#-lig	mã chứng khoán	Licogi 13	vietcap symbols/getAll board=HNX (2026-11-15)	LOẠI: mã chứng khoán gặp 24 lần trong text không phải tài chính (>= 20)
+#-bic	mã chứng khoán	Bảo hiểm BIDV	vietcap symbols/getAll board=HSX (2026-11-15)	LOẠI: mã chứng khoán gặp 20 lần trong text không phải tài chính (>= 20)

@@ -16,3 +16,8 @@ tphcm	add	viết tắt (quy ước dự án)	Thành phố Hồ Chí Minh	quy ư�
 hcm	add	viết tắt (quy ước dự án)	Hồ Chí Minh	quy ước dự án, đọc kiểu Việt
 tp	add	viết tắt (quy ước dự án)	thành phố	quy ước dự án, đọc kiểu Việt; bật lại (trước bị loại vì trùng google-10000)
 cdn	exclude	mã chứng khoán		bỏ theo quyết định dự án: trong vi-asr-tech là CDN đọc kiểu Anh
+sjc	add	viết tắt (quy ước dự án)	Công ty Vàng bạc Đá quý Sài Gòn	quyết định 15/11 (§12.3): đọc kiểu Việt
+tv	add	viết tắt (quy ước dự án)	ti vi	quyết định 15/11 (§12.3): đọc kiểu Việt
+vtv	add	viết tắt (quy ước dự án)	Đài Truyền hình Việt Nam	quyết định 15/11 (§12.3): đọc kiểu Việt
+htv	add	viết tắt (quy ước dự án)	Đài Truyền hình TP.HCM	quyết định 15/11 (§12.3): đọc kiểu Việt
+sctv	add	viết tắt (quy ước dự án)	Truyền hình cáp Saigontourist	quyết định 15/11 (§12.3): đọc kiểu Việt

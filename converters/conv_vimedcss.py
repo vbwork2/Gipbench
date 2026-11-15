@@ -54,7 +54,7 @@ def main():
                 break
             uid = f"vmc_{safe(ex['segment_id'])}"
             terms = [t.strip() for t in str(ex.get("cs_terms_list") or "").split(";") if t.strip()]
-            orig = auto_tag(ex["segment_text"], None, terms, vi_words=set(), heuristic=False)
+            orig = auto_tag(ex["segment_text"], None, terms, vi_words=set(), heuristic=False, term_dec={})  # nhãn gốc
             tag = auto_tag(ex["segment_text"], cat, terms, vi_words=vw)
             if not orig["spans"]:
                 tag["flags"].append("term_not_found")

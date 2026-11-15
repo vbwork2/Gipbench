@@ -6,12 +6,15 @@
 Trường gốc: id, audio (MP3 16 kHz, ghi nguyên), text, duration (split test). License CC-BY-NC-4.0. Không có thông tin người nói:
 speaker và source được đặt riêng cho từng câu, nên bootstrap trên phần này thực chất là theo câu.
 Ghi: b1_candidates.jsonl + b1_candidates_review.csv, b5_ggroup.jsonl, term_candidates.tsv.
+Text do người gõ: mọi dòng mang trusted_text = true (build_bench_v0.py --accept trusted-text nhận khi mọi thuật ngữ còn
+cờ đã chốt trong configs/term_decisions.tsv, decisions §12.4). Tag theo quyết định đó (--term-decisions).
 """
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from converters.common import Writer, auto_tag, base_parser, load_hf, load_vi_words, safe, save_audio  # noqa: E402
+from lib.term_decisions import load_term_decisions  # noqa: E402
 from lib.textnorm import Catalog  # noqa: E402
 
 
@@ -22,6 +25,7 @@ def main():
     args = ap.parse_args()
     cat = Catalog.load(args.catalog)
     vw = load_vi_words(args.vi_words)
+    td = load_term_decisions(args.term_decisions)
     w = Writer(args.out, "ggroup")
     for name in args.names:
         ds = load_hf(f"g-group-ai-lab/vi-asr-{name}-test", "test", args.parquet.replace("{name}", name) if args.parquet else None,
@@ -31,10 +35,10 @@ def main():
                 break
             uid = f"gg_{name}_{safe(ex['id'])}"
             path, dur, _ = save_audio(ex["audio"], Path(args.out) / "audio" / name, uid)
-            tag = auto_tag(ex["text"], cat, vi_words=vw)
+            tag = auto_tag(ex["text"], cat, vi_words=vw, term_dec=td)
             row = {"id": uid, "audio": path, "duration": dur, "speaker": f"gg_{name}_{safe(ex['id'])}",
                    "source": f"ggroup:{name}:{safe(ex['id'])}", "region": "unk", "gender": "u",
-                   "channel": "wideband", "domain": name, "dataset": f"vi-asr-{name}-test"}
+                   "channel": "wideband", "domain": name, "dataset": f"vi-asr-{name}-test", "trusted_text": True}
             if tag["spans"]:
                 w.add("b1_candidates", dict(row, split="B1"), tag)
             elif name in args.b5_from:

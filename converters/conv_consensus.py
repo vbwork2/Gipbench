@@ -21,6 +21,8 @@ Trạng thái:
                         review_required = true: build_bench_v0.py chỉ nhận khi decision = ok / fix. Khi fix,
                         split theo text đã sửa (split_by_tag: còn <en> -> B2, không -> B5), áp cho mọi dòng.
   escalate           -> bỏ.
+agreed mang trusted_text = true: build_bench_v0.py --accept trusted-text nhận khi mọi thuật ngữ còn cờ đã chốt trong
+configs/term_decisions.tsv (--term-decisions; tag cũng theo file này, kể cả cụm tên người).
 Mọi dòng: speaker = consensus:<id phiên>, source = consensus, domain = product, license = test_only, dataset = consensus.
 Text: số -> chữ, auto_tag, rồi chuẩn hoá như normalize_ref (viết thường, bỏ dấu câu; không áp bảng biến thể catalog).
 Tên người nước ngoài (--names, configs/en_names.tsv) được gắn <en> và ghi term_category {"<span>": "name"}
@@ -52,6 +54,7 @@ from converters.common import REVIEW_COLS, add_vi_words_arg, auto_tag, is_vietna
 from ft.curate_train import pick_diverse  # noqa: E402
 from lib.leak import DEFAULT_BLOCK_FILES, TEST_ONLY_LICENSE  # noqa: E402
 from lib.manifest import write_jsonl  # noqa: E402
+from lib.term_decisions import load_term_decisions  # noqa: E402
 from lib.textnorm import Catalog, basic_tokens, normalize_ref, numbers_to_words  # noqa: E402
 
 AUDIO_EXT = {".wav", ".flac", ".mp3", ".ogg", ".m4a", ".opus"}
@@ -157,9 +160,13 @@ def listener_list(s):
     return out
 
 
-def tag_text(raw, cat, vi_words, names, full):
-    """-> (text_tagged đã chuẩn hoá, auto_tag dict, {span: "name"}, cờ thêm)."""
-    t = auto_tag(numbers_to_words(raw), cat, vi_words=vi_words)
+def tag_text(raw, cat, vi_words, names, full, term_dec=None):
+    """-> (text_tagged đã chuẩn hoá, auto_tag dict, {span: "name"}, cờ thêm).
+
+    term_dec (configs/term_decisions.tsv): cụm tên có decision en thì nhận là tên, vi / drop_tag thì không gắn.
+    """
+    term_dec = load_term_decisions() if term_dec is None else term_dec
+    t = auto_tag(numbers_to_words(raw), cat, vi_words=vi_words, term_dec=term_dec)
     toks, _ = normalize_ref(t["text_tagged"], EMPTY)
     words = [x.tok for x in toks]
     lab = [x.span for x in toks]
@@ -181,8 +188,10 @@ def tag_text(raw, cat, vi_words, names, full):
         while end > i and names[words[end - 1]] == "title":  # danh xưng phải đứng trước tên
             end -= 1
         run = words[i:end]
-        ok = run and (any(trigger(w) for w in run) or tuple(run) in full
-                      or (len(run) >= 2 and names[run[0]] == "title"))
+        d = term_dec.get(" ".join(run))
+        ok = run and d != "vi" and d != "drop_tag" and (
+            d == "en" or any(trigger(w) for w in run) or tuple(run) in full
+            or (len(run) >= 2 and names[run[0]] == "title"))
         if ok:
             for k in range(i, end):
                 lab[k] = nid
@@ -328,6 +337,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     cat = Catalog.load(args.catalog)
     vw = load_vi_words(args.vi_words)
+    td = load_term_decisions(args.term_decisions)
     names, full = load_names(args.names)
     with open(args.csv or root / "consensus_clips_anon.csv", encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
@@ -384,7 +394,7 @@ def main():
         uid = f"cons_{sid}_{turn}"
         path, dur, sr0, rs = prepare_audio(src, out, f"{sid}/{uid}")
         resampled[f"{sr0} Hz{' -> 16 kHz mono' if rs else ''}"] += 1
-        tagged, at, tcat, extra = tag_text(raw, cat, vw, names, full)
+        tagged, at, tcat, extra = tag_text(raw, cat, vw, names, full, td)
         flags = sorted(set(at["flags"]) | set(extra))
         if (r.get("numbers_majority") or "").strip().lower() == "false":
             flags.append("numbers_disagree")
@@ -407,6 +417,8 @@ def main():
             rec["term_category"] = tcat
         if st != "agreed":
             rec["review_required"] = True
+        else:
+            rec["trusted_text"] = True  # text đồng thuận do người gõ: chốt tag theo thuật ngữ (decisions §12.4)
         recs.append(rec)
     stats["audio"]["resample"] = dict(resampled)
 
