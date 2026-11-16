@@ -25,16 +25,16 @@
 | `channel` | nên có | `wideband` / `phone8k` |
 | `domain` | nên có | `tech` / `finance` / `edu` / `daily` / `product` / … |
 | `text_tagged_orig` | tuỳ chọn | nhãn `<en>` theo quy ước của dataset gốc khi quy ước đó khác Spec (ViMedCSS: gắn cả từ mượn như `vitamin`, `axit`). Chỉ dùng để chấm số phụ: `score.py --label-field text_tagged_orig` |
-| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Cột `datasets` của `configs/train_mix.tsv` map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
+| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Cột `datasets` của `configs/model/train_mix.tsv` map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
 | `train_only` | tuỳ chọn | `true` = dòng chỉ được dùng cho train, không bao giờ vào bench (vd `dataset: vss_cs`) |
 | `license` | tuỳ chọn | `test_only` = CHỈ được dùng để test (vd bộ `consensus`). `validate.py --train/--dev` báo LỖI nếu dòng test_only (hoặc source / dataset `consensus`) có trong train / dev; `curate_train.py`, `vss_cs_prefilter.py` loại các dòng này và câu trùng text trong `data/raw/consensus/leak_block.txt` |
-| `trusted_text` | tuỳ chọn | `true` = text do người gõ (G-Group, consensus `agreed`): `build_bench_v0.py --accept trusted-text` nhận khi mọi thuật ngữ còn cờ đã chốt trong `configs/term_decisions.tsv` (decisions §12.4, `lib/term_decisions.py`) |
+| `trusted_text` | tuỳ chọn | `true` = text do người gõ (G-Group, consensus `agreed`): `build_bench_v0.py --accept trusted-text` nhận khi mọi thuật ngữ còn cờ đã chốt trong `configs/dataset/labeling/term_decisions.tsv` (decisions §12.4, `src/gipbench/core/term_decisions.py`) |
 | `term_category` | tuỳ chọn | `{"<span sau chuẩn hoá>": "<category>"}` cho span không lấy category từ catalog, vd tên người nước ngoài `{"hugo lambert": "name"}`; `score.py` ưu tiên trường này khi cắt lát theo category |
 | `speaker_cluster` | tuỳ chọn | cụm người nói ước lượng bằng speaker embedding khi bộ không có speaker id (vd `consensus:spk003`). CHỈ dùng làm đơn vị bootstrap CI trong `score.py` / `leaderboard.py`, không dùng để tách split |
 | `review_required` | tuỳ chọn | `true` = `build_bench_v0.py` chỉ nhận khi người duyệt ghi `decision` = ok / fix (kể cả `--accept all`); vd consensus disputed / pending |
 | `split_by_tag` | tuỳ chọn | `{"en": "B2", "vi": "B5"}`: khi người duyệt `fix`, split đặt lại theo text đã sửa còn `<en>` hay không |
 | `label_source` | tuỳ chọn | nguồn nhãn máy, vd `pseudo:Zipformer-30M-RNNT-6000h` |
-| `agreement` | tuỳ chọn | do `tools/agreement_filter.py` ghi: `{"confirmed": [số hyp xác nhận từng span], "n_hyps", "min_agree"}` |
+| `agreement` | tuỳ chọn | do `src/gipbench/dataset/pseudolabel/agreement_filter.py` ghi: `{"confirmed": [số hyp xác nhận từng span], "n_hyps", "min_agree"}` |
 | `en_meta` | nên có | danh sách theo thứ tự span `<en>`; mỗi phần tử `{"viet_level": "strong" \| "mid" \| "native"}` (mức Việt hoá cách phát âm) |
 
 Category của span lấy từ catalog, không cần ghi trong manifest.
@@ -52,7 +52,7 @@ Một từ / cụm viết bằng chữ Latin được gắn `<en>` khi người 
 | Từ mượn có trong từ điển tiếng Việt | không | `axit`, `canxi`, `vitamin`, `cà phê` |
 | Không chắc người nói đọc kiểu nào | **người duyệt nghe audio rồi quyết**, ghi lý do vào cột `reading_note` của phiếu duyệt | `pc` (pê xê / pi xi), `tv` |
 
-- Bản nháp tự gắn dựa trên hai danh sách đang chờ duyệt: `configs/vi_abbrev.txt` (viết tắt / mã thường đọc kiểu Việt) và `configs/vi_loanwords.txt` (từ mượn có trong từ điển tiếng Việt). Từ nằm trong hai danh sách này không được gắn `<en>`, trừ khi nó có trong catalog. Các mục `same_surface` của `vi_loanwords.txt` (trùng mặt chữ tiếng Anh: `vitamin`, `protein`, `insulin`) là **không EN ở MỌI bộ** (decisions §12). Ngoại lệ chốt theo từng thuật ngữ nằm ở `configs/term_decisions.tsv`.
+- Bản nháp tự gắn dựa trên hai danh sách đang chờ duyệt: `configs/dataset/labeling/vi_abbrev.txt` (viết tắt / mã thường đọc kiểu Việt) và `configs/dataset/labeling/vi_loanwords.txt` (từ mượn có trong từ điển tiếng Việt). Từ nằm trong hai danh sách này không được gắn `<en>`, trừ khi nó có trong catalog. Các mục `same_surface` của `vi_loanwords.txt` (trùng mặt chữ tiếng Anh: `vitamin`, `protein`, `insulin`) là **không EN ở MỌI bộ** (decisions §12). Ngoại lệ chốt theo từng thuật ngữ nằm ở `configs/dataset/labeling/term_decisions.tsv`.
 - Tên người nước ngoài viết bằng chữ Latin: gắn `<en>`, `term_category = name`. Tên có ít nhất một token không đọc được như âm tiết Việt (`lucas`, `tanaka`) hoặc danh xưng + tên (`mr tanaka`) thì nhận. Tên trùng âm tiết Việt (`kim`, `chen`, `sam`) chỉ nhận khi đứng cạnh một tên như vậy (`sarah kim`); đứng một mình thì chỉ gắn cờ `maybe_name:*` (decisions §12, đã duyệt).
 - Cùng một viết tắt có thể được đọc khác nhau ở hai câu (`ai` = "ây ai" hay "a i"), nên người duyệt quyết theo từng câu chứ không theo danh sách.
 - Hướng dẫn duyệt chi tiết: `docs/huong_dan_duyet_b1.md`.
@@ -76,6 +76,6 @@ Một từ / cụm viết bằng chữ Latin được gắn `<en>` khi người 
 Bất kỳ hệ thống nào (sherpa-onnx, icefall PyTorch, Whisper, API) chỉ cần xuất đúng định dạng này là chấm được.
 Hoa/thường, dấu câu, số không cần chuẩn hoá trước — `score.py` tự làm.
 
-Hyps của ASR dùng để lọc đồng thuận (`tools/asr_hyps.py`) có thêm `engine`, `model`, `audio_sha256` (sha256 của file
+Hyps của ASR dùng để lọc đồng thuận (`src/gipbench/infer/asr_hyps.py`) có thêm `engine`, `model`, `audio_sha256` (sha256 của file
 audio đã giải mã) và `audio_rel` (đường dẫn audio tương đối với gốc dataset = đường dẫn trong repo HF). Cache tra theo
-**id + audio_sha256** (`lib/hyp_cache.py`, chỉ mục `audio_rel → sha256` ở `results/asr_hyps/vss_audio_sha256.tsv`).
+**id + audio_sha256** (`src/gipbench/infer/cache.py`, chỉ mục `audio_rel → sha256` ở `results/asr_hyps/vss_audio_sha256.tsv`).

@@ -21,8 +21,18 @@ VOLATILE_KEYS = {"created", "generated", "generated_at", "elapsed_s"}
 VOLATILE = re.compile(r"(Tạo lúc|generated|Sinh lúc|\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})")
 
 
+def roots(d):
+    """Thư mục output gốc lúc chụp (ROOT.txt) và vị trí hiện tại: output có thể đã được copy đi chỗ khác."""
+    r = [str(d)]
+    if (d / "ROOT.txt").exists():
+        r.insert(0, (d / "ROOT.txt").read_text(encoding="utf-8").strip())
+    return r
+
+
 def norm(path, root):
-    t = path.read_text(encoding="utf-8", errors="replace").replace(str(root), "<OUT>")
+    t = path.read_text(encoding="utf-8", errors="replace")
+    for r in roots(root):
+        t = t.replace(r, "<OUT>")
     if path.suffix == ".json":
         try:
             obj = json.loads(t)
@@ -48,8 +58,8 @@ def main():
     ap.add_argument("--show", type=int, default=20, help="số dòng diff in cho mỗi file khác")
     args = ap.parse_args()
     A, B = Path(args.a).resolve(), Path(args.b).resolve()
-    fa = {p.relative_to(A) for p in A.rglob("*") if p.is_file()}
-    fb = {p.relative_to(B) for p in B.rglob("*") if p.is_file()}
+    fa = {p.relative_to(A) for p in A.rglob("*") if p.is_file() and p.name != "ROOT.txt"}
+    fb = {p.relative_to(B) for p in B.rglob("*") if p.is_file() and p.name != "ROOT.txt"}
     bad, warn = [], []
     for r in sorted(fa - fb):
         (warn if r.suffix == ".log" else bad).append(f"chỉ có ở A: {r}")

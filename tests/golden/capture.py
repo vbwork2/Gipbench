@@ -19,7 +19,7 @@ import sys
 import time
 from pathlib import Path
 
-G = Path(__file__).resolve().parents[2]
+G = Path(__file__).resolve().parents[2]  # đổi bằng --repo (chụp mốc từ checkout cũ)
 BENCH = "data/bench_v0_draft/bench_v0_draft.jsonl"
 CATALOG = "data/bench_v0_draft/catalog_v0_draft.tsv"
 E3 = "data/e3_v1"
@@ -107,11 +107,16 @@ def main():
     ap.add_argument("--layout", choices=["old", "new"], required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", nargs="*", default=[], help="chỉ chạy các bước này")
+    ap.add_argument("--repo", help="gốc repo cần chạy (mặc định: repo chứa file này)")
     args = ap.parse_args()
+    global G
+    if args.repo:
+        G = Path(args.repo).resolve()
     L, O = args.layout, Path(args.out).resolve()
     if O.exists():
         shutil.rmtree(O)
     O.mkdir(parents=True)
+    (O / "ROOT.txt").write_text(str(O), encoding="utf-8")  # compare.py chuẩn hoá đường dẫn này
     skipped = []
 
     def want(step):

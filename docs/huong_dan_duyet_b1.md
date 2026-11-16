@@ -35,4 +35,4 @@ Một từ Latin được gắn `<en>` khi người nói **đọc nó như tiế
 | `vi_word:<từ>` | Từ chữ Latin không bị gắn `<en>` vì nằm trong `vi_abbrev.txt` / `vi_loanwords.txt` (mã chứng khoán, viết tắt, từ mượn) | Nghe xem có đúng là đọc kiểu Việt không. Nếu người nói đọc kiểu Anh thì `fix` và gắn `<en>` |
 | `term_not_found` | (ViMedCSS) Không tìm thấy thuật ngữ của dataset trong câu | Kiểm tra câu hoặc `drop` |
 
-Nếu thấy một viết tắt lặp lại nhiều lần và luôn được đọc cùng một kiểu, ghi nó vào `note`. Viết tắt đó nên được thêm vào `configs/vi_abbrev.txt` (đọc kiểu Việt) hoặc vào catalog (đọc kiểu Anh) ở phiên bản danh sách sau.
+Nếu thấy một viết tắt lặp lại nhiều lần và luôn được đọc cùng một kiểu, ghi nó vào `note`. Viết tắt đó nên được thêm vào `configs/dataset/labeling/vi_abbrev.txt` (đọc kiểu Việt) hoặc vào catalog (đọc kiểu Anh) ở phiên bản danh sách sau.
