@@ -6,7 +6,9 @@ bấm en / vi / bỏ tag. Kết quả xuất ra TSV đúng định dạng config
   python -m gipbench.dataset.label.term_review_page --manifest data/raw/ggroup/b1_candidates.jsonl
   # 2. mở data/raw/ggroup/term_review.html bằng Chrome / Edge, duyệt, bấm "Xuất TSV" (tải về term_decisions_review.tsv)
   # 3. gộp vào file quyết định (giữ dòng cũ, thêm / cập nhật dòng mới), rồi chạy lại converter + build_bench
-  python -m gipbench.dataset.label.term_review_page --merge ~/Downloads/term_decisions_review.tsv
+  python -m gipbench.dataset.label.term_review_page --merge ~/Downloads/term_decisions_review.tsv       --manifest data/raw/ggroup/b1_candidates.jsonl --review-csv data/raw/ggroup/b1_candidates_review.csv
+  # thuật ngữ "tuỳ câu" (vd "ai" = ai đó / AI): không ghi vào term_decisions.tsv; câu chứa nó được tách ra
+  # b1_candidates_review_mixed.csv -> duyệt bằng review_bench.html -> build_bench --reviews ... (theo câu thắng theo thuật ngữ)
 
 Thuật ngữ cần duyệt = needed_terms() của core.term_decisions (cờ abbr_reading / vi_word / suspect / maybe_name / name /
 ambiguous_joined), giống luật `build_bench --accept trusted-text`. Đề xuất ban đầu lấy từ reports/history/
@@ -38,6 +40,28 @@ def load_ask(path) -> dict:
                 for r in csv.DictReader(f) if r.get("term")}
 
 
+def write_mixed_review(mixed, manifests, review_csv):
+    """Thuật ngữ 'tuỳ câu': KHÔNG ghi vào term_decisions.tsv (để trống = chưa chốt theo thuật ngữ). Các câu chứa chúng được
+    chép từ phiếu duyệt từng câu sang <phiếu>_mixed.csv; duyệt bằng review_bench.html (ok / fix), rồi đưa phiếu đó vào
+    build_bench --reviews (quyết định theo câu được ưu tiên hơn quyết định theo thuật ngữ)."""
+    if not (manifests and review_csv):
+        raise SystemExit(f"có {len(mixed)} thuật ngữ 'tuỳ câu' ({', '.join(mixed[:5])}...): cần --manifest và --review-csv "
+                         "để tách câu ra phiếu duyệt từng câu")
+    ms = set(mixed)
+    ids = {r["id"] for m in manifests for r in read_jsonl(m) if ms & set(needed_terms(r)[0])}
+    src = Path(review_csv)
+    with open(src, encoding="utf-8-sig", newline="") as f:
+        rd = csv.DictReader(f)
+        rows = [r for r in rd if r.get("id") in ids]
+        fields = rd.fieldnames
+    dst = src.with_name(src.stem + "_mixed.csv")
+    with open(dst, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows(rows)
+    print(f"{len(mixed)} thuật ngữ 'tuỳ câu' -> {len(rows)} câu cần duyệt từng câu: {dst} (mở bằng review_bench.html)")
+
+
 def collect(manifests, out_dir: Path, n_examples: int):
     terms = defaultdict(lambda: {"rows": [], "flags": set()})
     for m in manifests:
@@ -48,11 +72,11 @@ def collect(manifests, out_dir: Path, n_examples: int):
                 terms[t]["flags"] |= kinds
     out = []
     for t, v in terms.items():
-        rows = sorted(v["rows"], key=lambda r: (abs((r.get("duration") or 5) - 4), r["id"]))[:n_examples]
+        rows = sorted(v["rows"], key=lambda r: (abs((r.get("duration") or 5) - 4), r["id"]))
         ex = [{"id": r["id"], "text": r.get("text_tagged", ""), "dur": round(r.get("duration") or 0, 1),
                "audio": os.path.relpath(r["_audio_path"], out_dir).replace(os.sep, "/") if r.get("_audio_path") else ""}
               for r in rows]
-        out.append({"term": t, "n": len(v["rows"]), "flags": sorted(v["flags"]), "examples": ex})
+        out.append({"term": t, "n": len(v["rows"]), "flags": sorted(v["flags"]), "examples": ex, "show": n_examples})
     return sorted(out, key=lambda x: (-x["n"], x["term"]))
 
 
@@ -78,6 +102,7 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 80px}
 .term{font-size:20px;font-weight:600}.tag{font-size:12px;border:1px solid var(--line);border-radius:10px;padding:0 7px;color:var(--mut)}
 .dec{display:flex;gap:6px;margin-left:auto}.dec button.on.en{background:var(--en);color:var(--bg)}
 .dec button.on.vi{background:var(--vi);color:var(--bg)}.dec button.on.drop_tag{background:var(--drop);color:var(--bg)}
+.dec button.on.mixed{background:var(--mut);color:var(--bg)}.more{margin-top:6px;font-size:13px}
 .ex{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}.ex .t{flex:1;min-width:220px}
 en{color:var(--en);background:var(--enbg);border-radius:3px;padding:0 2px}mark{background:var(--hl);color:inherit;border-radius:3px}
 .sug{font-size:13px;color:var(--mut)}.sug b{color:var(--fg)}.help{font-size:13px;color:var(--mut);margin:8px 0}
@@ -89,13 +114,16 @@ kbd{border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:12px}
 <button id="acc">Nhận mọi đề xuất còn lại</button><button id="exp">Xuất TSV</button></header>
 <main><p class="help">Mỗi thẻ là một thuật ngữ; quyết định áp cho MỌI câu chứa nó. <b>en</b> = gắn &lt;en&gt; (đọc / là từ tiếng Anh),
 <b>vi</b> = không gắn (đọc kiểu Việt / từ Việt), <b>bỏ tag</b> = không phải từ Anh, cũng không phải từ Việt (lỗi gõ, mã...).
-Phím: <kbd>1</kbd> en · <kbd>2</kbd> vi · <kbd>3</kbd> bỏ tag · <kbd>A</kbd> nhận đề xuất · <kbd>U</kbd> bỏ quyết định ·
+<b>tuỳ câu</b> = câu này en, câu kia vi (vd "ai" = ai đó / AI): các câu chứa thuật ngữ sẽ được tách ra duyệt từng câu.
+Viết tắt: quyết theo <b>cách đọc trong audio</b> (API đọc "ây-pi-ai" = en; VN đọc "vê-en" = vi; brand Latin = en).
+Phím: <kbd>1</kbd> en · <kbd>2</kbd> vi · <kbd>3</kbd> bỏ tag · <kbd>4</kbd> tuỳ câu · <kbd>E</kbd> xem tất cả câu · <kbd>A</kbd> nhận đề xuất · <kbd>U</kbd> bỏ quyết định ·
 <kbd>Space</kbd> nghe câu đầu · <kbd>J</kbd>/<kbd>K</kbd> thẻ sau/trước. Tiến độ tự lưu trong trình duyệt; xong thì bấm
 <b>Xuất TSV</b>. Chữ xanh = đang được gắn &lt;en&gt;; nền vàng = thuật ngữ đang duyệt.</p><div id="list"></div></main>
 <script>
 const DATA = __DATA__;
 const KEY = "term_review:" + DATA.name;
-const LABEL = {en: "en", vi: "vi", drop_tag: "bỏ tag"};
+const LABEL = {en: "en", vi: "vi", drop_tag: "bỏ tag", mixed: "tuỳ câu"};
+const open_ = new Set();
 let dec = {}; try { dec = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(dec)); } catch (e) {} };
 let cur = 0, shown = [];
@@ -118,9 +146,10 @@ function draw() {
       (t.suggest ? `đề xuất: <b>${LABEL[t.suggest] || esc(t.suggest)}</b>${t.note ? " · " + esc(t.note) : ""}` : "chưa có đề xuất");
     return `<div class="card ${i === cur ? "cur" : ""}" id="c${i}"><div class="top"><span class="term">${esc(t.term)}</span>
       <span class="tag">${t.n} câu</span>${t.flags.map(x => `<span class="tag">${esc(x)}</span>`).join("")}
-      <div class="dec">${btn("en")}${btn("vi")}${btn("drop_tag")}</div></div><div class="sug">${sug}</div>
-      ${t.examples.map((e, j) => `<div class="ex"><audio id="a${i}_${j}" controls preload="none" src="${esc(e.audio)}"></audio>
-      <span class="t">${renderText(e.text, t.term)} <span class="mut">(${e.dur} s)</span></span></div>`).join("")}</div>`;
+      <div class="dec">${btn("en")}${btn("vi")}${btn("drop_tag")}${btn("mixed")}</div></div><div class="sug">${sug}</div>
+      ${t.examples.slice(0, open_.has(t.term) ? t.examples.length : t.show).map((e, j) => `<div class="ex"><audio id="a${i}_${j}" controls preload="none" src="${esc(e.audio)}"></audio>
+      <span class="t">${renderText(e.text, t.term)} <span class="mut">(${e.dur} s)</span></span></div>`).join("")}
+      ${t.examples.length > t.show ? `<button class="more" data-more="${i}">${open_.has(t.term) ? "thu gọn" : "xem tất cả " + t.examples.length + " câu"}</button>` : ""}</div>`;
   }).join("") || "<p>Không còn thuật ngữ nào trong bộ lọc này.</p>";
   const done = DATA.terms.filter(decided).length;
   document.getElementById("cnt").textContent = `${done} / ${DATA.terms.length} đã quyết`;
@@ -142,6 +171,8 @@ function setDec(i, k) {
 function notice(msg) { const p = document.createElement("p"); p.className = "card"; p.textContent = msg;
   document.querySelector("main").prepend(p); setTimeout(() => p.remove(), 6000); }
 document.getElementById("list").onclick = e => {
+  const m = e.target.closest("button[data-more]");
+  if (m) { const t = shown[+m.dataset.more]; open_.has(t.term) ? open_.delete(t.term) : open_.add(t.term); cur = +m.dataset.more; draw(); focusCur(); return; }
   const b = e.target.closest("button[data-k]"); if (!b) return;
   cur = +b.dataset.i; const t = shown[cur];
   setDec(cur, (dec[t.term] === b.dataset.k) ? "" : b.dataset.k);
@@ -162,6 +193,8 @@ document.addEventListener("keydown", e => {
   if (e.target.tagName === "SELECT" || e.target.tagName === "AUDIO") return;
   const k = e.key.toLowerCase(), t = shown[cur];
   if (k === "1") setDec(cur, "en"); else if (k === "2") setDec(cur, "vi"); else if (k === "3") setDec(cur, "drop_tag");
+  else if (k === "4") setDec(cur, "mixed");
+  else if (k === "e" && t && t.examples.length > t.show) { open_.has(t.term) ? open_.delete(t.term) : open_.add(t.term); draw(); focusCur(); }
   else if (k === "u") setDec(cur, ""); else if (k === "a" && t && t.suggest in LABEL) setDec(cur, t.suggest);
   else if (k === "j" || e.key === "ArrowDown") { cur = Math.min(cur + 1, shown.length - 1); focusCur(); }
   else if (k === "k" || e.key === "ArrowUp") { cur = Math.max(cur - 1, 0); focusCur(); }
@@ -182,13 +215,19 @@ def main(argv=None):
     ap.add_argument("--decisions", default=str(DEFAULT_TERM_DECISIONS))
     ap.add_argument("--examples", type=int, default=3)
     ap.add_argument("--merge", help="TSV xuất từ trang: gộp vào --decisions (thêm / cập nhật theo term)")
+    ap.add_argument("--review-csv", help="(--merge) phiếu duyệt từng câu gốc, vd data/raw/ggroup/b1_candidates_review.csv: "
+                                         "câu chứa thuật ngữ 'tuỳ câu' được tách ra <tên>_mixed.csv để duyệt bằng review_bench.html")
     args = ap.parse_args(argv)
     if args.merge:
         old = read_term_rows(args.decisions)
-        new = {norm_term(r["term"]): r for r in read_term_rows(args.merge) if (r.get("decision") or "").strip()}
+        allrows = read_term_rows(args.merge)
+        mixed = sorted({norm_term(r["term"]) for r in allrows if (r.get("decision") or "").strip() == "mixed"})
+        new = {norm_term(r["term"]): r for r in allrows if (r.get("decision") or "").strip() not in ("", "mixed")}
         bad = [t for t, r in new.items() if r["decision"].strip() not in DECISIONS]
         if bad:
             raise SystemExit(f"decision lạ cho: {bad[:5]}")
+        if mixed:
+            write_mixed_review(mixed, args.manifest, args.review_csv)
         seen, rows, changed = set(), [], 0
         for r in old:
             t = norm_term(r["term"])
