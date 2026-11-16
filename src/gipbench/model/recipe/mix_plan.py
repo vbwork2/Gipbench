@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Kiểm kế hoạch trộn dữ liệu train theo configs/model/train_mix.tsv (không ghi dữ liệu, chỉ báo cáo).
+"""Kiểm kế hoạch trộn dữ liệu train theo nhóm `pools` của một experiment YAML (không ghi dữ liệu, chỉ báo cáo).
 
-  python -m gipbench.model.recipe.mix_plan --manifest data/raw/vss_full/vss_cs_clean.jsonl data/raw/vivos/train_vivos.jsonl \
+  python -m gipbench.model.recipe.mix_plan --mix configs/model/experiments/e3_v2.yaml --manifest data/raw/vss_full/vss_cs_clean.jsonl data/raw/vivos/train_vivos.jsonl \
       --assume ViMedCSS:medical:24.30 --out reports/mix_plan.md
 
 1. Đọc nhóm + tỉ trọng (ghi đè bằng biến môi trường ở cột env); tỉ trọng phải cộng lại = 1.00 (lệch > 1e-6: lỗi).
@@ -31,6 +31,10 @@ from gipbench.core.paths import REPO as G
 
 
 def load_mix(path):
+    """Nhóm trộn từ experiment YAML (configs/model/experiments/*.yaml) hoặc từ configs/train_mix.tsv định dạng cũ."""
+    if str(path).endswith((".yaml", ".yml")):
+        from gipbench.model.recipe.experiment import groups, load
+        return [{k: g[k] for k in ("group", "weight", "env", "datasets", "note")} for g in groups(load(path))]
     groups = []
     with open(path, encoding="utf-8") as f:
         for r in csv.DictReader((l for l in f if not l.startswith("#")), delimiter="\t"):
@@ -92,7 +96,8 @@ def fit_cap(share, cap, exempt):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--mix", default=str(G / "configs/model/train_mix.tsv"))
+    ap.add_argument("--mix", "--experiment", dest="mix", default=str(G / "configs/model/experiments/e3_v2.yaml"),
+                    help="experiment YAML (hoặc train_mix.tsv định dạng cũ, vd docs/history/train_mix.tsv)")
     ap.add_argument("--manifest", nargs="*", default=[])
     ap.add_argument("--assume", nargs="*", default=[], metavar="DATASET:DOMAIN:GIỜ")
     ap.add_argument("--cs-groups", nargs="+", default=["cs_real", "cs_pseudo"])

@@ -7,17 +7,22 @@ Chuẩn hoá trước khi so (chỉ những thứ sau, không gì khác):
   - đường dẫn tuyệt đối của chính thư mục output -> "<OUT>" (hai lần chạy ghi ra hai thư mục khác nhau)
   - file .html: bỏ dòng chứa thời điểm tạo (VOLATILE)
   - JSON: so sau khi sort_keys; bỏ các khoá trong VOLATILE_KEYS
+  - inputs/*.jsonl (đầu vào E3 lấy từ release): trường audio so sau os.path.normpath (release chuẩn hoá đường dẫn)
+  - KNOWN_DIFFS: các dòng được phép khác (tên file cấu hình in trong report)
 File .log (stdout / stderr của lệnh) chỉ so mã thoát (dòng "rc=") và báo khác biệt stdout ở dạng CẢNH BÁO: thông điệp có
 thể chứa tên script / module (đổi theo layout).
 """
 import argparse
 import difflib
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 VOLATILE_KEYS = {"created", "generated", "generated_at", "elapsed_s"}
+# khác biệt hợp lệ đã biết: file -> regex dòng được phép khác (tên file cấu hình in trong report)
+KNOWN_DIFFS = {"mix_plan.md": re.compile(r"^Cấu hình: `")}
 VOLATILE = re.compile(r"(Tạo lúc|generated|Sinh lúc|\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})")
 
 
@@ -48,6 +53,15 @@ def norm(path, root):
         return json.dumps(strip(obj), ensure_ascii=False, sort_keys=True, indent=1)
     if path.suffix == ".html":
         return "\n".join(l for l in t.splitlines() if not VOLATILE.search(l))
+    if path.suffix == ".jsonl" and path.parent.name == "inputs":
+        # đầu vào E3 từ release: audio được chuẩn hoá (".../raw/confusable/../../dl/x.wav" -> ".../dl/x.wav", cùng file)
+        out = []
+        for l in t.splitlines():
+            r = json.loads(l)
+            if isinstance(r.get("audio"), str):
+                r["audio"] = os.path.normpath(r["audio"])
+            out.append(json.dumps(r, ensure_ascii=False))
+        return "\n".join(out)
     return t
 
 
@@ -77,6 +91,10 @@ def main():
             else:
                 same += 1
             continue
+        if r.as_posix() in KNOWN_DIFFS:
+            k = KNOWN_DIFFS[r.as_posix()]
+            ta = "\n".join(l for l in ta.splitlines() if not k.search(l))
+            tb = "\n".join(l for l in tb.splitlines() if not k.search(l))
         if ta == tb:
             same += 1
             continue

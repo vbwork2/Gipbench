@@ -25,7 +25,7 @@
 | `channel` | nên có | `wideband` / `phone8k` |
 | `domain` | nên có | `tech` / `finance` / `edu` / `daily` / `product` / … |
 | `text_tagged_orig` | tuỳ chọn | nhãn `<en>` theo quy ước của dataset gốc khi quy ước đó khác Spec (ViMedCSS: gắn cả từ mượn như `vitamin`, `axit`). Chỉ dùng để chấm số phụ: `score.py --label-field text_tagged_orig` |
-| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Cột `datasets` của `configs/model/train_mix.tsv` map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
+| `dataset` | nên có | tên bộ gốc (`ViMedCSS:train`, `vivos:test`, `vss_cs`…). Khoá `pools.<nhóm>.datasets` của experiment YAML (`configs/model/experiments/*.yaml`) map trường này vào nhóm trộn. Nguồn dùng: B1 = G-Group + dữ liệu tự thu; CS thật cho train = ViMedCSS train + `vss_cs` + dữ liệu tự có. `sea_speech:en-vi` (SEA) là **tùy chọn, không dùng** |
 | `train_only` | tuỳ chọn | `true` = dòng chỉ được dùng cho train, không bao giờ vào bench (vd `dataset: vss_cs`) |
 | `license` | tuỳ chọn | `test_only` = CHỈ được dùng để test (vd bộ `consensus`). `validate.py --train/--dev` báo LỖI nếu dòng test_only (hoặc source / dataset `consensus`) có trong train / dev; `curate_train.py`, `vss_cs_prefilter.py` loại các dòng này và câu trùng text trong `data/raw/consensus/leak_block.txt` |
 | `trusted_text` | tuỳ chọn | `true` = text do người gõ (G-Group, consensus `agreed`): `build_bench_v0.py --accept trusted-text` nhận khi mọi thuật ngữ còn cờ đã chốt trong `configs/dataset/labeling/term_decisions.tsv` (decisions §12.4, `src/gipbench/core/term_decisions.py`) |

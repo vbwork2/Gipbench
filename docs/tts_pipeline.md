@@ -66,7 +66,7 @@ Hai chốt độc lập:
 
 1. Trần theo GIỜ có sẵn: `src/gipbench/model/recipe/curate.py --max-synthetic-share S` (mặc định 0.2) cắt dòng `synthetic: true` còn <= S tổng giờ CS.
    Muốn thử 50% phải nâng `--max-synthetic-share 0.5` và có đủ giờ TTS.
-2. Tỉ trọng BATCH: nhóm `synth` của `configs/model/train_mix.tsv` (cột datasets = `tts`), ghi đè bằng `MIX_SYNTH`. TTS chiếm
+2. Tỉ trọng BATCH: nhóm `synth` trong `pools` của experiment YAML (`configs/model/experiments/*.yaml`, datasets = `tts`), ghi đè bằng `MIX_SYNTH`. TTS chiếm
    `x = s / (0.45 + s)` lượng CS (0.45 = cs_real 0.35 + cs_pseudo 0.10) nên `s = 0.45x / (1 - x)`; tổng các nhóm phải = 1.00 nên phải
    hạ các nhóm không-CS tương ứng (kiểm bằng `python -m gipbench.model.recipe.mix_plan`). Ví dụ (giữ tỉ lệ replay_human : distill : confusable = 5 : 4 : 1):
 
