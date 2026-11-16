@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Đóng gói bản share của bench: manifest KHÔNG kèm audio + datasheet + config chấm + SHA256SUMS.
 
-  python -m gipbench.dataset.release.package --benchmarks general_v1_draft code_switch_v1_draft \
+  python -m gipbench.dataset.release.package --benchmarks general_v1_draft code_switch_v1_draft cs_ggroup_v1_draft \
       --name gipbench-bench-v1.0-draft [--out <data_root>/share]
 
 Mỗi manifest share = manifest của benchmark, bỏ trường `audio` (đường dẫn máy) và mọi trường bắt đầu bằng "_", thêm
@@ -22,7 +22,7 @@ from gipbench.dataset.release.fetch import DERIVED, SOURCES
 
 PRIVATE_LICENSES = {"test_only"}
 DOCS = ["docs/datasheet_bench_v1.md", "docs/benchmark_protocol_v1.md", "docs/evaluation_metrics_v1.md"]
-CONFIGS = ["configs/bench/datasets.yaml"]
+CONFIGS = ["configs/bench/datasets.yaml", "configs/dataset/labeling/term_decisions.tsv"]  # term_decisions: nguồn tag <en> của C1
 
 
 def manifest_path(name: str) -> Path:

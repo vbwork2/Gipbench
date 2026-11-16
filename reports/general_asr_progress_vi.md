@@ -137,3 +137,21 @@ bash tests/run_tests.sh /tmp/gab
   `data/raw/ggroup_v1`: B1 còn 1 261 câu code-switching (trước 1 330; câu chỉ có từ người dùng chọn `vi` rời track).
   `build_bench --accept trusted-text` nhận 1 248 câu; còn chờ 13 câu: `ai` (tuỳ câu, 9 câu, phiếu duyệt từng câu) và 4
   thuật ngữ mới lộ ra sau khi gắn lại tag (`alt`, `chat`, `hip`, `fr`, mỗi từ 1 câu).
+
+## 9. Cập nhật 17/11/2026 (chiều): track C1 G-Group code-switching
+
+- Người dùng chốt 4 thuật ngữ cuối (`alt` vi, `chat` en, `fr` vi, `hip` en) và duyệt 9 câu `ai` (4 ok, 5 fix; bản sao
+  `reports/term_review_ai_2026-11-17.csv`). Chạy lại converter: B1 còn 1 260 câu; `build_bench` nhận cả 1 260, không câu
+  nào chờ.
+- Benchmark mới `cs_ggroup_v1_draft` (track C1, 1 260 câu, 1.31 h, manifest_sha256 `764e2295…`), dựng bằng
+  `build_general --which cs_ggroup`. Cùng audio với G-Group trong G0; chấm không catalog. `fetch` tái dựng 1 260 / 1 260
+  câu trùng sha256.
+- Kết quả (open_vocab, strict_v1): Gipformer WER 24.66 / CS-WER 70.25 / term recall 39.57; VieGem 34.38 / 82.39 / 23.52.
+  Δ ghép cặp VieGem − Gipformer: CS-WER +12.13 [9.24, 14.91]. Macro CS-WER theo bộ: 66.40 / 80.34.
+- Hyps Gipformer trên C1 trùng hyps G0 1 260 / 1 260 (batch 1). VieGem (batch 8, bf16) trùng 1 177 / 1 260 vì ghép
+  batch khác; WER lệch 0.03, CS-WER 0.24 điểm. Đã ghi vào datasheet (giới hạn 9).
+- Sửa: `compare` ghi nhãn macro theo đúng primary metric (trước luôn ghi "WER"); `test_converters` / `eval_autotag` không
+  còn phụ thuộc `term_decisions.tsv` thật (hỏng từ khi người dùng chốt `gov` = vi); `package` đóng kèm
+  `term_decisions.tsv`.
+- Gói thử `gipbench-bench-v1.0-draft` (G0 + C0 + C1) ở `data/share_test/pkg3`: SHA256SUMS khớp, không có audio / dòng
+  test_only. Cả ba benchmark vẫn `evidence_level: draft`, chưa khoá `manifest_sha256`.

@@ -68,7 +68,8 @@ def main(argv=None):
                 L.append(f"| {ds} | {e} | – | N/A (chưa chạy) | | | | | | | | |")
     macro = {s["system"]: (s["profiles"][prof].get("macro_by_dataset") or {}) for s in runs}
     if any(macro.values()):
-        L += ["", "Macro theo bộ (trung bình đều WER, không có CI; đọc kèm số từng bộ): " +
+        met = next((v.get("metric") for v in macro.values() if v), "wer")
+        L += ["", f"Macro theo bộ (trung bình đều {met.upper().replace('_', '-')}, không có CI; đọc kèm số từng bộ): " +
               ", ".join(f"{k} **{f(v.get('value'))}**" for k, v in macro.items() if v)]
     L += ["", "Thông tin hệ:", ""]
     for s in runs:
