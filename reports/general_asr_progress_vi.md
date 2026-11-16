@@ -125,3 +125,15 @@ python -m gipbench.dataset.release.build_general --which general && python -m gi
     $R/general_v1_draft/viegem_greedy --expect viegem_lm whisper_large_v3 qwen3_asr_0.6b
 bash tests/run_tests.sh /tmp/gab
 ```
+
+## 8. Cập nhật 17/11/2026: bản share, fetch, duyệt thuật ngữ
+
+- `fetch` + `package` + datasheet (`404dc1c`). Kiểm thật: tải lại từ nguồn gốc G0 4 400 / 4 400 câu và C0 658 / 658 câu,
+  trùng sha256 từng byte (VIVOS tải từ HF; G-Group từ parquet đã khoá; Common Voice từ bản tải tay; ViMedCSS tải từ HF
+  và resample cũng trùng byte).
+- Sự cố: lượt tải đầu làm đầy ổ D: (pagefile 19.6 GB + ổ ảo WSL phình) và làm WSL sập; người dùng đã dọn ổ. Lượt sau
+  có monitor canh dung lượng.
+- Người dùng duyệt 430 thuật ngữ B1 qua trang `term_review` (`7c35771`). Chạy lại converter G-Group vào
+  `data/raw/ggroup_v1`: B1 còn 1 261 câu code-switching (trước 1 330; câu chỉ có từ người dùng chọn `vi` rời track).
+  `build_bench --accept trusted-text` nhận 1 248 câu; còn chờ 13 câu: `ai` (tuỳ câu, 9 câu, phiếu duyệt từng câu) và 4
+  thuật ngữ mới lộ ra sau khi gắn lại tag (`alt`, `chat`, `hip`, `fr`, mỗi từ 1 câu).

@@ -46,6 +46,8 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 - **Audio**: VIVOS, Common Voice, G-Group giữ nguyên byte gốc (`audio_derivation: upstream_bytes`). ViMedCSS
   (44.1 kHz) được resample về 16 kHz mono PCM16 bằng soxr HQ (`soxr_hq_16k_mono_pcm16`); sha256 của file này phụ thuộc
   phiên bản soxr / libsndfile (bản gốc: soxr 1.1.0, libsndfile 1.2.2); `fetch` chỉ cảnh báo nếu lệch mà độ dài khớp.
+- **Đã kiểm tái dựng (17/11/2026):** `fetch` tải lại từ nguồn gốc cho G0 4 400 / 4 400 câu và C0 658 / 658 câu trùng
+  sha256 từng byte (kể cả ViMedCSS resample, cùng soxr 1.1.0 / libsndfile 1.2.2).
 - **Tag `<en>` (C0)**: `text_tagged` theo quy ước của gipbench: tag theo **cách đọc** (viết tắt đọc kiểu Anh = en,
   đọc kiểu Việt = không; brand Latin = en; từ mượn có trong từ điển tiếng Việt như "vitamin" = không). `text_tagged_orig`
   là tag gốc của ViMedCSS. Hai bản lệch nhau ở 339 / 658 câu; báo cáo nên ghi rõ đã chấm theo bản nào
