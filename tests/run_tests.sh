@@ -20,4 +20,8 @@ run converters python tests/dataset/test_converters.py "$T/converters"
 run tts python tests/dataset/test_tts.py
 run hard_mining python tests/dataset/test_hard_mining.py
 for f in tests/model/test_*.py; do [ -f "$f" ] && run "$(basename "$f" .py)" python "$f"; done
+# đánh giá đa bộ dữ liệu (feat/general-asr): chuẩn hoá có phiên bản, chấm điểm, rò rỉ, registry, adapter
+for f in tests/core/test_*.py tests/infer/test_*.py tests/bench/test_registry.py; do
+  [ -f "$f" ] && run "$(basename "$f" .py)" python "$f"
+done
 exit $fail
