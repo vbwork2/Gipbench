@@ -173,6 +173,7 @@ def main():
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--classify", nargs="*", default=[], help="hệ thống cần phân loại lỗi thuật ngữ (vd e0_baseline)")
     ap.add_argument("--compare", nargs=2, metavar=("A", "B"), help="bảng so sánh theo split giữa hai hệ thống")
+    ap.add_argument("--by-domain", action="store_true", help="bảng B5 theo domain (WER) và B3 theo topic (CS-WER)")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -223,6 +224,23 @@ def main():
                      f"{ab(g, 'term_recall') if cs else '–'} | {ab(g, 'term_precision') if cs else '–'} | "
                      f"{ab(g, 'false_terms_per_100utt')} |")
         L.append("")
+    if args.by_domain:
+        from score import agg
+        meta = {r["id"]: r for r in bench}
+        U = {n: [json.loads(l) for l in open(p / "utt_scores.jsonl", encoding="utf-8")] for n, (p, _) in S.items()}
+        for split, key, metric, title in (("B5", "domain", "wer", "B5 theo domain: WER"),
+                                          ("B3", "topic", "cs_wer", "B3 theo topic ViMedCSS: CS-WER")):
+            vals = sorted({str(meta[u["id"]].get(key) or "?") for u in next(iter(U.values())) if u["split"] == split})
+            L += [f"## {title}", "", "| " + " | ".join([key, "Utt"] + list(U)) + " |", "|" + " --- |" * (len(U) + 2)]
+            for v in vals:
+                cells, nutt = [], 0
+                for n, us in U.items():
+                    R = [u for u in us if u["split"] == split and str(meta[u["id"]].get(key) or "?") == v]
+                    nutt = len(R)
+                    a = agg(R)[metric]
+                    cells.append(f(a))
+                L.append(f"| {v} | {nutt} | " + " | ".join(cells) + " |")
+            L.append("")
     vi, en = load_lexicons() if args.classify else (set(), set())
     for name, (p, s) in S.items():
         hyps = {h["id"]: h.get("hyp", "") for h in read_jsonl(str(p / "hyps.jsonl"))}

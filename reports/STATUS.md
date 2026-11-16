@@ -35,6 +35,17 @@ nohup python tools/vss_cs_run.py --pre data/raw/vss_full/vss_cs_pre_rebuild.json
 | A4 FT thử trên GPU | XONG: 194 step, VRAM 3.9 / 4 GB, 0.66 step/s; bị leaderboard loại (quên tiếng Việt). Xem `reports/a4_trial_report.md` |
 | Job ASR tới 6 h | Đã đạt sẵn (6.09 h, mục 0), không phải chạy tiếp |
 
+## 0d. Đêm 16/11/2026: bước 1 + E3 v1 (đang chạy, xem `reports/e3_v1_report.md` khi xong)
+
+| Việc | Trạng thái |
+| --- | --- |
+| 1. Bảng E0 / E1 theo split, phân loại lỗi thuật ngữ, đề xuất variants (chưa áp), speaker_cluster G-Group | XONG (`ea9c57e`): `reports/v0_draft_tables.md`. G-Group: B1 208 cụm, B5 69 cụm (ngưỡng consensus 0.7565); CI B1 tính lại |
+| 2. ViMedCSS train đầy đủ | XONG: 11 832 câu / 22.95 h + validation 1 714 / 3.37 h (`data/raw/vimedcss_full/`). **D: chỉ còn 3.1 GB lúc bắt đầu (< 20 GB yêu cầu)**: đã xoá checkpoint A4 + `vivos.tar.gz` (đã giải nén đủ 12 420 wav), convert `--streaming` (không cache 14 GB parquet) |
+| 2. distill VSS không có từ Anh | XONG: nguồn 9.44 h (giới hạn bởi số video không trùng vss_cs), giữ 1 889 câu / 6.78 h (greedy = beam). Decode trên **CPU** (sherpa-onnx pip là bản CPU). HF giới hạn tốc độ (429) khi tải audio VSS: tải chậm, đủ 2 944 file |
+| 2. VIVOS train đầy đủ | Có sẵn (11 658 câu), tách 4 người nói (0.96 h) làm dev VI |
+| 3. E3 v1 | **ĐANG CHẠY** (`ft/run_e3_v1.sh`, checkpoint ở `C:\Users\goose\gipbench_exp\e3_v1` vì D: hết chỗ) |
+| D: / RAM | D: còn ~5 GB (ngưỡng dừng 3 GB). RAM WSL 6 GB: watchdog đã dừng FT 4 lần khi RAM < 1 GB (xem report) |
+
 ---
 
 # STATUS — 15/11/2026, 19:20 (giờ VN)
