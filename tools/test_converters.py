@@ -636,15 +636,15 @@ def main():
                                                    if not l.startswith("#")), delimiter="\t")}
     assert mix["cs_pseudo"]["datasets"].split(",") == ["vss_cs"] and "vss_cs" not in mix["cs_real"]["datasets"]
     assert "audio thật, nhãn giả" in mix["cs_pseudo"]["note"]
-    assert {k: float(v["weight"]) for k, v in mix.items()} == {"cs_real": 0.35, "cs_pseudo": 0.10, "synth": 0.05,
+    assert {k: float(v["weight"]) for k, v in mix.items()} == {"cs_real": 0.20, "cs_pseudo": 0.10, "synth": 0.20,
                                                                "replay_human": 0.25, "distill": 0.20, "confusable": 0.05}
     assert abs(sum(float(r["weight"]) for r in mix.values()) - 1.0) < 1e-9
     out_mp = run(G / "tools/mix_plan.py", "--manifest", raw / "vss2/vss_cs_candidates.jsonl", "--assume", "ViMedCSS:medical:24.3")
-    assert "**CẢNH BÁO:** domain medical (ViMedCSS) chiếm 77.8% phần CS (cs_real + cs_pseudo) > trần 35%" in out_mp, out_mp
-    assert "| cs_pseudo | 0.10 | vss_cs |" in out_mp and "| conversation | 22.2% |" in out_mp, out_mp
+    assert "**CẢNH BÁO:** domain medical (ViMedCSS) chiếm 66.7% phần CS (cs_real + cs_pseudo) > trần 35%" in out_mp, out_mp
+    assert "| cs_pseudo | 0.10 | vss_cs |" in out_mp and "| conversation | 33.3% |" in out_mp, out_mp
     bad_mix = subprocess.run([sys.executable, str(G / "tools/mix_plan.py")], capture_output=True, text=True,
                              env={**os.environ, "MIX_CS_REAL": "0.5"})
-    assert bad_mix.returncode == 1 and "tổng tỉ trọng = 1.1500" in bad_mix.stderr, bad_mix.stderr
+    assert bad_mix.returncode == 1 and "tổng tỉ trọng = 1.3000" in bad_mix.stderr, bad_mix.stderr
     # --- Phase 0b T3: score.py --label-field (B3: số chính theo Spec, số phụ theo nhãn gốc)
     sb = T / "score_lf"
     sb.mkdir(parents=True, exist_ok=True)

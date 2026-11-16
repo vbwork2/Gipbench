@@ -118,15 +118,25 @@ print(int(s['epoch_hours'] * 3600 / ($MAXDUR * 0.93)))")
     if [ -z "$latest" ]; then
       RES=(--do-finetune 1 --finetune-ckpt $MODEL/init_ft.pt --start-epoch 1 --num-epochs 1)
     else
-      RES=(--do-finetune 0 --start-epoch 2 --num-epochs 2 --start-batch $latest)
+      # icefall: resume cần --start-epoch > 1 (assert), rồi tự đặt lại start_epoch = cur_epoch đã lưu (= 1). Với
+      # --num-epochs 2 thì sau khi hết manifest nó chạy THÊM một lượt nữa (epoch 2) -> phải là 1.
+      RES=(--do-finetune 0 --start-epoch 2 --num-epochs 1 --start-batch $latest)
     fi
     echo "$(date '+%F %T') == đoạn mới: ${RES[*]}" | tee -a $D/finetune.log $D/segments.log
-    ( while sleep 60; do
+    ( t0=$(date +%s); low=0; while sleep 60; do  # RAM: bỏ qua 3 phút đầu (nạp checkpoint), dừng khi < 1 GB 2 lần liên tiếp
         cleanup
         f=$(df -BG --output=avail /mnt/d | tail -1 | tr -dc 0-9); m=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
-        if [ "$f" -lt 3 ] || [ "$m" -lt 1024 ]; then
+        if [ "$m" -lt 1024 ] && [ $(( $(date +%s) - t0 )) -ge 180 ]; then low=$((low + 1)); else low=0; fi
+        if [ "$f" -lt 3 ] || [ "$low" -ge 2 ]; then
           echo "$(date '+%F %T') WATCHDOG: D: ${f} GB, RAM ${m} MB -> dừng finetune" >> $D/watchdog.log
           pkill -INT -f "[z]ipformer/finetune_cs.py"; break
+        fi
+        # treo (vd ngữ cảnh CUDA hỏng sau sự cố driver, 16/11 09:01): log đứng > 10 phút sau 10 phút đầu -> TERM rồi KILL
+        age=$(( $(date +%s) - $(stat -c %Y $D/finetune.log) ))
+        if [ $(( $(date +%s) - t0 )) -ge 600 ] && [ "$age" -ge 600 ]; then
+          echo "$(date '+%F %T') WATCHDOG: treo (log đứng ${age} s) -> dừng finetune" >> $D/watchdog.log
+          pkill -TERM -f "[z]ipformer/finetune_cs.py"; sleep 20
+          pkill -KILL -f "[z]ipformer/finetune_cs.py"; pkill -KILL -f "[s]pawn_main"; break
         fi
       done ) & WD=$!
     rc=0

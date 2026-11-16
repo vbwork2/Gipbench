@@ -6,6 +6,9 @@ hiếm khi ra chính tả Anh. Reference và hyp đều đi qua lib.textnorm (no
 
 relabel_spans(): gán lại TỪNG span (không gán lại cả câu) khi mọi hyp cho cùng một chữ ở vị trí span đó và phần
 tiếng Việt của nhãn khớp từng hyp (WER tiếng Việt <= ngưỡng).
+
+mine_hard(): chế độ ngược lại (khai thác câu KHÓ): nhãn = text của các thầy ASR mạnh đồng thuận với nhau, giữ câu mà
+Gipformer (trò) không có span tiếng Anh mà các thầy đều có. Xem khối "khai thác câu KHÓ" ở cuối file.
 """
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -166,3 +169,116 @@ def relabel_spans(text_tagged: str, hyps: Sequence[Optional[str]], cat: Catalog,
 
 def plain(text_tagged: str) -> str:
     return " ".join(plain_text(text_tagged).split())
+
+
+# ----------------------------------------------------------------------------- khai thác câu KHÓ (hard mining)
+# Ngược với agree()/relabel_spans(): ở đó nhãn là nhãn giả của model nhỏ và chỉ giữ câu mà ASR khác xác nhận, nên chỉ còn
+# câu DỄ (trò gần như đã đúng). Ở đây nhãn là text của các "thầy" (ASR mạnh, khác họ với Gipformer) đồng thuận với nhau,
+# và ta giữ câu mà "trò" (Gipformer) thiếu span tiếng Anh mà các thầy đều có.
+# Thứ tự các điều kiện (cũng là thứ tự đếm phễu trong báo cáo của tools/agreement_filter.py); khoá -> mô tả
+HARD_STAGES = [
+    ("hyp", "đủ hyp thầy (>= 2 thầy, không rỗng)"),
+    ("pair", "thầy đồng thuận: WER từng cặp thầy <= ngưỡng"),
+    ("has_span", "text thầy chính có span tiếng Anh"),
+    ("span_confirmed", "mọi thầy khác có đúng chuỗi token của mọi span"),
+    ("leak", "không rò rỉ (reserved_b3, test_only, bench, danh sách chặn)"),
+    ("en_frac", "tỉ lệ token tiếng Anh <= --max-en-frac"),
+    ("student_vi", "phần tiếng Việt (ngoài span) của trò lệch thầy <= ngưỡng"),
+]
+
+
+def pair_wer(a: Sequence[str], b: Sequence[str]) -> float:
+    """WER giữa hai chuỗi token đã chuẩn hoá, chia cho độ dài dài hơn (đối xứng, không phụ thuộc ai là reference)."""
+    if not a or not b:
+        return float("inf")
+    errs = sum(1 for t, _, _ in align(list(a), list(b)) if t != "C")
+    return errs / max(len(a), len(b))
+
+
+def has_span(seq: Sequence[str], span: Sequence[str]) -> bool:
+    """Chuỗi token `span` có trong `seq` không: đúng chuỗi token liền (contains), hoặc một đoạn token liền của seq ghép
+    bỏ dấu cách trùng với span ghép bỏ dấu cách ("set up" ~ "setup", "a p i" ~ "api")."""
+    if contains(seq, span):
+        return True
+    key = "".join(span)
+    for n in range(1, len(span) + 3):
+        if any("".join(seq[i:i + n]) == key for i in range(len(seq) - n + 1)):
+            return True
+    return False
+
+
+def tag_text(text: str, cat: Catalog, vi_words=None, term_dec=None) -> str:
+    """Gắn <en> tự động cho text thô của một ASR bằng đúng cơ chế đã gắn nhãn nháp (converters.common.auto_tag): catalog,
+    quyết định theo thuật ngữ, vi_abbrev / vi_loanwords (không gắn), heuristic âm tiết. vi_words / term_dec = None: đọc
+    configs/ như converter; truyền frozenset() / {} để tắt (test)."""
+    from converters.common import auto_tag
+    return auto_tag(text, cat, vi_words=vi_words, term_dec=term_dec)["text_tagged"]
+
+
+def mine_hard(teachers: Sequence[Optional[str]], student: Optional[str], cat: Catalog, max_pair_wer: float = 0.15,
+              max_student_vi_wer: float = 0.30, max_en_frac: Optional[float] = None, leak=None,
+              vi_words=None, term_dec=None) -> Dict:
+    """Câu KHÓ cho trò: các thầy đồng thuận, có span tiếng Anh mà trò không có.
+
+    teachers: hyp của >= 2 thầy (thầy đầu = thầy chính, nguồn của nhãn), student: hyp Gipformer cùng audio (chuỗi, có thể
+    rỗng; None = chưa có: chỉ kiểm các điều kiện phía thầy, đạt thì trả status "need_student"). Điều kiện,
+    theo thứ tự HARD_STAGES (câu bị loại ở điều kiện đầu tiên không đạt, khoá ghi ở "reason"):
+      hyp            có >= 2 thầy và mọi thầy có hyp không rỗng sau chuẩn hoá;
+      pair           (a) pair_wer của MỌI cặp thầy (text chuẩn hoá strict) <= max_pair_wer;
+      has_span       (b) text thầy chính, gắn <en> bằng tag_text, có ít nhất một span;
+      span_confirmed (b) MỌI span đó có đúng chuỗi token trong hyp của MỌI thầy khác (contains, không ghép);
+      leak           leak(text_thầy_chính) (callable -> lý do, "" = qua) không chặn: gắn bộ chặn rò rỉ của người gọi
+                     (LeakGuard.reason: reserved_b3, test_only, bench, danh sách chặn);
+      en_frac        tỉ lệ token trong span / tổng token <= max_en_frac (None = không kiểm);
+      student_vi     (d) WER phần tiếng Việt (ngoài span) của trò so với nhãn thầy chính <= max_student_vi_wer.
+    Sau đó (c): span bị "thiếu" ở trò = span mà has_span(trò, span) sai. Có ít nhất một span thiếu -> "hard"; trò có đủ
+    mọi span -> "easy" (đạt các điều kiện chất lượng, nhưng trò đã đúng: người gọi quyết có giữ một phần hay không).
+    Trả về {"status": "hard"|"easy"|"need_student"|"reject", "reason", "text_tagged", "spans", "teacher_spans" (span thiếu ở trò),
+    "student_spans" (đoạn token trò căn với từng span thiếu, song song teacher_spans), "teacher_pair_wer" (lớn nhất),
+    "student_vi_wer", "en_frac"}; các trường chưa tính tới là None / rỗng.
+    """
+    out = {"status": "reject", "reason": "", "text_tagged": None, "spans": [], "teacher_spans": [],
+           "student_spans": [], "teacher_pair_wer": None, "student_vi_wer": None, "en_frac": None}
+    t_toks = [normalize_hyp(h or "", cat, "strict") for h in teachers]
+    if len(teachers) < 2 or not all(t_toks):
+        out["reason"] = "hyp"
+        return out
+    pw = [pair_wer(t_toks[i], t_toks[j]) for i in range(len(t_toks)) for j in range(i + 1, len(t_toks))]
+    out["teacher_pair_wer"] = round(max(pw), 4)
+    if max(pw) > max_pair_wer:
+        out["reason"] = "pair"
+        return out
+    tagged = tag_text(teachers[0], cat, vi_words, term_dec)
+    toks, spans = normalize_ref(tagged, cat, "strict")
+    out["text_tagged"] = tagged
+    out["spans"] = [" ".join(s) for s in spans]
+    if not spans:
+        out["reason"] = "has_span"
+        return out
+    if not all(contains(h, s) for s in spans for h in t_toks[1:]):
+        out["reason"] = "span_confirmed"
+        return out
+    why = leak(plain(tagged)) if leak else ""
+    if why:
+        out["reason"] = "leak"
+        out["leak"] = why
+        return out
+    ref_tok, ref_span = [t.tok for t in toks], [t.span for t in toks]
+    out["en_frac"] = round(sum(1 for s in ref_span if s >= 0) / len(ref_tok), 3)
+    if max_en_frac is not None and out["en_frac"] > max_en_frac:
+        out["reason"] = "en_frac"
+        return out
+    if student is None:  # chưa có hyp trò nhưng đã qua mọi điều kiện phía thầy: đáng để chạy decode trò
+        out["status"] = "need_student"
+        return out
+    s_toks = normalize_hyp(student, cat, "strict")
+    seg, e_vi, n_vi = span_segments(ref_tok, ref_span, s_toks)
+    out["student_vi_wer"] = round(e_vi / n_vi, 4) if n_vi else float("inf")
+    if not n_vi or e_vi / n_vi > max_student_vi_wer:
+        out["reason"] = "student_vi"
+        return out
+    missed = [i for i, s in enumerate(spans) if not has_span(s_toks, s)]
+    out["teacher_spans"] = [" ".join(spans[i]) for i in missed]
+    out["student_spans"] = [" ".join(seg.get(i, [])) for i in missed]
+    out["status"] = "hard" if missed else "easy"
+    return out

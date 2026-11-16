@@ -19,7 +19,7 @@ Mỗi luật sau tắt được độc lập (0 / bỏ trống) và áp theo th�
                                thuật ngữ vượt trần chỉ được giữ khi được MỌI thuật ngữ đó chọn
   4. --max-speaker-share 0.02  một người nói tối đa 2% số giờ CS (lấy mẫu xuống, --seed)
   5. --max-domain-share 0.35   một domain tối đa 35% số giờ CS (lấy mẫu xuống; ViMedCSS = medical sẽ bị cắt mạnh)
-  6. --max-synthetic-share 0.2 câu synthetic: true (TTS / ghép) tối đa 20% số giờ CS
+  6. --max-synthetic-share 0.5 câu synthetic: true (TTS / ghép) tối đa 50% số giờ CS
   --min-speakers-per-term 3    chỉ BÁO CÁO thuật ngữ có ít hơn N người nói (không loại)
 Báo cáo <out>.report.md: giờ trước/sau theo domain, nguồn (dataset) và người nói; số câu/giờ bị từng luật loại;
 thuật ngữ bị cắt; thuật ngữ thiếu người nói.
@@ -167,7 +167,7 @@ def main():
     ap.add_argument("--max-domain-share", type=float, default=0.35, help="0 = tắt")
     ap.add_argument("--cap-exempt", nargs="*", default=[],
                     help="domain không bị cắt bởi --max-domain-share (vd other = chưa biết domain, như tools/mix_plan.py)")
-    ap.add_argument("--max-synthetic-share", type=float, default=0.2, help="0 = tắt")
+    ap.add_argument("--max-synthetic-share", type=float, default=0.5, help="0 = tắt")
     add_block_arg(ap)
     args = ap.parse_args()
     rnd = random.Random(args.seed)

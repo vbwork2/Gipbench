@@ -6,12 +6,17 @@
 Mỗi thư mục results/<system>/ cần utt_scores.jsonl (từ score.py); decode_summary.json (từ decode.py) là tuỳ chọn.
 
 Luật chọn (sửa ngưỡng bằng tham số):
-  1. Loại nếu WER trên B5 tăng > --max-b5-delta điểm tuyệt đối so với baseline.
-  2. Loại nếu N-WER (B1–B4) tăng > --max-nwer-delta điểm.
+  1. Kiểm định không kém hơn trên B5: loại nếu CẬN TRÊN CI95 (bootstrap cặp theo người nói) của ΔWER B5 > --b5-margin
+     (điểm tuyệt đối, mặc định 0.5). Không còn so điểm ước lượng với ngưỡng nhỏ hơn độ rộng CI.
+  2. Tương tự cho ΔN-WER (B1–B4) với --nwer-margin (mặc định 0.5).
   2b. Loại nếu WER của bất kỳ domain nào trong B5 tăng > --max-b5-domain-delta (chặn suy giảm cục bộ).
   3. Loại nếu RTF > --max-rtf-ratio × RTF baseline (khi có decode_summary.json).
-  4. Chỉ coi là cải thiện khi CI 95% của ΔCS-WER (B1+B2) nằm hoàn toàn dưới 0.
-  5. Xếp hạng hệ thống đủ điều kiện theo CS-WER (B1+B2), hoà thì CS-WER B3 thấp hơn thắng.
+  4. Chỉ coi là cải thiện khi CI 95% ghép cặp của Δ metric chính (B1+B2) không chứa 0 và đúng chiều.
+     Metric chính chọn bằng --main-metric: term_acc_macro (mặc định, accuracy theo thuật ngữ rồi trung bình đều),
+     span_acc (accuracy theo span) hoặc cs_wer. Accuracy cao hơn là tốt, CS-WER thấp hơn là tốt.
+  5. Xếp hạng hệ thống đủ điều kiện theo metric chính (B1+B2), hoà thì CS-WER B3 thấp hơn thắng.
+Nếu utt_scores có lát tần suất train (score.py --train-manifest), bảng thêm hai cột span accuracy: unseen và real_5+
+(B1+B2).
 """
 import argparse
 import csv
@@ -26,7 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from eda import CSS  # noqa: E402
 from lib.manifest import CS_SPLITS  # noqa: E402
 from lib.svgcharts import table  # noqa: E402
-from score import agg  # noqa: E402
+from score import SPAN_METRICS, agg, freq_slices, term_weights  # noqa: E402
+
+MAIN_KEY = {"term_acc_macro": "acc_macro", "span_acc": "span_acc", "cs_wer": "cs_main"}  # --main-metric -> khoá METRICS
+MAIN_LABEL = {"term_acc_macro": "Term acc (macro)", "span_acc": "Span acc", "cs_wer": "CS-WER"}
 
 METRICS = [  # (khoá, nhóm split, metric của agg)
     ("cs_main", ["B1", "B2"], "cs_wer"),
@@ -36,6 +44,9 @@ METRICS = [  # (khoá, nhóm split, metric của agg)
     ("cs_b3", ["B3"], "cs_wer"),
     ("cs_b4", ["B4"], "cs_wer"),
     ("b5_wer", ["B5"], "wer"),
+    ("acc_macro", ["B1", "B2"], "term_acc_macro"),
+    ("span_acc", ["B1", "B2"], "span_acc"),
+    ("span_cer", ["B1", "B2"], "span_cer"),
     ("term_r", CS_SPLITS, "term_recall"),
     ("term_p", CS_SPLITS, "term_precision"),
     ("b5_false", ["B5"], "false_terms_per_100utt"),
@@ -63,11 +74,15 @@ def paired_ci(base, other, splits, m, iters, seed=0):
     if len(spk) < 2:
         return None
     rnd = random.Random(seed)
+    ws = m in SPAN_METRICS
+    # trọng số term_acc_macro cố định theo tập đầy đủ (baseline, các id chung), dùng chung cho hai hệ: macro tính lại
+    # theo mẫu thì lệch lên vì thuật ngữ hiếm rơi khỏi mẫu
+    tw = term_weights([base[i] for i in ids]) if m == "term_acc_macro" else None
     diffs = []
     for _ in range(iters):
         sid = [i for s in (rnd.choice(spk) for _ in spk) for i in by[s]]
-        a = agg([other[i] for i in sid])[m]
-        b = agg([base[i] for i in sid])[m]
+        a = agg([other[i] for i in sid], ws, tw)[m]
+        b = agg([base[i] for i in sid], ws, tw)[m]
         if a is not None and b is not None:
             diffs.append(a - b)
     diffs.sort()
@@ -75,7 +90,7 @@ def paired_ci(base, other, splits, m, iters, seed=0):
 
 
 def dotplot(rows, base_val, width=640, label_w=150, row_h=30):
-    """Điểm + whisker CI 95% của CS-WER (B1+B2) từng hệ thống; vạch dọc = baseline."""
+    """Điểm + whisker CI 95% của metric chính (B1+B2) từng hệ thống; vạch dọc = baseline."""
     vals = [v for _, v, lo, hi in rows for v in (v, lo, hi) if v is not None]
     vmin, vmax = 0, max(vals + [1]) * 1.08
     pw = width - label_w - 60
@@ -108,8 +123,12 @@ def main():
     ap.add_argument("--baseline", required=True)
     ap.add_argument("--out", default="reports/leaderboard")
     ap.add_argument("--iters", type=int, default=1000)
-    ap.add_argument("--max-b5-delta", type=float, default=0.3)
-    ap.add_argument("--max-nwer-delta", type=float, default=0.3)
+    ap.add_argument("--main-metric", choices=list(MAIN_KEY), default="term_acc_macro",
+                    help="metric chính (B1+B2) để xếp hạng và kiểm định: accuracy cao hơn là tốt, cs_wer thấp hơn là tốt")
+    ap.add_argument("--b5-margin", type=float, default=0.5,
+                    help="loại nếu cận trên CI95 ghép cặp của ΔWER B5 > ngưỡng này (kiểm định không kém hơn)")
+    ap.add_argument("--nwer-margin", type=float, default=0.5,
+                    help="như --b5-margin, cho ΔN-WER (B1–B4)")
     ap.add_argument("--max-rtf-ratio", type=float, default=1.2)
     ap.add_argument("--max-b5-domain-delta", type=float, default=0.5,
                     help="loại nếu WER của BẤT KỲ domain nào trong B5 tăng quá ngưỡng này (domain >= --min-domain-tokens)")
@@ -123,6 +142,9 @@ def main():
     data = {s: load(root / s) for s in systems}
     base, base_rtf = data[args.baseline]
 
+    mm = args.main_metric
+    up = mm != "cs_wer"  # accuracy: cao hơn là tốt; cs_wer: thấp hơn là tốt
+    label = MAIN_LABEL[mm]
     rows = []
     for s in systems:
         recs, rtf = data[s]
@@ -130,11 +152,18 @@ def main():
         row = {"system": s, "rtf": rtf}
         for k, splits, m in METRICS:
             row[k] = metric(R, splits, m)
+        row["main"] = row[MAIN_KEY[mm]]
+        row["fs"] = freq_slices([x for x in R if x["split"] in ("B1", "B2")])
         if s != args.baseline:
-            row["d_cs_main_ci"] = paired_ci(base, recs, ["B1", "B2"], "cs_wer", args.iters)
+            row["d_main_ci"] = paired_ci(base, recs, ["B1", "B2"], mm, args.iters)
+            row["d_cs_main_ci"] = row["d_main_ci"] if mm == "cs_wer" else paired_ci(base, recs, ["B1", "B2"], "cs_wer", args.iters)
             row["d_b5_ci"] = paired_ci(base, recs, ["B5"], "wer", args.iters)
+            row["d_nwer_ci"] = paired_ci(base, recs, CS_SPLITS, "n_wer", args.iters)
         rows.append(row)
     b = next(r for r in rows if r["system"] == args.baseline)
+    if b["main"] is None:
+        sys.exit(f"Baseline thiếu chỉ số theo span ({mm}): chấm lại bằng score.py bản mới")
+    has_fs = any(r["fs"] for r in rows)
 
     def b5_by_domain(recs):
         g = defaultdict(list)
@@ -144,15 +173,22 @@ def main():
         return {d: agg(R) for d, R in g.items()}
     base_dom = b5_by_domain(base)
     for r in rows:
+        r["d_main"] = (r["main"] - b["main"]) if r["main"] is not None else None
         r["d_cs_main"] = r["cs_main"] - b["cs_main"]
         r["d_b5"] = (r["b5_wer"] - b["b5_wer"]) if r["b5_wer"] is not None and b["b5_wer"] is not None else None
         r["d_nwer"] = r["nwer"] - b["nwer"]
         reasons = []
         if r["system"] != args.baseline:
-            if r["d_b5"] is not None and r["d_b5"] > args.max_b5_delta:
-                reasons.append(f"B5 WER +{r['d_b5']:.2f}")
-            if r["d_nwer"] > args.max_nwer_delta:
-                reasons.append(f"N-WER +{r['d_nwer']:.2f}")
+            # kiểm định không kém hơn: cận trên CI95 ghép cặp của Δ (tăng = xấu) phải <= margin
+            for key, d, name, margin in (("d_b5_ci", r["d_b5"], "B5 WER", args.b5_margin),
+                                         ("d_nwer_ci", r["d_nwer"], "N-WER", args.nwer_margin)):
+                if d is None:
+                    continue
+                c = r.get(key)
+                if not c:
+                    reasons.append(f"{name}: thiếu CI (ít hơn 2 người nói)")
+                elif c[1] > margin:
+                    reasons.append(f"{name} không chứng minh được không kém hơn (cận trên CI95 Δ {c[1]:+.2f} > {margin:g})")
             worst = None
             for d, a in b5_by_domain(data[r["system"]][0]).items():
                 bd = base_dom.get(d)
@@ -165,17 +201,20 @@ def main():
                 reasons.append(f"B5 domain {worst[0]} +{worst[1]:.2f}")
             if r["rtf"] and base_rtf and r["rtf"] > args.max_rtf_ratio * base_rtf:
                 reasons.append(f"RTF ×{r['rtf'] / base_rtf:.2f}")
-            ci = r.get("d_cs_main_ci")
-            r["significant"] = bool(ci and ci[1] < 0)
+            ci = r.get("d_main_ci")
+            r["significant"] = bool(ci and (ci[0] > 0 if up else ci[1] < 0))
             if not r["significant"]:
-                reasons.append("ΔCS-WER chưa có ý nghĩa (CI chứa 0)")
+                reasons.append(f"Δ{label} chưa có ý nghĩa (CI chứa 0 hoặc sai chiều)")
         r["reasons"] = reasons
         r["eligible"] = r["system"] != args.baseline and not reasons
 
-    elig = sorted([r for r in rows if r["eligible"]], key=lambda r: (r["cs_main"], r["cs_b3"] or 0))
+    def sort_main(r):  # nhỏ hơn = xếp trên
+        v = r["main"] if r["main"] is not None else (float("-inf") if up else float("inf"))
+        return -v if up else v
+    elig = sorted([r for r in rows if r["eligible"]], key=lambda r: (sort_main(r), r["cs_b3"] or 0))
     for i, r in enumerate(elig, 1):
         r["rank"] = i
-    rows.sort(key=lambda r: (r["system"] != args.baseline, not r["eligible"], r["cs_main"]))
+    rows.sort(key=lambda r: (r["system"] != args.baseline, not r["eligible"], sort_main(r)))
     winner = elig[0] if elig else None
 
     def f(x, d=2):
@@ -187,49 +226,63 @@ def main():
     def d_b5_txt(r):
         return "–" if r["d_b5"] is None else f"{r['d_b5']:+.2f}"
 
-    hdr = ["Hệ thống", "CS-WER B1+B2", "Δ vs baseline [CI95]", "CS-WER lenient", "N-WER B1–B4", "CS-WER B3", "CS-WER B4",
-           "B5 WER (Δ)", "Term R / P", "B5 chèn sai /100 utt", "RTF", "Kết luận"]
+    def fs_txt(r, k):
+        v = r["fs"].get(k)
+        return "–" if not v or v["span_acc"] is None else f"{v['span_acc']:.2f} (n={v['n_span']})"
+
+    hdr = ["Hệ thống", f"{label} B1+B2", "Δ vs baseline [CI95]"] + (["CS-WER B1+B2"] if up else []) + [
+           "CS-WER lenient", "N-WER B1–B4", "CS-WER B3", "CS-WER B4", "B5 WER (Δ)", "Term R / P",
+           "B5 chèn sai /100 utt"] + (["Span acc unseen", "Span acc real_5+"] if has_fs else []) + ["RTF", "Kết luận"]
     trows = []
     for r in rows:
         verdict = ("baseline" if r["system"] == args.baseline else
                    f"#{r['rank']} đủ điều kiện" if r["eligible"] else "loại: " + "; ".join(r["reasons"]))
-        trows.append([r["system"], f(r["cs_main"]),
-                      "–" if r["system"] == args.baseline else f"{r['d_cs_main']:+.2f}{ci(r.get('d_cs_main_ci'))}",
-                      f(r["cs_main_len"]), f(r["nwer"]), f(r["cs_b3"]), f(r["cs_b4"]),
+        trows.append([r["system"], f(r["main"]),
+                      "–" if r["system"] == args.baseline or r["d_main"] is None else f"{r['d_main']:+.2f}{ci(r.get('d_main_ci'))}"]
+                     + ([f(r["cs_main"])] if up else []) +
+                     [f(r["cs_main_len"]), f(r["nwer"]), f(r["cs_b3"]), f(r["cs_b4"]),
                       f"{f(r['b5_wer'])} ({d_b5_txt(r)})",
-                      f"{f(r['term_r'], 1)} / {f(r['term_p'], 1)}", f(r["b5_false"]), f(r["rtf"], 3), verdict])
+                      f"{f(r['term_r'], 1)} / {f(r['term_p'], 1)}", f(r["b5_false"])]
+                     + ([fs_txt(r, "unseen"), fs_txt(r, "real_5+")] if has_fs else []) + [f(r["rtf"], 3), verdict])
 
-    lead = (f"Phương án tốt nhất hiện tại: {winner['system']} — CS-WER B1+B2 {winner['cs_main']:.2f}% "
-            f"({winner['d_cs_main']:+.2f} điểm so với baseline, CI95{ci(winner['d_cs_main_ci'])}), B5 WER Δ {f(winner['d_b5'])}."
+    lead = (f"Phương án tốt nhất hiện tại: {winner['system']} — {label} B1+B2 {winner['main']:.2f}% "
+            f"({winner['d_main']:+.2f} điểm so với baseline, CI95{ci(winner['d_main_ci'])}), B5 WER Δ {f(winner['d_b5'])}."
             if winner else "Chưa có hệ thống nào vượt baseline mà vẫn giữ các ràng buộc.")
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     md = [f"# Leaderboard (baseline: {args.baseline})", "", lead, "",
           "| " + " | ".join(hdr) + " |", "|" + " --- |" * len(hdr)]
     md += ["| " + " | ".join(str(x) for x in t) + " |" for t in trows]
-    md += ["", f"Luật: loại nếu B5 WER tăng > {args.max_b5_delta}, N-WER tăng > {args.max_nwer_delta}, RTF > {args.max_rtf_ratio}× baseline, "
-           f"một domain B5 tăng > {args.max_b5_domain_delta}, hoặc CI95 của ΔCS-WER chứa 0. Bootstrap theo người nói, "
-           f"{args.iters} lần. CS-WER lenient − strict = lỗi chính tả (nghe đúng, viết sai) mà hậu xử lý có thể sửa."]
+    md += ["", f"Luật: loại nếu cận trên CI95 ghép cặp của ΔWER B5 > {args.b5_margin:g} hoặc của ΔN-WER (B1–B4) > {args.nwer_margin:g} "
+           f"(kiểm định không kém hơn), RTF > {args.max_rtf_ratio}× baseline, một domain B5 tăng > {args.max_b5_domain_delta}, "
+           f"hoặc CI95 ghép cặp của Δ{label} (B1+B2) chứa 0 / sai chiều ({'cao hơn' if up else 'thấp hơn'} là tốt). "
+           f"Xếp hạng theo {label} B1+B2, hoà thì CS-WER B3 thấp hơn. Bootstrap theo người nói, {args.iters} lần. "
+           f"CS-WER lenient − strict = lỗi chính tả (nghe đúng, viết sai) mà hậu xử lý có thể sửa; chỉ có nghĩa khi catalog có "
+           f"cột phonetic (nếu không, lenient = strict)."]
     (out / "leaderboard.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     with open(out / "leaderboard.csv", "w", newline="", encoding="utf-8") as fcsv:
         w = csv.writer(fcsv)
         w.writerow(["system", "cs_wer_b1b2", "d_cs", "d_cs_ci_lo", "d_cs_ci_hi", "cs_wer_lenient", "n_wer", "cs_wer_b3",
-                    "cs_wer_b4", "b5_wer", "d_b5", "term_recall", "term_precision", "b5_false_per100", "rtf", "eligible", "rank", "reasons"])
+                    "cs_wer_b4", "b5_wer", "d_b5", "term_recall", "term_precision", "b5_false_per100", "rtf", "eligible", "rank", "reasons",
+                    "main_metric", "main_value", "d_main", "d_main_ci_lo", "d_main_ci_hi", "term_acc_macro", "span_acc", "span_cer",
+                    "d_b5_ci_hi", "d_nwer", "d_nwer_ci_hi"])
         for r in rows:
             c = r.get("d_cs_main_ci") or [None, None]
+            cm = r.get("d_main_ci") or [None, None]
             w.writerow([r["system"], r["cs_main"], r["d_cs_main"], c[0], c[1], r["cs_main_len"], r["nwer"], r["cs_b3"], r["cs_b4"],
                         r["b5_wer"], r["d_b5"], r["term_r"], r["term_p"], r["b5_false"], r["rtf"], r["eligible"], r.get("rank"),
-                        "; ".join(r["reasons"])])
+                        "; ".join(r["reasons"]), mm, r["main"], r["d_main"], cm[0], cm[1], r["acc_macro"], r["span_acc"],
+                        r["span_cer"], (r.get("d_b5_ci") or [None, None])[1], r["d_nwer"], (r.get("d_nwer_ci") or [None, None])[1]])
     plot_rows = []
     for r in rows:
-        c = r.get("d_cs_main_ci")
-        lo, hi = (b["cs_main"] + c[0], b["cs_main"] + c[1]) if c else (None, None)
-        plot_rows.append((r["system"], r["cs_main"], lo, hi))
+        c = r.get("d_main_ci")
+        lo, hi = (b["main"] + c[0], b["main"] + c[1]) if c else (None, None)
+        plot_rows.append((r["system"], r["main"], lo, hi))
     html = (f'<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>Leaderboard bench CS</title><style>{CSS}</style></head><body><div class="viz-root"><div class="wrap">'
             f'<h1>Leaderboard bench code-switching</h1><p class="lead">{escape(lead)}</p>'
-            f'<h2>CS-WER B1+B2 (strict)</h2><p class="lead">Chấm = CS-WER; thanh ngang = CI95 từ bootstrap cặp theo người nói; '
-            f'vạch đứt = baseline {escape(args.baseline)}.</p><div class="card">{dotplot(plot_rows, b["cs_main"])}</div>'
+            f'<h2>{label} B1+B2 (strict)</h2><p class="lead">Chấm = {label}; thanh ngang = CI95 từ bootstrap cặp theo người nói; '
+            f'vạch đứt = baseline {escape(args.baseline)}.</p><div class="card">{dotplot(plot_rows, b["main"])}</div>'
             f'<h2>Bảng đầy đủ</h2><div class="card" style="overflow-x:auto">{table(hdr, trows)}</div>'
             f'<p class="note">{escape(md[-1])}</p></div></div></body></html>')
     (out / "leaderboard.html").write_text(html, encoding="utf-8")

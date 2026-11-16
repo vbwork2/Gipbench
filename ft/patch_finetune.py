@@ -114,6 +114,24 @@ def main():
     s = s.replace(nf_old, "        _nf = c.num_frames if c.num_frames is not None else int(round(c.duration * 100))\n"
                           "        T = ((_nf - 7) // 2 + 1) // 2\n", 1)
 
+    # resume (--start-batch): dict checkpoint (optimizer, sampler, model_avg ~1 GB) bị giữ suốt run() -> giải phóng
+    rel_anchor = ('        scaler.load_state_dict(checkpoints["grad_scaler"])\n\n'
+                  "    for epoch in range(params.start_epoch, params.num_epochs + 1):\n")
+    if rel_anchor not in s:
+        sys.exit("Không thấy chỗ nạp grad_scaler trước vòng epoch — cần sửa tay (xem Runbook).")
+    s = s.replace(rel_anchor, rel_anchor.replace(
+        "\n\n    for epoch", "\n\n    checkpoints = None  # gipbench: giải phóng RAM sau khi nạp xong\n"
+        "    import gc as _gc\n    _gc.collect()\n\n    for epoch"), 1)
+
+    # resume (--start-batch): scan_pessimistic_batches_for_oom duyệt hết sampler vừa nạp lại trạng thái -> lhotse coi là
+    # đã đi hết epoch, iter() kế tiếp bắt đầu lại từ cut đầu tiên của manifest (E3 v1 16/11: sau resume ở step 15 495,
+    # batch 0 / 50 / 100... trùng hệt batch đầu của lần chạy đầu). Chỉ quét khi bắt đầu mới.
+    scan_old = "    if not params.print_diagnostics:\n        scan_pessimistic_batches_for_oom(\n"
+    if scan_old not in s:
+        sys.exit("Không thấy chỗ gọi scan_pessimistic_batches_for_oom — cần sửa tay (xem Runbook).")
+    s = s.replace(scan_old, "    if not params.print_diagnostics and params.start_batch <= 0:  # gipbench\n"
+                            "        scan_pessimistic_batches_for_oom(\n", 1)
+
     mp_anchor = "    args = parser.parse_args()\n"
     i = s.find("def main():")
     j = s.find(mp_anchor, i)

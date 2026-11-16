@@ -31,6 +31,7 @@ random.Random(0).shuffle(rows)
 base = "/mnt/d/code/ZAIC/gipbench/data/raw/vimedcss_full/"
 out = [dict(r, audio=base + r["audio"]) for r in rows[:600]]
 out += [json.loads(l) for l in open("data/e3_v1/dev_cs_vss.jsonl", encoding="utf-8")]
+out = [r for r in out if float(r["duration"]) >= 0.5]  # ViMedCSS validation có câu audio rỗng (0 s): sherpa-onnx lỗi
 with open("data/e3_v1/dev_cs.jsonl", "w", encoding="utf-8") as f:
     for r in out:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -93,29 +94,70 @@ if [ $stage -le 4 ] && [ $stop -ge 4 ]; then
   STEPS=$($FT -c "
 import json; s = json.load(open('$D/lhotse/train_mix_cuts.jsonl.gz.json'))
 print(int(s['epoch_hours'] * 3600 / ($MAXDUR * 0.93)))")
-  echo "  ước tính $STEPS step / epoch ảo -> --save-every-n $STEPS"
+  # RAM tiến trình chính tăng dần (~0.1–0.9 MB / batch) -> chạy theo đoạn: checkpoint mỗi SEG = 1/4 epoch ảo; watchdog
+  # dừng khi RAM < 1 GB thì resume từ checkpoint mới nhất (--start-batch, sampler nạp lại vị trí). D: < 3 GB = dừng hẳn.
+  SEG=$(( (STEPS + 3) / 4 )); EPS=$(( SEG * 4 ))
+  echo "  ước tính $STEPS step / epoch ảo -> checkpoint mỗi $SEG step, epoch ảo = $EPS step"
   mkdir -p $EXP
   $FT ft/wrap_ckpt.py $MODEL/model.pt $MODEL/init_ft.pt --drop-ctc
   $FT ft/patch_finetune.py --icefall $ICEFALL
-  ( while sleep 60; do
-      f=$(df -BG --output=avail /mnt/d | tail -1 | tr -dc 0-9); m=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
-      if [ "$f" -lt 3 ] || [ "$m" -lt 1024 ]; then
-        echo "$(date '+%F %T') WATCHDOG: D: ${f} GB, RAM ${m} MB -> dừng finetune" >> $D/watchdog.log
-        pkill -INT -f finetune_cs.py; break
-      fi
-    done ) & WD=$!
   export PYTHONPATH=$ICEFALL:${PYTHONPATH:-}
-  ( cd $ICEFALL/egs/librispeech/ASR && $FT ./zipformer/finetune_cs.py \
-      --world-size 1 --num-epochs 1 --start-epoch 1 --use-fp16 1 $MODEL_ARGS \
-      --exp-dir $EXP --bpe-model $MODEL/bpe.model \
-      --do-finetune 1 --finetune-ckpt $MODEL/init_ft.pt --freeze-modules "$FREEZE" \
-      --train-cuts $G/$D/lhotse/train_mix_cuts.jsonl.gz \
-      --valid-cuts $G/$D/lhotse/dev_cs_cuts_raw.jsonl.gz $G/$D/lhotse/dev_vi_cuts_raw.jsonl.gz \
-      --on-the-fly-feats True --num-workers ${WORKERS:-3} --num-buckets ${BUCKETS:-10} --mp-start-method spawn --shuffle True \
-      --base-lr $LR --max-duration $MAXDUR --enable-musan False --enable-spec-aug True \
-      --save-every-n $STEPS --keep-last-k 20 --manifest-dir $G/$D/lhotse ) \
-      > $D/finetune.log 2>&1 || echo "finetune exit=$?"
-  kill $WD 2>/dev/null || true
+  cleanup() {  # giữ checkpoint ở ranh giới epoch ảo + checkpoint mới nhất
+    local last=$(ls $EXP/checkpoint-*.pt 2>/dev/null | sed 's/.*checkpoint-\([0-9]*\)\.pt/\1/' | sort -n | tail -1 || true)
+    for f in $EXP/checkpoint-*.pt; do
+      [ -e "$f" ] || continue
+      n=$(basename $f .pt); n=${n#checkpoint-}
+      [ "$n" = "$last" ] || [ $((n % EPS)) -eq 0 ] || rm -f "$f"
+    done
+  }
+  fails=0
+  while true; do
+    rm -f $D/watchdog.log
+    latest=$(ls $EXP/checkpoint-*.pt 2>/dev/null | sed 's/.*checkpoint-\([0-9]*\)\.pt/\1/' | sort -n | tail -1 || true)
+    if [ -z "$latest" ]; then
+      RES=(--do-finetune 1 --finetune-ckpt $MODEL/init_ft.pt --start-epoch 1 --num-epochs 1)
+    else
+      # icefall: resume cần --start-epoch > 1 (assert), rồi tự đặt lại start_epoch = cur_epoch đã lưu (= 1). Với
+      # --num-epochs 2 thì sau khi hết manifest nó chạy THÊM một lượt nữa (epoch 2) -> phải là 1.
+      RES=(--do-finetune 0 --start-epoch 2 --num-epochs 1 --start-batch $latest)
+    fi
+    echo "$(date '+%F %T') == đoạn mới: ${RES[*]}" | tee -a $D/finetune.log $D/segments.log
+    ( t0=$(date +%s); low=0; while sleep 60; do  # RAM: bỏ qua 3 phút đầu (nạp checkpoint), dừng khi < 1 GB 2 lần liên tiếp
+        cleanup
+        f=$(df -BG --output=avail /mnt/d | tail -1 | tr -dc 0-9); m=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+        if [ "$m" -lt 1024 ] && [ $(( $(date +%s) - t0 )) -ge 180 ]; then low=$((low + 1)); else low=0; fi
+        if [ "$f" -lt 3 ] || [ "$low" -ge 2 ]; then
+          echo "$(date '+%F %T') WATCHDOG: D: ${f} GB, RAM ${m} MB -> dừng finetune" >> $D/watchdog.log
+          pkill -INT -f "[z]ipformer/finetune_cs.py"; break
+        fi
+        # treo (vd ngữ cảnh CUDA hỏng sau sự cố driver, 16/11 09:01): log đứng > 10 phút sau 10 phút đầu -> TERM rồi KILL
+        age=$(( $(date +%s) - $(stat -c %Y $D/finetune.log) ))
+        if [ $(( $(date +%s) - t0 )) -ge 600 ] && [ "$age" -ge 600 ]; then
+          echo "$(date '+%F %T') WATCHDOG: treo (log đứng ${age} s) -> dừng finetune" >> $D/watchdog.log
+          pkill -TERM -f "[z]ipformer/finetune_cs.py"; sleep 20
+          pkill -KILL -f "[z]ipformer/finetune_cs.py"; pkill -KILL -f "[s]pawn_main"; break
+        fi
+      done ) & WD=$!
+    rc=0
+    ( cd $ICEFALL/egs/librispeech/ASR && $FT ./zipformer/finetune_cs.py \
+        --world-size 1 --use-fp16 1 $MODEL_ARGS "${RES[@]}" \
+        --exp-dir $EXP --bpe-model $MODEL/bpe.model --freeze-modules "$FREEZE" \
+        --train-cuts $G/$D/lhotse/train_mix_cuts.jsonl.gz \
+        --valid-cuts $G/$D/lhotse/dev_cs_cuts_raw.jsonl.gz $G/$D/lhotse/dev_vi_cuts_raw.jsonl.gz \
+        --on-the-fly-feats True --num-workers ${WORKERS:-2} --num-buckets ${BUCKETS:-10} --mp-start-method spawn --shuffle True \
+        --base-lr $LR --max-duration $MAXDUR --enable-musan False --enable-spec-aug True \
+        --save-every-n $SEG --keep-last-k 40 --manifest-dir $G/$D/lhotse ) >> $D/finetune.log 2>&1 || rc=$?
+    kill $WD 2>/dev/null || true
+    cleanup
+    cat $D/watchdog.log >> $D/segments.log 2>/dev/null || true
+    echo "$(date '+%F %T') đoạn kết thúc rc=$rc" >> $D/segments.log
+    if tail -5 $D/finetune.log | grep -q "Done!"; then echo "finetune XONG"; break; fi
+    if grep -q "WATCHDOG: D: [0-2] GB" $D/watchdog.log 2>/dev/null; then echo "DỪNG: D: < 3 GB"; break; fi
+    if [ -s $D/watchdog.log ]; then sleep 20; continue; fi  # RAM < 1 GB: resume
+    fails=$((fails + 1)); echo "finetune lỗi rc=$rc (lần $fails)"
+    [ $fails -ge 2 ] && { echo "DỪNG: lỗi 2 lần liên tiếp, xem $D/finetune.log"; break; }
+    sleep 20
+  done
 fi
 
 # ---- stage 5–7: chọn trên dev, rồi chấm bench (decode CPU 16 luồng, int8 như production)

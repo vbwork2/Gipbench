@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Chọn checkpoint / alpha WiSE-FT trên DEV (không dùng bench): CS-WER dev CS thấp nhất, với điều kiện WER dev VI tăng
-<= --max-vi-delta (điểm tuyệt đối) so với model gốc.
+"""Chọn checkpoint / alpha WiSE-FT trên DEV (không dùng bench): term_acc_macro dev CS cao nhất (accuracy theo thuật
+ngữ rồi trung bình đều; hoà: WER dev VI thấp hơn), với điều kiện WER dev VI tăng <= --max-vi-delta (điểm tuyệt đối)
+so với model gốc. Bảng phụ tách dev CS theo `dataset` (tiền tố trước dấu ':') để thấy khi một nguồn tốt lên còn nguồn
+khác xấu đi.
 
   python ft/select_ckpt.py --catalog data/bench_v0_draft/catalog_v0_draft.tsv \
       --dev-cs data/e3_v1/dev_cs.jsonl --dev-vi data/e3_v1/dev_vi.jsonl \
@@ -9,6 +11,7 @@
 
 Mỗi thư mục (base và ứng viên) cần dev_cs/hyps.jsonl và dev_vi/hyps.jsonl (decode.py --system dev_cs / dev_vi).
 Reference: text_tagged nếu có, không thì text (dev VI). Ghi <out>.md (bảng) và <out>.json (ứng viên được chọn).
+CS-WER vẫn in để đối chiếu nhưng không dùng để chọn.
 Không ứng viên nào đạt luật thì chọn model gốc và ghi rõ.
 """
 import argparse
@@ -24,13 +27,16 @@ from score import agg, score_utt  # noqa: E402
 
 
 def evaluate(rows, hyp_path, cat):
+    """Trả về (agg toàn bộ, {dataset: agg}); dataset = tiền tố trước dấu ':' của trường `dataset` ("?" nếu thiếu)."""
     hyps = {h["id"]: h.get("hyp", "") for h in read_jsonl(str(hyp_path))}
-    recs = []
+    recs, by_ds = [], {}
     for r in rows:
         r = dict(r)
         r.setdefault("text_tagged", r.get("text", ""))
-        recs.append(score_utt(r, hyps.get(r["id"], ""), cat))
-    return agg(recs)
+        rec = score_utt(r, hyps.get(r["id"], ""), cat)
+        recs.append(rec)
+        by_ds.setdefault(str(r.get("dataset") or "?").split(":")[0], []).append(rec)
+    return agg(recs), {d: agg(R) for d, R in sorted(by_ds.items())}
 
 
 def main():
@@ -51,9 +57,12 @@ def main():
         if not (p / "dev_cs/hyps.jsonl").exists() or not (p / "dev_vi/hyps.jsonl").exists():
             print(f"BỎ {p.name}: thiếu hyps dev")
             continue
-        cs, vi = evaluate(cs_rows, p / "dev_cs/hyps.jsonl", cat), evaluate(vi_rows, p / "dev_vi/hyps.jsonl", cat)
-        res[p.name] = {"cs_wer": cs["cs_wer"], "wer_cs": cs["wer"], "n_wer_cs": cs["n_wer"], "term_recall": cs["term_recall"],
-                       "wer_vi": vi["wer"]}
+        (cs, cs_ds), (vi, _) = evaluate(cs_rows, p / "dev_cs/hyps.jsonl", cat), evaluate(vi_rows, p / "dev_vi/hyps.jsonl", cat)
+        res[p.name] = {"term_acc_macro": cs["term_acc_macro"], "span_acc": cs["span_acc"], "span_cer": cs["span_cer"],
+                       "cs_wer": cs["cs_wer"], "wer_cs": cs["wer"], "n_wer_cs": cs["n_wer"], "term_recall": cs["term_recall"],
+                       "wer_vi": vi["wer"],
+                       "by_dataset": {d: {"n_span": a["n_span"], "term_acc_macro": a["term_acc_macro"],
+                                          "span_acc": a["span_acc"], "cs_wer": a["cs_wer"]} for d, a in cs_ds.items()}}
     base = res[Path(args.base).name]
     rows = []
     for name, m in res.items():
@@ -61,15 +70,31 @@ def main():
         ok = name == Path(args.base).name or dv <= args.max_vi_delta
         rows.append((name, m, dv, ok))
     elig = [(n, m) for n, m, dv, ok in rows if ok and n != Path(args.base).name]
-    pick = min(elig, key=lambda x: (x[1]["cs_wer"], x[1]["wer_vi"]))[0] if elig else Path(args.base).name
-    L = ["| Ứng viên | CS-WER dev CS | Δ | WER dev CS | N-WER dev CS | Term recall dev CS | WER dev VI | Δ VI | Đạt luật |",
-         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    pick = max(elig, key=lambda x: (x[1]["term_acc_macro"] or 0.0, -x[1]["wer_vi"]))[0] if elig else Path(args.base).name
+
+    def f(x):
+        return "–" if x is None else f"{x:.2f}"
+
+    def d(x, y):
+        return "–" if x is None or y is None else f"{x - y:+.2f}"
+    L = ["| Ứng viên | Term acc macro dev CS | Δ | Span acc dev CS | CS-WER dev CS | WER dev CS | N-WER dev CS | Term recall dev CS "
+         "| WER dev VI | Δ VI | Đạt luật |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for n, m, dv, ok in rows:
-        L.append(f"| {'**' + n + '**' if n == pick else n} | {m['cs_wer']:.2f} | {m['cs_wer'] - base['cs_wer']:+.2f} | "
-                 f"{m['wer_cs']:.2f} | {m['n_wer_cs']:.2f} | {m['term_recall']:.2f} | {m['wer_vi']:.2f} | {dv:+.2f} | "
-                 f"{'có' if ok else 'KHÔNG'} |")
+        L.append(f"| {'**' + n + '**' if n == pick else n} | {f(m['term_acc_macro'])} | {d(m['term_acc_macro'], base['term_acc_macro'])} | "
+                 f"{f(m['span_acc'])} | {f(m['cs_wer'])} | {f(m['wer_cs'])} | {f(m['n_wer_cs'])} | {f(m['term_recall'])} | "
+                 f"{m['wer_vi']:.2f} | {dv:+.2f} | {'có' if ok else 'KHÔNG'} |")
+    dss = sorted({k for _, m, _, _ in rows for k in m["by_dataset"]})
+    if dss:
+        L += ["", "Dev CS theo dataset (term acc macro / span acc / số span):", "",
+              "| Ứng viên | " + " | ".join(dss) + " |", "|" + " --- |" * (len(dss) + 1)]
+        for n, m, _, _ in rows:
+            cells = []
+            for k in dss:
+                a = m["by_dataset"].get(k)
+                cells.append("–" if not a else f"{f(a['term_acc_macro'])} / {f(a['span_acc'])} / {a['n_span']}")
+            L.append(f"| {'**' + n + '**' if n == pick else n} | " + " | ".join(cells) + " |")
     L += ["", f"Luật: WER dev VI tăng <= {args.max_vi_delta} điểm so với {Path(args.base).name}; trong các ứng viên đạt, "
-          f"chọn CS-WER dev CS thấp nhất (hoà: WER dev VI thấp hơn). Được chọn: **{pick}**"
+          f"chọn term_acc_macro dev CS cao nhất (hoà: WER dev VI thấp hơn). Được chọn: **{pick}**"
           + ("" if elig else " (KHÔNG ứng viên nào đạt luật -> giữ model gốc)")]
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out + ".md").write_text("\n".join(L) + "\n", encoding="utf-8")

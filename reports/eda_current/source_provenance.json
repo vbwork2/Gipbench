@@ -1,0 +1,1018 @@
+{
+  "documented_at": "2026-11-16T13:12:31.673310+07:00",
+  "audio_audit_generated_at": "2026-11-16T12:19:27.734010+07:00",
+  "sources": [
+    {
+      "key": "vimedcss",
+      "name": "ViMedCSS",
+      "links": [
+        [
+          "Hugging Face: tensorxt/ViMedCSS",
+          "https://huggingface.co/datasets/tensorxt/ViMedCSS"
+        ],
+        [
+          "Bài báo mô tả cách tạo nhãn, mục 3.1–3.2",
+          "https://arxiv.org/html/2602.12911v1"
+        ]
+      ],
+      "local": "data/raw/vimedcss_full/train_vimedcss.jsonl",
+      "label": "Transcript gốc do Gemini 2.5 Pro tạo, sau đó lọc/ngữ nghĩa và căn chỉnh. Bài báo mô tả kiểm thủ công trên 500 câu lấy mẫu; không phải toàn bộ transcript do người chép.",
+      "processing": "Converter dùng cs_terms_list để dựng text_tagged_orig; text_tagged áp thêm quy ước từ mượn, catalog và luật nhận diện của dự án. Audio được đưa về WAV 16 kHz mono; thời lượng đo từ audio.",
+      "role": "train → cs_real; validation → một phần dev CS; hard → B3.",
+      "evidence": [
+        "converters/conv_vimedcss.py",
+        "data/raw/vimedcss_full/conv.log",
+        "ft/run_e3_v1.sh"
+      ]
+    },
+    {
+      "key": "vss",
+      "name": "VietSuperSpeech",
+      "links": [
+        [
+          "Hugging Face: thanhnew2001/VietSuperSpeech",
+          "https://huggingface.co/datasets/thanhnew2001/VietSuperSpeech"
+        ]
+      ],
+      "local": "data/raw/vss_full/vss_cs_candidates.jsonl",
+      "label": "Transcript nguồn là nhãn máy của Zipformer-30M-RNNT-6000h. Nhánh vss_cs kiểm lại bằng ASR; nhánh distill dùng transcript mới của Gipformer gốc.",
+      "processing": "Tách nhánh có từ Anh thành vss_cs và nhánh Việt thuần thành nguồn distill. Lọc vss_cs theo hai tầng: Qwen trước, faster-whisper cho câu còn span chưa xác nhận; giữ nhãn hiện có, không tự thay bằng câu thầy.",
+      "role": "train → cs_pseudo và distill; 91 câu vss_cs giữ riêng cho dev CS.",
+      "evidence": [
+        "converters/conv_local.py",
+        "tools/vss_cs_prefilter.py",
+        "tools/vss_cs_run.py",
+        "tools/agreement_filter.py",
+        "ft/prep_e3_v1.py",
+        "ft/make_distill.py"
+      ]
+    },
+    {
+      "key": "vivos",
+      "name": "VIVOS",
+      "links": [
+        [
+          "Hugging Face: AILAB-VNUHCM/vivos",
+          "https://huggingface.co/datasets/AILAB-VNUHCM/vivos"
+        ]
+      ],
+      "local": "data/dl/vivos",
+      "label": "Câu đọc tiếng Việt và transcript trong prompts.txt. Dùng transcript đi kèm bộ dữ liệu, không tạo lại bằng ASR ở nhánh replay.",
+      "processing": "Đọc prompts.txt và WAV; giữ câu Việt thuần. Tách train/dev theo speaker. Confusable chọn lại câu trong VIVOS train có âm Việt dễ nhầm từ Anh, rồi bỏ speaker của dev VI.",
+      "role": "train → replay_human và confusable; một phần train → dev VI; test → B5.",
+      "evidence": [
+        "converters/conv_local.py",
+        "tools/make_confusables.py",
+        "ft/prep_e3_v1.py",
+        "reports/replay_report.md"
+      ]
+    },
+    {
+      "key": "cv",
+      "name": "Common Voice 27.0 · tiếng Việt",
+      "links": [],
+      "local": "data/dl/cv-corpus-27.0-2026-09-11/vi",
+      "label": "Transcript đọc từ cột sentence trong train.tsv/test.tsv. Dự án dùng lại nhãn đi kèm bộ dữ liệu, không tạo lại bằng ASR ở nhánh replay.",
+      "processing": "Đọc clip và TSV, dùng client_id làm mã đại diện người nói; lọc câu có từ Anh khỏi replay Việt thuần. Bản cục bộ ghi phiên bản 27.0, ngày 2026-09-11.",
+      "role": "train → replay_human. Có manifest test trên máy nhưng chưa nằm trong bench đang phân tích.",
+      "evidence": [
+        "converters/conv_local.py",
+        "reports/replay_report.md"
+      ]
+    },
+    {
+      "key": "ggroup",
+      "name": "G-Group · bốn bộ vi-asr test",
+      "links": [
+        [
+          "g-group-ai-lab/vi-asr-tech-test",
+          "https://huggingface.co/datasets/g-group-ai-lab/vi-asr-tech-test"
+        ],
+        [
+          "g-group-ai-lab/vi-asr-edu-test",
+          "https://huggingface.co/datasets/g-group-ai-lab/vi-asr-edu-test"
+        ],
+        [
+          "g-group-ai-lab/vi-asr-finance-test",
+          "https://huggingface.co/datasets/g-group-ai-lab/vi-asr-finance-test"
+        ],
+        [
+          "g-group-ai-lab/vi-asr-pubadmin-test",
+          "https://huggingface.co/datasets/g-group-ai-lab/vi-asr-pubadmin-test"
+        ]
+      ],
+      "local": "data/raw/ggroup/b1_candidates.jsonl",
+      "label": "Converter coi transcript nguồn là trusted_text. Tag <en> do luật của dự án gắn; trusted_text không có nghĩa mọi tag Anh đã được nghe duyệt.",
+      "processing": "Đọc split test; chuyển MP3 sang WAV 16 kHz mono. Câu có tag Anh → ứng viên B1; câu Việt thuần của pubadmin → B5. speaker ban đầu là mã câu, có thể bổ sung cụm ước lượng.",
+      "role": "Chỉ bench: B1 và một phần B5; không đưa vào train.",
+      "evidence": [
+        "converters/conv_ggroup.py",
+        "data/bench_v0_draft/build.log"
+      ]
+    },
+    {
+      "key": "consensus",
+      "name": "ZAC / consensus · bộ cục bộ",
+      "links": [],
+      "local": "data/dl/zac/consensus_clips_anon.csv",
+      "label": "Dùng consensus_text và trạng thái agreed/disputed/pending trong CSV. Không có URL xuất bản hay thông tin phiên bản công khai được ghi nhận trong repo.",
+      "processing": "Ghép (id, turn) với audio; chỉ agreed làm ứng viên trực tiếp. Đổi số ra chữ, chuẩn hoá và gắn tag Anh. Giới hạn tối đa 10 câu/thuật ngữ B2; disputed/pending cần quyết định duyệt riêng.",
+      "role": "Chỉ test theo cờ test_only của dự án: B2 và B5 product; không dùng để train.",
+      "evidence": [
+        "converters/conv_consensus.py",
+        "data/raw/consensus/consensus_stats.json",
+        "data/bench_v0_draft/build.log"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS → cs_real",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/raw/vimedcss_full/train_vimedcss.jsonl",
+      "rows": 11832,
+      "hours": 22.949389444444442,
+      "sha256": "0495ef04fc5b6f6cd45d41e244c5c120621b3bed569f64f42e6806376e3a79d0",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS → cs_real",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/e3_v1/train_vimedcss_abs.jsonl",
+      "rows": 11832,
+      "hours": 22.949389444444442,
+      "sha256": "b8b01b29bbf83886ba620c4c89c852e3775f294c81a0799cc2a0cbe760467bfb",
+      "method": "Đổi đường dẫn audio thành tuyệt đối; giữ nguyên các dòng train nguồn."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS → cs_real",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 3867,
+      "hours": 7.453558888888888,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS → cs_real",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 3327,
+      "hours": 6.417725555555555,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → vss_cs / cs_pseudo",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/raw/vss_full/vss_cs_clean_dom.jsonl",
+      "rows": 1657,
+      "hours": 6.08875,
+      "sha256": "8223169df0b7f3329577c3155a396e651cb6661418755246c633cdb4d5a16d0f",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → vss_cs / cs_pseudo",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/e3_v1/train_vss_cs.jsonl",
+      "rows": 1566,
+      "hours": 5.759194444444444,
+      "sha256": "61e6d869c4ea925ef87ce87a35b9a0654bc4f2fab02bc68774251075ef3391b8",
+      "method": "Tách theo video/speaker, seed 0; 91 câu sang dev, phần còn lại vào train."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → vss_cs / cs_pseudo",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 1525,
+      "hours": 5.610472222222221,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → vss_cs / cs_pseudo",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 1523,
+      "hours": 5.603166631944442,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → replay_human",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/raw/vivos/train_vivos.jsonl",
+      "rows": 11658,
+      "hours": 14.919496111111112,
+      "sha256": "59c0966d33862ddb94b30a308c334253261fb48b74b89e1c9cdd67f3e6a97f59",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → replay_human",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/e3_v1/train_vivos.jsonl",
+      "rows": 10559,
+      "hours": 13.95905861111111,
+      "sha256": "ff3c282fbc340047c5ab98fa663f688f3d66fe0372487795959052e54a0959e1",
+      "method": "Tách theo speaker, seed 0; 4 speaker, 1 099 câu sang dev VI."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → replay_human",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 10559,
+      "hours": 13.959058611111432,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → replay_human",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 10114,
+      "hours": 13.59409927083307,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "cv",
+      "branch": "Common Voice → replay_human",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/raw/cv/train_cv.jsonl",
+      "rows": 1807,
+      "hours": 2.2696319444444444,
+      "sha256": "2a9d61935abedadf915ab6d0ebc84d5b2f815eb0357eace7d0f48c3c8b77a5a5",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "cv",
+      "branch": "Common Voice → replay_human",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/raw/cv/train_cv.jsonl",
+      "rows": 1807,
+      "hours": 2.2696319444444444,
+      "sha256": "2a9d61935abedadf915ab6d0ebc84d5b2f815eb0357eace7d0f48c3c8b77a5a5",
+      "method": "Dùng manifest train Việt thuần; không tách dev mới."
+    },
+    {
+      "origin": "cv",
+      "branch": "Common Voice → replay_human",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 1807,
+      "hours": 2.2696319444444244,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "cv",
+      "branch": "Common Voice → replay_human",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 1807,
+      "hours": 2.269585833333338,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → distill",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/e3_v1/distill_pool.jsonl",
+      "rows": 2630,
+      "hours": 9.440194444444444,
+      "sha256": "f920feea311c74eea49dd23b482bc858b22cbdfe2d1d8ce0d1d764e5c1d41095",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → distill",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/e3_v1/distill.jsonl",
+      "rows": 1889,
+      "hours": 6.7804722222222225,
+      "sha256": "5ccc04e927fec98b56dd35a5ae16f38f08c9ec7813984fa3c80396ed38cef7d0",
+      "method": "Gipformer gốc tạo đáp án: greedy phải trùng modified beam; giữ tốc độ 1–6 từ/giây."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → distill",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 1872,
+      "hours": 6.716500000000004,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → distill",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 1871,
+      "hours": 6.712777864583337,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → confusable",
+      "stage": "Nguồn vào nhánh",
+      "parent_stage": "",
+      "path": "data/raw/confusable/train_confusable.jsonl",
+      "rows": 620,
+      "hours": 0.8977230555555555,
+      "sha256": "d228328053400e967b69f933c97553c81bed235597ff083c2318666aa2d4e696",
+      "method": "Manifest cục bộ, trước bước chuẩn bị riêng cho E3 v1."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → confusable",
+      "stage": "Đầu vào curate v1",
+      "parent_stage": "Nguồn vào nhánh",
+      "path": "data/e3_v1/train_confusable.jsonl",
+      "rows": 590,
+      "hours": 0.8680694444444444,
+      "sha256": "5163650feb95b02c8aad973488d9f8cc5de8b9f2656179275d2f3e3247367627",
+      "method": "Chọn câu theo âm dễ nhầm; bỏ speaker thuộc dev VI. Không tạo audio tổng hợp."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → confusable",
+      "stage": "Sau curate v1",
+      "parent_stage": "Đầu vào curate v1",
+      "path": "data/e3_v1/train_curated.jsonl",
+      "rows": 590,
+      "hours": 0.8680694444444433,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd",
+      "method": "Đếm riêng dataset trong manifest chung."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → confusable",
+      "stage": "Pool sau Lhotse",
+      "parent_stage": "Sau curate v1",
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "rows": 586,
+      "hours": 0.8647652777777781,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030",
+      "method": "Đếm recording ID gốc của các cut, bỏ bản tốc độ 0.9/1.1; đối chiếu lại manifest."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS trước khi tách E3",
+      "stage": "Ứng viên có tag Anh",
+      "parent_stage": "",
+      "path": "data/raw/vss_full/vss_cs_candidates.jsonl",
+      "rows": 31949,
+      "hours": 117.32372222222223,
+      "sha256": "0be0ed9ba43cc9d07eb1b78169051376df55b8b0fe748691125eaefa8d430697",
+      "method": "Số dòng và giờ của manifest hiện có; không phải toàn bộ quy mô dataset trên Hub."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS trước khi tách E3",
+      "stage": "Sau lọc rẻ",
+      "parent_stage": "",
+      "path": "data/raw/vss_full/vss_cs_pre_rebuild.jsonl",
+      "rows": 12351,
+      "hours": 45.488972222222216,
+      "sha256": "40c30020a16ba771bd619c1260012d0d6d95f5b847f88339d1a320c5f5b064c3",
+      "method": "Số dòng và giờ của manifest hiện có; không phải toàn bộ quy mô dataset trên Hub."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS trước khi tách E3",
+      "stage": "Sau lọc ASR và suy domain",
+      "parent_stage": "",
+      "path": "data/raw/vss_full/vss_cs_clean_dom.jsonl",
+      "rows": 1657,
+      "hours": 6.08875,
+      "sha256": "8223169df0b7f3329577c3155a396e651cb6661418755246c633cdb4d5a16d0f",
+      "method": "Số dòng và giờ của manifest hiện có; không phải toàn bộ quy mô dataset trên Hub."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS trước khi tách E3",
+      "stage": "Nguồn Việt thuần cho distill",
+      "parent_stage": "",
+      "path": "data/raw/vss_full/train_vss_dom.jsonl",
+      "rows": 28551,
+      "hours": 102.93925,
+      "sha256": "a42000b4388227e303d924ffd741a1cc13676d520ccee1d3c29d75da056df327",
+      "method": "Số dòng và giờ của manifest hiện có; không phải toàn bộ quy mô dataset trên Hub."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS validation → dev CS",
+      "stage": "Validation nguồn",
+      "parent_stage": "",
+      "path": "data/raw/vimedcss_full/dev_vimedcss.jsonl",
+      "rows": 1714,
+      "hours": 3.366897777777778,
+      "sha256": "792b616dfc51acc96e9ca3a08a1e3e778276f4c17b96b2785b6686f04184239a",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "vss",
+      "branch": "VSS → dev CS",
+      "stage": "Dev theo video",
+      "parent_stage": "",
+      "path": "data/e3_v1/dev_cs_vss.jsonl",
+      "rows": 91,
+      "hours": 0.3295555555555556,
+      "sha256": "e07eb13fa9812542e410d32c1f395a2a5c066280ab478faeaf22d4714b793287",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS → dev VI",
+      "stage": "Dev theo speaker",
+      "parent_stage": "",
+      "path": "data/e3_v1/dev_vi.jsonl",
+      "rows": 1099,
+      "hours": 0.9604374999999999,
+      "sha256": "4962258a724747d393db4a7f3fa4dad032b2f737cc6a2776e8683ee50b733fb1",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "ViMedCSS hard → B3",
+      "stage": "Ứng viên hard",
+      "parent_stage": "",
+      "path": "data/raw/vimedcss_hard/b3_candidates.jsonl",
+      "rows": 658,
+      "hours": 1.295,
+      "sha256": "4e03212feeb7b77586b0032007181fc1d7ebac72c6a3d8d647628ef230fb3fe2",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "ggroup",
+      "branch": "G-Group → B1",
+      "stage": "Ứng viên B1",
+      "parent_stage": "",
+      "path": "data/raw/ggroup/b1_candidates.jsonl",
+      "rows": 1330,
+      "hours": 1.3821463888888887,
+      "sha256": "a327928cd9fc96a701f5fbf96d025e22efd8943395c98ee5e7eca5b1dcd29c1f",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "ggroup",
+      "branch": "G-Group → B5",
+      "stage": "Ứng viên B5",
+      "parent_stage": "",
+      "path": "data/raw/ggroup/b5_ggroup.jsonl",
+      "rows": 325,
+      "hours": 0.26837222222222223,
+      "sha256": "675c07bb85368b4df898d7da6f4eca2eb961d24654114dc7232aa007bfc32c97",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "consensus",
+      "branch": "Consensus → B2",
+      "stage": "Ứng viên B2 sau trần",
+      "parent_stage": "",
+      "path": "data/raw/consensus/b2_consensus_candidates.jsonl",
+      "rows": 218,
+      "hours": 0.39816388888888893,
+      "sha256": "4d24272628c50025959da4f94f3cd5cce8fcd7f102509ee5bce03bdef4ce653d",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "consensus",
+      "branch": "Consensus → B5",
+      "stage": "Ứng viên B5",
+      "parent_stage": "",
+      "path": "data/raw/consensus/b5_consensus_product.jsonl",
+      "rows": 1081,
+      "hours": 1.3565097222222224,
+      "sha256": "af6e1d4650c8b092a8c7f5acea259007753ab4682d65933db5b525ba811c1c32",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "vivos",
+      "branch": "VIVOS test → B5",
+      "stage": "Ứng viên B5",
+      "parent_stage": "",
+      "path": "data/raw/vivos/b5_vivos.jsonl",
+      "rows": 760,
+      "hours": 0.745975,
+      "sha256": "c65132db3b8bc45ed028a24907b8ac08a8d510f7431acf272ee7a7f8b4c1f4fd",
+      "method": "Đếm trực tiếp manifest cục bộ."
+    },
+    {
+      "origin": "consensus",
+      "branch": "consensus → B2",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 218,
+      "hours": 0.39816388888888893,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    },
+    {
+      "origin": "consensus",
+      "branch": "consensus → B5",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 1081,
+      "hours": 1.3565097222222224,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    },
+    {
+      "origin": "ggroup",
+      "branch": "ggroup → B1",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 1330,
+      "hours": 1.3821463888888887,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    },
+    {
+      "origin": "ggroup",
+      "branch": "ggroup → B5",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 325,
+      "hours": 0.26837222222222223,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    },
+    {
+      "origin": "vimedcss",
+      "branch": "vimedcss → B3",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 524,
+      "hours": 1.0352777777777777,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    },
+    {
+      "origin": "vivos",
+      "branch": "vivos → B5",
+      "stage": "Trong bench hiện tại",
+      "parent_stage": "",
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "rows": 760,
+      "hours": 0.745975,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6",
+      "method": "Đếm dataset và split trong file bench đầu ra."
+    }
+  ],
+  "bench_composition": [
+    {
+      "origin": "consensus",
+      "split": "B2",
+      "rows": 218,
+      "hours": 0.39816388888888893
+    },
+    {
+      "origin": "consensus",
+      "split": "B5",
+      "rows": 1081,
+      "hours": 1.3565097222222224
+    },
+    {
+      "origin": "ggroup",
+      "split": "B1",
+      "rows": 1330,
+      "hours": 1.3821463888888887
+    },
+    {
+      "origin": "ggroup",
+      "split": "B5",
+      "rows": 325,
+      "hours": 0.26837222222222223
+    },
+    {
+      "origin": "vimedcss",
+      "split": "B3",
+      "rows": 524,
+      "hours": 1.0352777777777777
+    },
+    {
+      "origin": "vivos",
+      "split": "B5",
+      "rows": 760,
+      "hours": 0.745975
+    }
+  ],
+  "agreement": {
+    "kept": 1657,
+    "examined": 6412,
+    "without_first_teacher_hyp": 5939
+  },
+  "vss_prefilter_steps": [
+    {
+      "step": "vss_cs_candidates",
+      "rows": 31949,
+      "hours": 117.32
+    },
+    {
+      "step": "độ dài 1–20 s",
+      "rows": 31949,
+      "hours": 117.32
+    },
+    {
+      "step": "--max-en-frac 0.5",
+      "rows": 20228,
+      "hours": 74.41
+    },
+    {
+      "step": "rò rỉ B1–B3 + reserved_b3",
+      "rows": 20228,
+      "hours": 74.41
+    },
+    {
+      "step": "bỏ câu chỉ có thuật ngữ 1 lần (giữ 10%)",
+      "rows": 17249,
+      "hours": 63.48
+    },
+    {
+      "step": "--term-cap 50",
+      "rows": 12351,
+      "hours": 45.49
+    }
+  ],
+  "curate_steps": [
+    {
+      "step": "đầu vào",
+      "rows": 28243,
+      "hours": 52.59
+    },
+    {
+      "step": "chặn dữ liệu test_only",
+      "rows": 28243,
+      "hours": 52.59
+    },
+    {
+      "step": "--holdout-domain finance",
+      "rows": 28198,
+      "hours": 52.42
+    },
+    {
+      "step": "--max-per-term 50",
+      "rows": 27715,
+      "hours": 51.45
+    },
+    {
+      "step": "--max-speaker-share 0.02",
+      "rows": 27715,
+      "hours": 51.45
+    },
+    {
+      "step": "--max-domain-share 0.35",
+      "rows": 20220,
+      "hours": 36.88
+    },
+    {
+      "step": "--max-synthetic-share 0.2",
+      "rows": 20220,
+      "hours": 36.88
+    }
+  ],
+  "evidence": [
+    {
+      "path": "configs/confusables.tsv",
+      "bytes": 1070,
+      "sha256": "63a6acbaef860d93c188fde32098b87d976c9276181fc3925778b9002d12aa94"
+    },
+    {
+      "path": "configs/term_decisions.tsv",
+      "bytes": 1094,
+      "sha256": "9ccf7a5a1f9afbcd915d1460a893367faee07805a4a9eb7680764b8113da4b68"
+    },
+    {
+      "path": "configs/train_mix.tsv",
+      "bytes": 1800,
+      "sha256": "7abcc6168fd911559ce9f1800dc769388b64b029bea77a37e7ca3a8458ed7298"
+    },
+    {
+      "path": "converters/build_bench_v0.py",
+      "bytes": 13897,
+      "sha256": "aa71e902bfdda1a2b832cf9d9a357556f3cc6bfcd586b6cc6428288260f8d26d"
+    },
+    {
+      "path": "converters/conv_consensus.py",
+      "bytes": 29491,
+      "sha256": "7284d8e3b2841fb7315e678456ef51b4aede197a564560cc9fba98f460e2c27a"
+    },
+    {
+      "path": "converters/conv_ggroup.py",
+      "bytes": 2758,
+      "sha256": "17574cdcf1061b527d7d4dd36df0ed83861e6f72c80c5b5764eb52b4302a8fde"
+    },
+    {
+      "path": "converters/conv_local.py",
+      "bytes": 9670,
+      "sha256": "901e945336ecbd46daca5a3420e4e912d9eb744852ddbad5128c4c89a7a6ceff"
+    },
+    {
+      "path": "converters/conv_vimedcss.py",
+      "bytes": 6000,
+      "sha256": "cefe27e4c037fe701463b3074d41f7796422d4bc98213776963916ad7a48ef0a"
+    },
+    {
+      "path": "data/bench_v0_draft/bench_v0_draft.jsonl",
+      "bytes": 2762975,
+      "sha256": "eba53c1027f93f11b420c4b3e6f87750f267a053efadf1ab5a6de9868628e3e6"
+    },
+    {
+      "path": "data/bench_v0_draft/build.log",
+      "bytes": 745,
+      "sha256": "796bf885f7cb4340c1e635c1a46cafa7b54ec214e88d26655064069cc84f3e52"
+    },
+    {
+      "path": "data/bench_v0_draft/catalog_v0_draft.tsv",
+      "bytes": 38092,
+      "sha256": "2cdf2458d77fd0be84c738e7729d466dd2fee56394e0da21e425e1af6db79a40"
+    },
+    {
+      "path": "data/dl/cv-corpus-27.0-2026-09-11/vi/test.tsv",
+      "bytes": 469480,
+      "sha256": "bb80ec79b21e25ca826053b0899b1cd4cd49969111008c289e6324d61b0167e0"
+    },
+    {
+      "path": "data/dl/cv-corpus-27.0-2026-09-11/vi/train.tsv",
+      "bytes": 553552,
+      "sha256": "e7e7d6b00f310fab0802b48a0d5ac70f116dec27065355a4bf18357174d8825a"
+    },
+    {
+      "path": "data/dl/zac/consensus_clips_anon.csv",
+      "bytes": 858836,
+      "sha256": "3d07b971a9a456c2b30f7986ad1c5e502ee7b8acd974c90a01387ea5356baf2b"
+    },
+    {
+      "path": "data/e3_v1/dev_cs.jsonl",
+      "bytes": 614565,
+      "sha256": "1be1a312f4cbd4b0f20c504aa6fb8f45ef681b0f9387ba49455cc4dd7c2da38d"
+    },
+    {
+      "path": "data/e3_v1/dev_cs_vss.jsonl",
+      "bytes": 135392,
+      "sha256": "e07eb13fa9812542e410d32c1f395a2a5c066280ab478faeaf22d4714b793287"
+    },
+    {
+      "path": "data/e3_v1/dev_vi.jsonl",
+      "bytes": 419963,
+      "sha256": "4962258a724747d393db4a7f3fa4dad032b2f737cc6a2776e8683ee50b733fb1"
+    },
+    {
+      "path": "data/e3_v1/distill.jsonl",
+      "bytes": 2532669,
+      "sha256": "5ccc04e927fec98b56dd35a5ae16f38f08c9ec7813984fa3c80396ed38cef7d0"
+    },
+    {
+      "path": "data/e3_v1/distill.jsonl.report.md",
+      "bytes": 370,
+      "sha256": "3d6844dbecbc25dd16d481f2561d9e46ab5f62b93d2b84bfaccc18bca3d359b8"
+    },
+    {
+      "path": "data/e3_v1/distill_pool.jsonl",
+      "bytes": 2329541,
+      "sha256": "f920feea311c74eea49dd23b482bc858b22cbdfe2d1d8ce0d1d764e5c1d41095"
+    },
+    {
+      "path": "data/e3_v1/train_confusable.jsonl",
+      "bytes": 382803,
+      "sha256": "5163650feb95b02c8aad973488d9f8cc5de8b9f2656179275d2f3e3247367627"
+    },
+    {
+      "path": "data/e3_v1/train_curated.jsonl",
+      "bytes": 13457596,
+      "sha256": "284993bc3c2d636a4f16078bb427268b3869ed3893da7e911f8b4cdd7f8704cd"
+    },
+    {
+      "path": "data/e3_v1/train_curated.jsonl.report.md",
+      "bytes": 4995,
+      "sha256": "290e863d3f022243437da6b7f580265245b87c4155d499645c2f28c11124de60"
+    },
+    {
+      "path": "data/e3_v1/train_vimedcss_abs.jsonl",
+      "bytes": 9446310,
+      "sha256": "b8b01b29bbf83886ba620c4c89c852e3775f294c81a0799cc2a0cbe760467bfb"
+    },
+    {
+      "path": "data/e3_v1/train_vivos.jsonl",
+      "bytes": 4363759,
+      "sha256": "ff3c282fbc340047c5ab98fa663f688f3d66fe0372487795959052e54a0959e1"
+    },
+    {
+      "path": "data/e3_v1/train_vss_cs.jsonl",
+      "bytes": 2407057,
+      "sha256": "61e6d869c4ea925ef87ce87a35b9a0654bc4f2fab02bc68774251075ef3391b8"
+    },
+    {
+      "path": "data/e3_v1b/train_curated.jsonl",
+      "bytes": 14535046,
+      "sha256": "497bb0fc98d44c84f5a2dfdc4ad563f19f075f72f673666c6f624c146452ca5e"
+    },
+    {
+      "path": "data/raw/confusable/train_confusable.jsonl",
+      "bytes": 371160,
+      "sha256": "d228328053400e967b69f933c97553c81bed235597ff083c2318666aa2d4e696"
+    },
+    {
+      "path": "data/raw/consensus/b2_consensus_candidates.jsonl",
+      "bytes": 180084,
+      "sha256": "4d24272628c50025959da4f94f3cd5cce8fcd7f102509ee5bce03bdef4ce653d"
+    },
+    {
+      "path": "data/raw/consensus/b5_consensus_product.jsonl",
+      "bytes": 815274,
+      "sha256": "af6e1d4650c8b092a8c7f5acea259007753ab4682d65933db5b525ba811c1c32"
+    },
+    {
+      "path": "data/raw/consensus/consensus_stats.json",
+      "bytes": 3351,
+      "sha256": "949813c02245047aac26ddb8e42a604a5229969a087dcaf60a78262779d86c92"
+    },
+    {
+      "path": "data/raw/cv/train_cv.jsonl",
+      "bytes": 741248,
+      "sha256": "2a9d61935abedadf915ab6d0ebc84d5b2f815eb0357eace7d0f48c3c8b77a5a5"
+    },
+    {
+      "path": "data/raw/ggroup/b1_candidates.jsonl",
+      "bytes": 634764,
+      "sha256": "a327928cd9fc96a701f5fbf96d025e22efd8943395c98ee5e7eca5b1dcd29c1f"
+    },
+    {
+      "path": "data/raw/ggroup/b5_ggroup.jsonl",
+      "bytes": 146185,
+      "sha256": "675c07bb85368b4df898d7da6f4eca2eb961d24654114dc7232aa007bfc32c97"
+    },
+    {
+      "path": "data/raw/vimedcss_full/conv.log",
+      "bytes": 722,
+      "sha256": "5c2147809d76094680733435518f18f3343cc4b199b763b4ea676f0786f4a83e"
+    },
+    {
+      "path": "data/raw/vimedcss_full/dev_vimedcss.jsonl",
+      "bytes": 1291971,
+      "sha256": "792b616dfc51acc96e9ca3a08a1e3e778276f4c17b96b2785b6686f04184239a"
+    },
+    {
+      "path": "data/raw/vimedcss_full/train_vimedcss.jsonl",
+      "bytes": 8866542,
+      "sha256": "0495ef04fc5b6f6cd45d41e244c5c120621b3bed569f64f42e6806376e3a79d0"
+    },
+    {
+      "path": "data/raw/vimedcss_hard/b3_candidates.jsonl",
+      "bytes": 485263,
+      "sha256": "4e03212feeb7b77586b0032007181fc1d7ebac72c6a3d8d647628ef230fb3fe2"
+    },
+    {
+      "path": "data/raw/vivos/b5_vivos.jsonl",
+      "bytes": 337189,
+      "sha256": "c65132db3b8bc45ed028a24907b8ac08a8d510f7431acf272ee7a7f8b4c1f4fd"
+    },
+    {
+      "path": "data/raw/vivos/train_vivos.jsonl",
+      "bytes": 4783722,
+      "sha256": "59c0966d33862ddb94b30a308c334253261fb48b74b89e1c9cdd67f3e6a97f59"
+    },
+    {
+      "path": "data/raw/vss_full/train_vss_dom.jsonl",
+      "bytes": 26532345,
+      "sha256": "a42000b4388227e303d924ffd741a1cc13676d520ccee1d3c29d75da056df327"
+    },
+    {
+      "path": "data/raw/vss_full/vss_cs_candidates.jsonl",
+      "bytes": 38740311,
+      "sha256": "0be0ed9ba43cc9d07eb1b78169051376df55b8b0fe748691125eaefa8d430697"
+    },
+    {
+      "path": "data/raw/vss_full/vss_cs_clean.jsonl.report.md",
+      "bytes": 15702,
+      "sha256": "5c671b451756aeb634c9ecff53c237f8bb2db59612752d52918d66c10f002e40"
+    },
+    {
+      "path": "data/raw/vss_full/vss_cs_clean_dom.jsonl",
+      "bytes": 2542449,
+      "sha256": "8223169df0b7f3329577c3155a396e651cb6661418755246c633cdb4d5a16d0f"
+    },
+    {
+      "path": "data/raw/vss_full/vss_cs_pre_rebuild.jsonl",
+      "bytes": 16814413,
+      "sha256": "40c30020a16ba771bd619c1260012d0d6d95f5b847f88339d1a320c5f5b064c3"
+    },
+    {
+      "path": "data/raw/vss_full/vss_cs_pre_rebuild.jsonl.report.md",
+      "bytes": 1901,
+      "sha256": "e78207e72bf47978d4b1e92c4ac4d751c18b357b4eb44fc68aa702e82a0113f1"
+    },
+    {
+      "path": "ft/curate_train.py",
+      "bytes": 15038,
+      "sha256": "fd7e7fc7e86c576a24b0d45d7af323526475619ee265b7eff7a39a7c9726e32a"
+    },
+    {
+      "path": "ft/make_distill.py",
+      "bytes": 6619,
+      "sha256": "ee6860eb821115a645461715174d82846033147a269963ee5f315a8f12357d3c"
+    },
+    {
+      "path": "ft/mix_cuts.py",
+      "bytes": 3939,
+      "sha256": "a025b4403806a7a2501f37897489f53179b62801e433d8c0a35fe010b834a84c"
+    },
+    {
+      "path": "ft/prep_e3_v1.py",
+      "bytes": 3954,
+      "sha256": "b5976d910acab493203b83d0dfc7ba2a5d2e6b798c4ca5aa4a67dce54e8d4197"
+    },
+    {
+      "path": "ft/run_e3_v1.sh",
+      "bytes": 13228,
+      "sha256": "3c2c6d8d723d040b069de966b1786e051c69f7fca03a8ab2704c61147d197955"
+    },
+    {
+      "path": "ft/to_lhotse.py",
+      "bytes": 5249,
+      "sha256": "0c9ab64b008a140222d9173a06d282f3db2660a432f3acac488e1a9ea3c19210"
+    },
+    {
+      "path": "reports/eda_current/training_pool_rows.csv",
+      "bytes": 3144325,
+      "sha256": "707f94baf65f5ba2c9afedd7c5aec3e1b1437e57f8441f24b6d1673036efc030"
+    },
+    {
+      "path": "reports/replay_report.md",
+      "bytes": 1475,
+      "sha256": "99f174ba11b1d9224c8c3a9219946326aec9a608c3d04e4269907b8d5e0c79af"
+    },
+    {
+      "path": "tools/agreement_filter.py",
+      "bytes": 26583,
+      "sha256": "29c4752adcf6b0bca642883b0931475949344222259313eca1cff6e22db2879b"
+    },
+    {
+      "path": "tools/eda_current.py",
+      "bytes": 75071,
+      "sha256": "191dbb584329372474afaf422cd523b635ddb8511d22b7644aba620073ae2d05"
+    },
+    {
+      "path": "tools/eda_lineage.py",
+      "bytes": 30411,
+      "sha256": "baca9aec3c7dfdf77b7073e9faf5d2919ebd9cf21d727cd98d69b650f134f13a"
+    },
+    {
+      "path": "tools/make_confusables.py",
+      "bytes": 12441,
+      "sha256": "8077f3f69ef790951c9c8b89b7df3f0afdad7e145aa83a1ee3776b2be5f26545"
+    },
+    {
+      "path": "tools/vss_cs_prefilter.py",
+      "bytes": 9400,
+      "sha256": "1aaeb34fbc80fc92dccd51ef641ff198ff21ee7d414ab357fa71d2cbd5b61a13"
+    },
+    {
+      "path": "tools/vss_cs_run.py",
+      "bytes": 11204,
+      "sha256": "ad264565af2791eda26700cc8829bfc187792b1839cef932e3ee00e0feedb8a0"
+    }
+  ],
+  "version_note": "Public URLs identify upstream datasets. No immutable Hub revision or archive checksum was recorded for every download. Local manifest and evidence SHA256 values identify this analyzed snapshot."
+}

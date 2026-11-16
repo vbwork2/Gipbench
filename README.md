@@ -7,6 +7,26 @@ pip install -r requirements.txt
 bash tools/selftest.sh            # chạy thử toàn bộ trên dữ liệu giả lập (~10 s)
 ```
 
+**Graphify (tùy chọn):** Dùng `$graphify` trong Codex để hỏi về quan hệ giữa các
+file và hàm. Để cập nhật và truy vấn đồ thị mã nguồn từ PowerShell tại thư mục gốc:
+
+```powershell
+$graphifyPython = '.\.venv\graphify\tools\graphifyy\Scripts\python.exe'
+& $graphifyPython -m graphify update .
+& $graphifyPython -m graphify query 'score decode' --budget 300
+```
+
+Nếu checkout mới chưa có CLI, cài lại vào môi trường riêng của repo:
+
+```powershell
+$env:UV_TOOL_DIR = Join-Path $PWD '.venv\graphify\tools'
+$env:UV_TOOL_BIN_DIR = Join-Path $PWD '.venv\graphify\bin'
+uv tool install graphifyy==0.9.111
+```
+
+Kết quả nằm trong `graphify-out/`. Lệnh `update .` tạo đồ thị lần đầu và cập nhật
+mã nguồn cục bộ ở các lần sau, không cần API key.
+
 **Nguồn dữ liệu** (quyết định sau Phase 0b, 15/11/2026):
 
 - B1 = G-Group (vi-asr-tech/edu/finance/pubadmin-test) + dữ liệu tự thu.
