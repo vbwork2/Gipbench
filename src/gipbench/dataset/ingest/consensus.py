@@ -50,7 +50,7 @@ from pathlib import Path
 
 from gipbench.core.paths import REPO as _ROOT
 from gipbench.dataset.ingest.common import REVIEW_COLS, add_vi_words_arg, auto_tag, is_vietnamese_token, load_vi_words
-from gipbench.model.recipe.curate import pick_diverse
+from gipbench.core.sampling import pick_diverse
 from gipbench.core.leak import DEFAULT_BLOCK_FILES, TEST_ONLY_LICENSE
 from gipbench.core.manifest import write_jsonl
 from gipbench.core.term_decisions import load_term_decisions

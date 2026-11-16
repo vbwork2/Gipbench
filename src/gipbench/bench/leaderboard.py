@@ -30,7 +30,7 @@ from pathlib import Path
 from gipbench.bench.report.eda import CSS
 from gipbench.core.manifest import CS_SPLITS
 from gipbench.core.svgcharts import table
-from gipbench.bench.score import SPAN_METRICS, agg, freq_slices, term_weights
+from gipbench.core.scoring import SPAN_METRICS, agg, freq_slices, term_weights
 
 MAIN_KEY = {"term_acc_macro": "acc_macro", "span_acc": "span_acc", "cs_wer": "cs_main"}  # --main-metric -> khoá METRICS
 MAIN_LABEL = {"term_acc_macro": "Term acc (macro)", "span_acc": "Span acc", "cs_wer": "CS-WER"}

@@ -17,34 +17,7 @@ from gipbench.core.align import align, attribute
 from gipbench.core.textnorm import Catalog, basic_tokens, normalize_hyp, normalize_ref, plain_text
 
 
-def label_spans(text_tagged: str, cat: Catalog) -> List[Tuple[str, ...]]:
-    """Các span <en> của nhãn, dạng token đã chuẩn hoá (strict)."""
-    toks, _ = normalize_ref(text_tagged, cat, "strict")
-    spans: Dict[int, List[str]] = {}
-    for t in toks:
-        if t.span >= 0:
-            spans.setdefault(t.span, []).append(t.tok)
-    return [tuple(spans[k]) for k in sorted(spans)]
-
-
-def contains(seq: Sequence[str], sub: Sequence[str]) -> bool:
-    n = len(sub)
-    return n > 0 and any(tuple(seq[i:i + n]) == tuple(sub) for i in range(len(seq) - n + 1))
-
-
-def agree(text_tagged: str, hyps: Sequence[str], cat: Catalog, min_agree: int = 1,
-          min_span_frac: float = 1.0) -> Dict:
-    """Một span "được xác nhận" khi nó có mặt (chuỗi token liền) trong ít nhất `min_agree` hyp.
-
-    Giữ câu khi tỉ lệ span được xác nhận >= min_span_frac (mặc định 1.0 = mọi span). Câu không có span: không giữ
-    (không có gì để xác nhận). Trả về {"keep", "spans", "confirmed": [số hyp xác nhận từng span]}.
-    """
-    spans = label_spans(text_tagged, cat)
-    hyp_toks = [normalize_hyp(h or "", cat, "strict") for h in hyps]
-    votes = [sum(contains(h, s) for h in hyp_toks) for s in spans]
-    ok = sum(v >= min_agree for v in votes)
-    keep = bool(spans) and ok >= min_span_frac * len(spans)
-    return {"keep": keep, "spans": [" ".join(s) for s in spans], "confirmed": votes}
+from gipbench.core.agreement_rules import agree, contains, label_spans  # noqa: F401,E402  (import lại)
 
 
 def span_segments(ref_tok: List[str], ref_span: List[int], hyp: List[str]
@@ -211,7 +184,7 @@ def tag_text(text: str, cat: Catalog, vi_words=None, term_dec=None) -> str:
     """Gắn <en> tự động cho text thô của một ASR bằng đúng cơ chế đã gắn nhãn nháp (converters.common.auto_tag): catalog,
     quyết định theo thuật ngữ, vi_abbrev / vi_loanwords (không gắn), heuristic âm tiết. vi_words / term_dec = None: đọc
     configs/ như converter; truyền frozenset() / {} để tắt (test)."""
-    from gipbench.dataset.ingest.common import auto_tag
+    from gipbench.core.tagging import auto_tag
     return auto_tag(text, cat, vi_words=vi_words, term_dec=term_dec)["text_tagged"]
 
 

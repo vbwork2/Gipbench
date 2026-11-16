@@ -22,7 +22,7 @@ from pathlib import Path
 from gipbench.core.paths import REPO as G
 from gipbench.core.manifest import read_jsonl
 from gipbench.core.textnorm import Catalog
-from gipbench.bench.score import agg, score_utt
+from gipbench.core.scoring import agg, score_utt
 
 
 def evaluate(rows, hyp_path, cat):

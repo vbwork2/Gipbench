@@ -46,7 +46,7 @@ from collections import Counter, OrderedDict
 from pathlib import Path
 from gipbench.core.paths import REPO
 
-from gipbench.dataset.ingest.common import auto_tag, is_vietnamese_token
+from gipbench.core.tagging import auto_tag, is_vietnamese_token
 from gipbench.core.textnorm import Catalog
 
 TODAY = "2026-11-15"

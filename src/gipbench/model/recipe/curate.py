@@ -30,7 +30,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from gipbench.dataset.pseudolabel.agreement import agree
+from gipbench.core.agreement_rules import agree
+from gipbench.core.sampling import pick_diverse
 from gipbench.infer.cache import HashIndex, HypLookup
 from gipbench.core.leak import add_block_arg, is_test_only, load_block_texts, norm_text
 from gipbench.core.manifest import read_jsonl, write_jsonl
@@ -61,30 +62,6 @@ def term_hits(r, cat):
         pos = next((i for i in range(len(toks) - n + 1) if tuple(toks[i:i + n]) == tuple(t)), 0)
         out.append((" ".join(t), toks[pos - 1] if pos > 0 else "<s>", toks[pos + n] if pos + n < len(toks) else "</s>"))
     return out
-
-
-def pick_diverse(cands, cap, rnd):
-    """cands: [(idx, speaker, ctx)]. Xoay vòng người nói, ưu tiên ngữ cảnh chưa gặp. Trả về tập idx được chọn."""
-    by_spk = defaultdict(list)
-    shuffled = cands[:]
-    rnd.shuffle(shuffled)
-    for c in shuffled:
-        by_spk[c[1]].append(c)
-    order = list(by_spk)
-    rnd.shuffle(order)
-    picked, seen_ctx = set(), set()
-    while len(picked) < cap and any(by_spk[s] for s in order):
-        for s in order:
-            lst = by_spk[s]
-            if not lst:
-                continue
-            k = next((j for j, c in enumerate(lst) if c[2] not in seen_ctx), 0)
-            c = lst.pop(k)
-            picked.add(c[0])
-            seen_ctx.add(c[2])
-            if len(picked) >= cap:
-                break
-    return picked
 
 
 def downsample(rows, key, cap_share, rnd, exempt=()):

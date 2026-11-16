@@ -225,7 +225,7 @@ def main():
                      f"{ab(g, 'false_terms_per_100utt')} |")
         L.append("")
     if args.by_domain:
-        from gipbench.bench.score import agg
+        from gipbench.core.scoring import agg
         meta = {r["id"]: r for r in bench}
         U = {n: [json.loads(l) for l in open(p / "utt_scores.jsonl", encoding="utf-8")] for n, (p, _) in S.items()}
         for split, key, metric, title in (("B5", "domain", "wer", "B5 theo domain: WER"),

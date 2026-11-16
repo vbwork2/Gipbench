@@ -208,7 +208,7 @@ _VOWEL_GROUP = re.compile(r"[aeiouyàáảãạăằắẳẵặâầấẩẫ�
 
 def count_syllables(text: str) -> int:
     """Số âm tiết nói ra: token tiếng Việt = 1; token Anh nguyên chính tả = số cụm nguyên âm (tối thiểu 1)."""
-    from gipbench.dataset.ingest.common import is_vietnamese_token
+    from gipbench.core.tagging import is_vietnamese_token
     n = 0
     for t in basic_tokens(text):
         if not any(c.isalpha() for c in t):

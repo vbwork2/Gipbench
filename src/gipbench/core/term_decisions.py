@@ -91,9 +91,9 @@ def spans_of(text_tagged: str) -> List[str]:
 
 def needed_terms(row: Dict, ambig: Optional[Set[str]] = None) -> Tuple[Dict[str, Set[str]], List[str]]:
     """-> ({thuật ngữ: {loại cờ}}, [cờ chặn]). ambig = tập từ mơ hồ của auto_tag (mặc định AMBIG_EN)."""
-    from gipbench.dataset.ingest.common import is_vietnamese_token
+    from gipbench.core.tagging import is_vietnamese_token
     if ambig is None:
-        from gipbench.dataset.ingest.common import AMBIG_EN as ambig
+        from gipbench.core.tagging import AMBIG_EN as ambig
     flags = (row.get("auto_tag") or {}).get("flags") or []
     terms: Dict[str, Set[str]] = {}
     blocking = []

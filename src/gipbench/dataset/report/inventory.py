@@ -25,7 +25,7 @@ from gipbench.core.leak import is_test_only, norm_text
 from gipbench.core.manifest import span_meta
 from gipbench.core.manifest import write_jsonl
 from gipbench.core.textnorm import Catalog, normalize_ref, tagged_well_formed
-from gipbench.bench.score import train_term_freq
+from gipbench.core.scoring import train_term_freq
 from gipbench.dataset.report.lineage import collect_lineage, render_lineage, LINEAGE_CSS
 
 OUT = ROOT / 'reports' / 'dataset' / 'eda_current'

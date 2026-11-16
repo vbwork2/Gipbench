@@ -26,7 +26,7 @@ import re
 import sys
 from pathlib import Path
 
-from gipbench.dataset.ingest.common import VI_WORD_FILES, auto_tag, load_vi_words
+from gipbench.core.tagging import VI_WORD_FILES, auto_tag, load_vi_words
 from gipbench.core.textnorm import Catalog
 
 _MARK = re.compile(r"\[\[(.+?)\]\]|\{\{(.+?)\}\}|\(\((.+?)\)\)")

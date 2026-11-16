@@ -26,7 +26,7 @@ def rows_of(path, cat):
     """-> (domain, domain_source, giờ, [thuật ngữ])"""
     p = Path(path)
     if p.suffix == ".csv":
-        from gipbench.dataset.ingest.common import auto_tag, load_vi_words
+        from gipbench.core.tagging import auto_tag, load_vi_words
         vw = load_vi_words()
         for r in csv.DictReader(open(p, encoding="utf-8")):
             terms = [t.strip() for t in (r.get("cs_terms_list") or "").split(";") if t.strip()]
