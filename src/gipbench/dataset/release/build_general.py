@@ -118,7 +118,9 @@ def vimedcss_hard(data: Path, limit: int):
             break
         row = {k: v for k, v in r.items() if not k.startswith("_") and k not in ("audio", "split", "auto_tag", "review")}
         row.update({"id": f"c0_{r['id']}", "_abs": Path(r["_audio_path"]), "dataset": "vimedcss", "upstream_split": "hard",
-                    "upstream_id": r["id"], "slice": "medical_cs", "_duration": r.get("duration")})
+                    # segment_id gốc của ViMedCSS (converter thêm tiền tố "vmc_"); fetch dùng để tìm audio trong parquet
+                    "upstream_id": r["id"][4:] if r["id"].startswith("vmc_") else r["id"],
+                    "slice": "medical_cs", "_duration": r.get("duration")})
         yield row
 
 

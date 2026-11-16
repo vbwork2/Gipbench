@@ -17,7 +17,7 @@ id / revision / license / số câu đã kiểm qua Hugging Face API ngày 16/11
 | `consensus_private` | data/raw/consensus | test_only (riêng tư) | – | (B2 + 1 081 câu B5 trong v0-draft) | speaker_cluster ước lượng | unknown / unknown |
 
 Manifest: `${data_root}/benchmarks/general_v1_draft/manifest.jsonl` (4 400 câu, 4.47 h, manifest_sha256
-`781fe7a0…`), `${data_root}/benchmarks/code_switch_v1_draft/manifest.jsonl` (658 câu, 1.29 h, `35151e98…`). Không câu nào
+`781fe7a0…`), `${data_root}/benchmarks/code_switch_v1_draft/manifest.jsonl` (658 câu, 1.29 h, `0d722d25…`). Không câu nào
 bị loại; số câu khớp split công bố. `data/` nằm ngoài git; dựng lại bằng `gipbench.dataset.release.build_general`.
 
 ## 2. Chưa dùng (ghi để không bị thay thế âm thầm)
