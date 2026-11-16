@@ -51,10 +51,12 @@ class VieGemAdapter(ASRAdapter):
         self.lm_cfg = {"alpha": float(d.get("alpha", 0.35)), "beta": float(d.get("beta", 1.5)),
                        "beam_width": int(d.get("beam_width", 32))}
         self.device_req = d.get("device", "auto")
+        # pad_sec > 0: đệm im lặng hai đầu audio (ablation CHẨN ĐOÁN độ nhạy với clip cắt sát; mặc định 0 = như upstream)
+        self.pad_sec = float(d.get("pad_sec", 0.0))
         self.info = AdapterInfo(system=cfg["system"], engine="viegem", model_id=cfg["model"]["id"],
                                 revision=cfg["model"].get("revision", "unknown"), inference_mode=cfg["inference_mode"],
                                 sample_rate=16000, decoding={"method": self.method, **(self.lm_cfg if self.method == "lm" else {}),
-                                                              "streaming": False},
+                                                              "streaming": False, "pad_sec": self.pad_sec},
                                 batch_size=int(cfg.get("batch", 8)), max_chunk_sec=float(d.get("max_chunk_sec", 30.0)))
         self.model = None
 
@@ -120,6 +122,9 @@ class VieGemAdapter(ASRAdapter):
         for i, p in enumerate(audio_paths):
             x, _ = load_audio(p, 16000)
             parts = split_long(x, 16000, self.info.max_chunk_sec)
+            if self.pad_sec > 0:
+                z = np.zeros(int(self.pad_sec * 16000), dtype=np.float32)
+                parts = [np.concatenate([z, q, z]) for q in parts]
             if len(parts) > 1:
                 self.info.extra["n_chunked_utts"] = self.info.extra.get("n_chunked_utts", 0) + 1
             pieces += parts

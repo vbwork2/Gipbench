@@ -1,0 +1,9 @@
+# CHẨN ĐOÁN (không phải cấu hình chính): VieGem greedy + đệm 0.3 s im lặng hai đầu audio, để đo độ nhạy với clip cắt
+# sát biên (model card VieGem: "clips cut in the middle of a word lose the last word more often"). Không dùng xếp hạng.
+system: viegem_greedy_pad0.3_diag
+engine: viegem
+model: {id: 5CD-AI/VieGem-ASR, revision: 95eae70b21fb0ef640e3ac4ea8cfa2380872ed20,
+        dir: "${models_root}/viegem", encoder_dir: "${models_root}/embeddinggemma-2"}
+inference_mode: open_vocab
+decode: {method: greedy, device: auto, max_chunk_sec: 30, pad_sec: 0.3}
+batch: 8
