@@ -2,6 +2,21 @@
 
 Tài liệu giao việc cho model implement. Đọc hết trước khi sửa bất kỳ file nào. Ngày lập: 16/11/2026, trên commit `1570a42`.
 
+> **ĐÃ THỰC HIỆN** (16/11/2026, nhánh `refactor/pipelines`). Tài liệu hiện hành: `docs/ARCHITECTURE.md`, `docs/CONTRACTS.md`,
+> `docs/RUNBOOK.md`, `docs/DECISIONS.md` §13. Những chỗ làm khác plan dưới đây:
+>
+> | Plan | Thực tế | Lý do |
+> | --- | --- | --- |
+> | `infer/sherpa_onnx.py` | `infer/decode.py` | tên `sherpa_onnx.py` che package `sherpa_onnx` khi chạy file theo đường dẫn |
+> | `dataset/pseudolabel/vss_cs/*.sh`, `export/onnx.py` | `scripts/dataset/*.sh`; `export/onnx_export.py` | `src/` chỉ chứa Python; tránh trùng tên package `onnx` |
+> | Tách `prep_e3_v1.py` thành `build_dev` + `build_pool`; gộp `make_dev_split` | giữ `prep_e3_v1.py`, `make_dev_split.py` nguyên vẹn; thêm `build_dev_cs.py` (heredoc stage 0) | tách sẽ đổi thứ tự lấy mẫu ngẫu nhiên (seed); golden giữ được byte-exact |
+> | `core/speaker.py`, `core/report_html.py` | không tạo | `cluster_sessions` và CSS của EDA chỉ dùng trong cùng một tầng, không vi phạm ranh giới |
+> | Pool gán nhóm theo ref | nhóm vẫn gán theo `pools.<nhóm>.datasets` (như heredoc cũ); `refs` chỉ là đầu vào | giữ đúng hành vi, golden khớp |
+> | Bảng alias `data/interim` -> `data/raw`, `scripts/migrate_data_layout.sh` | chưa làm; `configs/paths.yaml` mặc định = vị trí cũ | đổi tên thư mục dữ liệu là quyết định của người dùng (§10 câu 5) |
+> | `output.work_dir` = `data/work/model/<exp>` | e3_v1 / e3_v1b giữ `data/e3_v1`, `data/e3_v1b` (đã có output cũ); e3_v2 dùng `data/work/model/e3_v2` | resume / đối chiếu với lần chạy cũ |
+> | `tools/test_dev_tools.py` -> `tests/model/` + `tests/bench/` | `tests/integration/test_dev_tools.py` | test kiểm công cụ của cả dataset, model và infer |
+> | Golden chạy trong worktree cũ | checkout `1570a42` ngay trong repo, ghi mốc vào cùng đường dẫn output | vài output chứa đường dẫn tương đối theo thư mục output |
+
 ## 0. Mục tiêu và luật cứng
 
 **Mục tiêu.** Khi đổi hướng tiếp cận ở một phần (vd đổi engine TTS, đổi cách FT, thêm model ngoài, đổi metric), chỉ phải
