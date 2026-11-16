@@ -1,0 +1,27 @@
+# Z0 Zero-shot / OOD sau FT: CHƯA CÓ DỮ LIỆU. File này là giao thức đăng ký trước (pre-registration), không chấm được.
+benchmark_id: zero_shot
+version: v1-planned
+track: Z0
+purpose: >-
+  Đo khả năng tổng quát sau fine-tune trên người nói / phiên / domain / thuật ngữ KHÔNG có trong dữ liệu FT.
+  Thuật ngữ trong reserved_terms gọi là "FT-unseen" (không có trong text FT, TTS, text LM, hotwords); không khẳng định
+  model gốc chưa từng thấy chúng lúc pretrain.
+evidence_level: draft
+status: planned
+manifest: null
+manifest_sha256: null
+catalog: null
+profile: gipbench_strict_v1
+primary_metric: wer
+group_by: [domain, term_seen_in_ft]
+aggregate: none
+boot_unit: session
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm]
+requirements:
+  - "audio thu mới, người nói / phiên không có trong bất kỳ manifest train / dev nào (kiểm bằng leak_audit)"
+  - "reserved_terms.txt chốt TRƯỚC khi dựng dữ liệu FT; leak_audit --reserved-terms phải ra 0 critical"
+  - "chép lời 2 lượt + phân xử span ngôn ngữ; nhãn cách đọc chỉ gán sau khi nghe"
+  - "đồng ý của người nói (consent) lưu ngoài repo"
+sources: []

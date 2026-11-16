@@ -1,0 +1,188 @@
+# Registry nguồn dữ liệu đánh giá. Đọc bằng gipbench.bench.registry (kiểm trường bắt buộc + giá trị hợp lệ).
+# Mọi id / revision / license / số câu dưới đây đã kiểm qua Hugging Face API ngày 2026-11-16 (không đoán);
+# trường nào chưa kiểm được ghi "unknown". Đổi nội dung = tăng `registry_version`.
+#
+# pretraining_overlap (theo từng model, so với model card công bố):
+#   confirmed       : model card ghi đã train trên CHÍNH split này
+#   known_possible  : model card ghi train trên split khác của cùng bộ, hoặc cùng tổ chức phát hành cả model lẫn test;
+#                     không coi là zero-shot độc lập
+#   not_listed      : model card có liệt kê dữ liệu train và không có bộ này (KHÔNG phải bằng chứng là sạch)
+#   unknown         : model card không công bố dữ liệu train
+registry_version: 1
+verified_on: "2026-11-16"
+models:
+  gipformer15: {hf_id: g-group-ai-lab/gipformer1.5-68M-rnnt, revision: dd9227dcd8705c13f33bdbe59728d546ab94480f,
+                license: MIT, training_data_disclosed: false}
+  viegem: {hf_id: 5CD-AI/VieGem-ASR, revision: 95eae70b21fb0ef640e3ac4ea8cfa2380872ed20,
+           license: "CC-BY-NC-SA-4.0 (+ Gemma Terms of Use)", training_data_disclosed: true}
+
+datasets:
+  vivos:
+    hf_id: AILAB-VNUHCM/vivos
+    revision: 3cbfb2502e5e84776b4b778b020a09759f723f52
+    license: CC-BY-NC-SA-4.0
+    access: public
+    upstream_splits: {train: 11660, test: 760}
+    eval_split: test
+    content: đọc, phòng yên tĩnh
+    annotation: human (prompt đọc)
+    official_scorer: none_published
+    speaker_key: speaker
+    session_key: null
+    local: {raw: dl/vivos, note: "giải nén từ vivos.tar.gz; prompts.txt in hoa"}
+    pretraining_overlap: {gipformer15: unknown, viegem: not_listed}
+  commonvoice_vi_27:
+    hf_id: null
+    revision: cv-corpus-27.0-2026-09-11
+    license: CC0-1.0
+    access: "public (tải thủ công từ commonvoice.mozilla.org, đồng ý điều khoản trên web)"
+    upstream_splits: {test: 1593}
+    eval_split: test
+    content: đọc, micro đa dạng, crowd-sourced
+    annotation: human (câu đọc, được vote)
+    official_scorer: none_published
+    speaker_key: client_id
+    session_key: null
+    local: {raw: dl/cv-corpus-27.0-2026-09-11/vi}
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  ggroup_tech:
+    hf_id: g-group-ai-lab/vi-asr-tech-test
+    revision: 0b8c87452173239063fe389662c2f034307bedb6
+    license: CC-BY-NC-4.0
+    access: public
+    upstream_splits: {test: 508}
+    eval_split: test
+    content: review công nghệ, hướng dẫn phần mềm, lập trình (tự nhiên, có từ Anh)
+    annotation: human (text do người gõ)
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/ggroup/tech.parquet}
+    pretraining_overlap: {gipformer15: known_possible, viegem: not_listed}
+  ggroup_edu:
+    hf_id: g-group-ai-lab/vi-asr-edu-test
+    revision: 9a15ad66d229187c9acc1a5c5ea9811c2e27ddf7
+    license: CC-BY-NC-4.0
+    access: public
+    upstream_splits: {test: 495}
+    eval_split: test
+    content: tư vấn du học, thi cử, giới thiệu trường / khoá học
+    annotation: human (text do người gõ)
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/ggroup/edu.parquet}
+    pretraining_overlap: {gipformer15: known_possible, viegem: not_listed}
+  ggroup_finance:
+    hf_id: g-group-ai-lab/vi-asr-finance-test
+    revision: ebadeb02804de29423668802f797e5f563143da5
+    license: CC-BY-NC-4.0
+    access: public
+    upstream_splits: {test: 529}
+    eval_split: test
+    content: chứng khoán, nền tảng giao dịch, ngân hàng, crypto
+    annotation: human (text do người gõ)
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/ggroup/finance.parquet}
+    pretraining_overlap: {gipformer15: known_possible, viegem: not_listed}
+  ggroup_pubadmin:
+    hf_id: g-group-ai-lab/vi-asr-pubadmin-test
+    revision: 40aabb05703f30cda255890aaf11f15be21a970f
+    license: CC-BY-NC-4.0
+    access: public
+    upstream_splits: {test: 515}
+    eval_split: test
+    content: thủ tục hành chính, giấy phép, hộ tịch
+    annotation: human (text do người gõ)
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/ggroup/pubadmin.parquet}
+    pretraining_overlap: {gipformer15: known_possible, viegem: not_listed}
+  vimedcss:
+    hf_id: tensorxt/ViMedCSS
+    revision: b6959a18a08739464733930a872e7125c03e6558
+    license: CC-BY-4.0
+    access: public
+    upstream_splits: {train: 11832, validation: 1714, test: 1614, hard: 658}
+    eval_split: hard
+    content: video y khoa YouTube, code-switching Việt-Anh
+    annotation: "human (bài báo LREC 2026); tag <en> theo Spec của gipbench là nhãn phái sinh"
+    official_scorer: "paper normalization, không có code trên HF: số so sánh chỉ xấp xỉ"
+    speaker_key: speaker
+    session_key: source
+    local: {raw: raw/vimedcss_hard/b3_candidates.jsonl, note: "split test 1 614 câu chưa tải (chỉ có 20 câu)"}
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  consensus_private:
+    hf_id: null
+    revision: data/raw/consensus
+    license: test_only
+    access: "private: KHÔNG phân phối audio / text"
+    upstream_splits: {}
+    eval_split: test_only
+    content: hội thoại sản phẩm (B2 code-switching + một phần B5)
+    annotation: consensus nhiều ASR + người duyệt một phần (nháp)
+    official_scorer: none_published
+    speaker_key: speaker_cluster
+    session_key: speaker
+    local: {raw: raw/consensus}
+    pretraining_overlap: {gipformer15: unknown, viegem: unknown}
+  # --- chưa có trên máy: ghi để không bị "thay thế âm thầm" ---
+  fleurs_vi:
+    hf_id: google/fleurs
+    revision: 70bb2e84b976b7e960aa89f1c648e09c59f894dd
+    license: CC-BY-4.0
+    access: "public (chưa tải; config vi_vn)"
+    upstream_splits: unknown
+    eval_split: test
+    content: đọc câu Wikipedia
+    annotation: human
+    official_scorer: none_published
+    speaker_key: unknown
+    session_key: null
+    local: null
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  gigaspeech2_vi:
+    hf_id: speechcolab/gigaspeech2
+    revision: 8dc0d0e502b7e6d5649a13cd4b677cf10c0b21e3
+    license: "Apache-2.0 (metadata HF; audio YouTube có điều khoản riêng)"
+    access: "gated (auto-accept, cần token HF đã đồng ý)"
+    upstream_splits: unknown
+    eval_split: test
+    content: YouTube tự nhiên
+    annotation: human (dev/test)
+    official_scorer: none_published
+    speaker_key: unknown
+    session_key: null
+    local: null
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  bud500:
+    hf_id: linhtran92/viet_bud500
+    revision: 4b30571f395781fddc3a4946fb378648f8572714
+    license: CC-BY-NC-SA-4.0
+    access: "gated (auto-accept)"
+    upstream_splits: unknown
+    eval_split: test
+    content: nhiều domain, clip cắt sát
+    annotation: unknown
+    official_scorer: none_published
+    speaker_key: unknown
+    session_key: null
+    local: null
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  vimd:
+    hf_id: nguyendv02/ViMD_Dataset
+    revision: 3a5b30157034e7eadd5c75fae1a820c6f9383398
+    license: CC-BY-NC-ND-4.0
+    access: "public (chưa tải)"
+    upstream_splits: unknown
+    eval_split: test
+    content: phương ngữ 63 tỉnh
+    annotation: human
+    official_scorer: none_published
+    speaker_key: unknown
+    session_key: null
+    local: null
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
