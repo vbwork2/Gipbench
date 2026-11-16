@@ -1,0 +1,7 @@
+# Tham chiếu chẩn đoán (không bắt buộc): faster-whisper large-v3 int8, ép "vi", beam 5 (= gipbench.infer.asr_hyps).
+system: whisper_large_v3
+engine: faster_whisper
+model: {id: large-v3, revision: "faster-whisper (Systran/faster-whisper-large-v3), revision theo cache local"}
+inference_mode: open_vocab
+decode: {device: auto, compute_type: int8, language: vi, beam_size: 5}
+batch: 1

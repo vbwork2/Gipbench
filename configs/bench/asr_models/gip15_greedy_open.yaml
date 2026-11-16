@@ -1,0 +1,10 @@
+# Gipformer 1.5 gốc, greedy (so cách giải mã; không hotwords).
+system: gip15_greedy_open
+engine: sherpa_transducer
+model: {id: g-group-ai-lab/gipformer1.5-68M-rnnt, revision: dd9227dcd8705c13f33bdbe59728d546ab94480f,
+        dir: "${models_root}/gip15"}
+inference_mode: open_vocab
+decode: {quantize: int8, decoding_method: greedy_search, beam: 4, threads: 16, blank_penalty: 0.0, case: upper}
+# batch 1: kết quả không phụ thuộc câu nào nằm cùng lô. sherpa-onnx giải mã theo lô cho hyp khác nhau khi đổi
+# thành phần lô (đo 16/11/2026: lô 1 vs lô 32 khác 30/140 câu). E0 lịch sử dùng lô 32 theo thứ tự manifest v0-draft.
+batch: 1

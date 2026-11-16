@@ -3,7 +3,7 @@
 Dùng lại đúng logic của gipbench.infer.decode (chọn file int8/fp32, hotwords từ catalog, bpe.vocab) để kết quả trùng
 với E0 / E1 khi cùng tham số: audio đưa vào ở tần số GỐC của file (sherpa-onnx tự resample), trộn về mono.
 
-Config (configs/bench/models/*.yaml):
+Config (configs/bench/asr_models/*.yaml):
   engine: sherpa_transducer
   model: {id, revision, dir}
   decode: {quantize: int8|fp32, decoding_method: modified_beam_search|greedy_search, beam: 4, threads: 16,

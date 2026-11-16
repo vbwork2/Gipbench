@@ -1,0 +1,7 @@
+# Tham chiếu chẩn đoán (không bắt buộc): Qwen3-ASR-0.6B, tự nhận ngôn ngữ, lô 8 (= gipbench.infer.asr_hyps).
+system: qwen3_asr_0.6b
+engine: qwen3_asr
+model: {id: Qwen/Qwen3-ASR-0.6B, revision: "theo cache local"}
+inference_mode: open_vocab
+decode: {device: cuda:0, dtype: bf16, batch_size: 8, max_new_tokens: 256}
+batch: 8

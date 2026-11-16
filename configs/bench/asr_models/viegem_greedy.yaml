@@ -1,0 +1,9 @@
+# VieGem-ASR, CTC greedy (cách giải mã chính của model card). Cài đặt: docs/viegem_integration.md
+system: viegem_greedy
+engine: viegem
+model: {id: 5CD-AI/VieGem-ASR, revision: 95eae70b21fb0ef640e3ac4ea8cfa2380872ed20,
+        dir: "${models_root}/viegem",
+        encoder_dir: "${models_root}/embeddinggemma-2"}   # google/embeddinggemma-2 @ f9972ac22e696a105c482202646979e33e4b5a1e
+inference_mode: open_vocab
+decode: {method: greedy, device: auto, max_chunk_sec: 30}
+batch: 8

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Giải mã một benchmark bằng một model bất kỳ qua adapter (gipbench.infer.adapters) -> hyps.jsonl + run_meta.json.
 
-  python -m gipbench.bench.transcribe --model configs/bench/models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
+  python -m gipbench.bench.transcribe --model configs/bench/asr_models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
       --out results/general_v1_draft/gip15_mbs4_open [--per-dataset 20] [--dry-run]
   python -m gipbench.bench.evaluate --benchmark general_v1_draft --hyps results/general_v1_draft/gip15_mbs4_open/hyps.jsonl
 
@@ -79,7 +79,7 @@ def guard(cfg: dict, bm: dict):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", required=True, help="configs/bench/models/<x>.yaml")
+    ap.add_argument("--model", required=True, help="configs/bench/asr_models/<x>.yaml")
     ap.add_argument("--benchmark", help="tên benchmark trong registry")
     ap.add_argument("--manifest", help="ghi đè manifest")
     ap.add_argument("--out", required=True)

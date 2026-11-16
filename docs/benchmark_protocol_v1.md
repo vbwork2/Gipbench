@@ -86,9 +86,9 @@ export PYTHONPATH=$PWD/src GIPBENCH_DATA=/mnt/d/code/ZAIC/gipbench/data GIPBENCH
 python -m gipbench.bench.registry                                            # kiểm registry
 python -m gipbench.dataset.release.build_general --which general             # dựng G0 (không tải gì)
 python -m gipbench.dataset.release.build_general --which code_switch         # dựng C0
-python -m gipbench.bench.transcribe --model configs/bench/models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
+python -m gipbench.bench.transcribe --model configs/bench/asr_models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
     --out results/general_asr/general_v1_draft/gip15_mbs4_open                # ~/.venvs/gipbench
-python -m gipbench.bench.transcribe --model configs/bench/models/viegem_greedy.yaml --benchmark general_v1_draft \
+python -m gipbench.bench.transcribe --model configs/bench/asr_models/viegem_greedy.yaml --benchmark general_v1_draft \
     --out results/general_asr/general_v1_draft/viegem_greedy                  # ~/.venvs/gipbench-viegem (xem viegem_integration.md)
 python -m gipbench.bench.evaluate --benchmark general_v1_draft \
     --hyps results/general_asr/general_v1_draft/viegem_greedy/hyps.jsonl \
