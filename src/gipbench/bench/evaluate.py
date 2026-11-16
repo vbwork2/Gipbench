@@ -228,7 +228,7 @@ def main(argv=None):
     run_meta_path = Path(args.run_meta) if args.run_meta else Path(args.hyps).parent / "run_meta.json"
     run_meta = json.loads(run_meta_path.read_text(encoding="utf-8")) if run_meta_path.exists() else None
     imode = args.inference_mode or (run_meta or {}).get("inference_mode") or "unknown"
-    if (run_meta or {}).get("context_vocab", {}).get("provenance") == "test_derived" and imode != "oracle_bias":
+    if ((run_meta or {}).get("context_vocab") or {}).get("provenance") == "test_derived" and imode != "oracle_bias":
         errors.append(f"hotwords / từ vựng ngữ cảnh lấy từ test nhưng inference_mode = {imode} (phải là oracle_bias)")
     if bm.get("catalog_from_bench") and imode == "context_bias":
         warnings.append("catalog của benchmark chứa span lấy từ chính test: biasing từ catalog này = oracle_bias")
