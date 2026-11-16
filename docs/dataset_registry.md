@@ -20,6 +20,22 @@ Manifest: `${data_root}/benchmarks/general_v1_draft/manifest.jsonl` (4 400 câu,
 `781fe7a0…`), `${data_root}/benchmarks/code_switch_v1_draft/manifest.jsonl` (658 câu, 1.29 h, `0d722d25…`). Không câu nào
 bị loại; số câu khớp split công bố. `data/` nằm ngoài git; dựng lại bằng `gipbench.dataset.release.build_general`.
 
+C1 (`cs_ggroup_v1_draft`, 1 260 câu, 1.31 h, `764e2295…`): tập con câu G-Group test có từ Anh, **cùng audio** với phần
+G-Group của G0 (1 260 / 1 260 sha256 có trong G0). Lời thoại = nhãn gốc G-Group (`text_orig`); gipbench chỉ thêm tag
+`<en>` theo `configs/dataset/labeling/term_decisions.tsv` (người dùng duyệt 16–17/11/2026; 1 251 câu, `tag_review:
+term_decisions`) và phiếu duyệt từng câu cho thuật ngữ "tuỳ câu" `ai` (9 câu, `tag_review: ok / fix`). Theo domain: tech
+465, edu 346, finance 294, pubadmin 155. Dựng lại:
+
+```bash
+# trong data_root (cây chính); TD = configs/dataset/labeling/term_decisions.tsv của repo
+python -m gipbench.dataset.ingest.ggroup --names tech edu finance pubadmin --out data/raw/ggroup_v1     --catalog data/raw/_proxy/catalog_proxy.tsv --parquet "data/dl/ggroup/{name}.parquet" --term-decisions $TD
+python -m gipbench.dataset.release.build_bench --candidates data/raw/ggroup_v1/b1_candidates.jsonl     --reviews data/raw/ggroup_v1/b1_ai_review_done.csv --accept trusted-text --term-decisions $TD     --pending-out data/benchmarks/cs_ggroup_v1_draft/pending.tsv --catalog-out data/benchmarks/cs_ggroup_v1_draft/catalog_unused.tsv     --out data/benchmarks/cs_ggroup_v1_draft/manifest_built.jsonl --version cs-ggroup-v1-draft
+python -m gipbench.dataset.release.build_general --which cs_ggroup
+```
+
+`catalog_proxy` chỉ dùng để gắn tag ứng viên; C1 chấm **không** catalog (strict, không quy đổi biến thể chính tả), vì
+catalog_proxy được ghép từ bench tạm. Phiếu duyệt câu `ai`: bản sao trong `reports/term_review_ai_2026-11-17.csv`.
+
 ## 2. Chưa dùng (ghi để không bị thay thế âm thầm)
 
 | Khoá | Nguồn | Trở ngại | Cách gỡ |

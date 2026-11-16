@@ -12,6 +12,7 @@ Qwen3-ASR, bản FT…) cho công bằng và tái lập được. Không thay th
 | --- | --- | --- | --- |
 | **G0** General | Nhận dạng tiếng Việt phổ thông (đọc + tự nhiên) tốt tới đâu? | `general_v1_draft`: VIVOS test, Common Voice vi 27 test, 4 bộ G-Group test (4 400 câu, 4.47 h) | active, **draft** |
 | **C0** Code-switching | Từ tiếng Anh trong câu tiếng Việt? | `code_switch_v1_draft`: ViMedCSS hard (658 câu, 1.29 h); B1/B2 ở `v0_draft` | active, **draft** |
+| **C1** Code-switching tự nhiên | Như C0, trên lời nói tự nhiên nhiều domain | `cs_ggroup_v1_draft`: câu G-Group test có từ Anh (1 260 câu, 1.31 h), tag `<en>` theo quyết định thuật ngữ người duyệt | active, **draft** |
 | **R0** Regression | FT có làm hỏng tiếng Việt? | G0 + B5 của `v0_draft`; so cặp với model gốc | dùng G0 + v0 |
 | **Z0** Zero-shot / OOD sau FT | Tổng quát trên người nói / phiên / thuật ngữ không có trong dữ liệu FT? | `zero_shot_v1` | **planned** (chưa có dữ liệu thu mới) |
 | **E0** External | So với số đã công bố theo giao thức của từng bộ | dùng lại G0/C0, báo từng bộ | không bộ nào công bố scorer chính thức (xem registry) |
@@ -34,9 +35,9 @@ cho đúng số lịch sử tới từng chữ số).
 
 | Mode | Được dùng gì lúc decode | Xếp hạng ở |
 | --- | --- | --- |
-| `open_vocab` | không gợi ý gì | G0, C0, Z0 |
-| `lm` | LM train trên text **không** thuộc test (vd LM đi kèm VieGem) | G0, C0, Z0 (báo riêng) |
-| `context_bias` | hotwords từ nguồn ngoài test, khai báo `provenance: external` | C0 (báo riêng) |
+| `open_vocab` | không gợi ý gì | G0, C0, C1, Z0 |
+| `lm` | LM train trên text **không** thuộc test (vd LM đi kèm VieGem) | G0, C0, C1, Z0 (báo riêng) |
+| `context_bias` | hotwords từ nguồn ngoài test, khai báo `provenance: external` | C0, C1 (báo riêng) |
 | `oracle_bias` | hotwords có thông tin từ test (vd catalog v0-draft chứa 1 618 span của chính bench) | **chỉ chẩn đoán**, bị chặn ở G0/Z0 |
 
 `transcribe` chặn trước khi chạy nếu mode không thuộc `allowed_inference_modes` của benchmark, hoặc hotwords lấy từ
@@ -86,6 +87,7 @@ export PYTHONPATH=$PWD/src GIPBENCH_DATA=/mnt/d/code/ZAIC/gipbench/data GIPBENCH
 python -m gipbench.bench.registry                                            # kiểm registry
 python -m gipbench.dataset.release.build_general --which general             # dựng G0 (không tải gì)
 python -m gipbench.dataset.release.build_general --which code_switch         # dựng C0
+python -m gipbench.dataset.release.build_general --which cs_ggroup           # dựng C1 (sau build_bench, xem dataset_registry.md)
 python -m gipbench.bench.transcribe --model configs/bench/asr_models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
     --out results/general_asr/general_v1_draft/gip15_mbs4_open                # ~/.venvs/gipbench
 python -m gipbench.bench.transcribe --model configs/bench/asr_models/viegem_greedy.yaml --benchmark general_v1_draft \

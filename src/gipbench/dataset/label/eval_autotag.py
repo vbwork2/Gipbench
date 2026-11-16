@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 from gipbench.core.tagging import VI_WORD_FILES, auto_tag, load_vi_words
+from gipbench.core.term_decisions import load_term_decisions
 from gipbench.core.textnorm import Catalog
 
 _MARK = re.compile(r"\[\[(.+?)\]\]|\{\{(.+?)\}\}|\(\((.+?)\)\)")
@@ -69,7 +70,7 @@ def merge_adjacent(spans):
     return set(out)
 
 
-def evaluate(rows, cat, merge=True, vi_words=None):
+def evaluate(rows, cat, merge=True, vi_words=None, term_dec=None):
     tp = fp = fp_neutral = fn = 0
     tok_tp = tok_fp = tok_fn = 0
     fns, fps, per = [], [], []
@@ -77,7 +78,7 @@ def evaluate(rows, cat, merge=True, vi_words=None):
         toks = r["text"].split()
         gold_en = {(s, e) for s, e, k in r["spans"] if k == "en"}
         abbr = [(s, e) for s, e, k in r["spans"] if k == "vi_abbr"]
-        pred = set(parse_pred(auto_tag(r["text"], cat, vi_words=vi_words)["text_tagged"]))
+        pred = set(parse_pred(auto_tag(r["text"], cat, vi_words=vi_words, term_dec=term_dec)["text_tagged"]))
         if merge:
             gold_en, pred = merge_adjacent(gold_en), merge_adjacent(pred)
         hit = gold_en & pred
@@ -122,7 +123,10 @@ def main():
     ap.add_argument("--vi-words", nargs="*", default=None,
                     help="danh sách từ không gắn <en> (mặc định configs/dataset/labeling/vi_abbrev.txt + configs/dataset/labeling/vi_loanwords.txt; "
                          "truyền rỗng để tắt)")
+    ap.add_argument("--term-decisions", default=None,
+                    help="quyết định theo thuật ngữ (mặc định configs/dataset/labeling/term_decisions.tsv; truyền '' để tắt)")
     args = ap.parse_args()
+    term_dec = None if args.term_decisions is None else load_term_decisions(args.term_decisions)
     vi_files = VI_WORD_FILES if args.vi_words is None else [Path(p) for p in args.vi_words]
     vi_used = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()[:12] for p in vi_files if p.exists()}
     vi_words = load_vi_words(vi_files)
@@ -149,8 +153,8 @@ def main():
     with_en = [r for r in rows if any(k == "en" for _, _, k in r["spans"])]
     merge = not args.exact_spans
     res = {"merge_adjacent": merge, "vi_words_files": vi_used, "vi_words_count": len(vi_words),
-           "subset_en": evaluate(with_en, cat, merge, vi_words), "all_read": evaluate(rows, cat, merge, vi_words),
-           "subset_en_exact": {k: v for k, v in evaluate(with_en, cat, False, vi_words).items()
+           "subset_en": evaluate(with_en, cat, merge, vi_words, term_dec), "all_read": evaluate(rows, cat, merge, vi_words, term_dec),
+           "subset_en_exact": {k: v for k, v in evaluate(with_en, cat, False, vi_words, term_dec).items()
                                if not k.endswith("_list") and k != "per_utt"},
            "phonetic_spans": sum(k == "phonetic" for r in rows for _, _, k in r["spans"]),
            "phonetic_utts": sum(any(k == "phonetic" for _, _, k in r["spans"]) for r in rows),

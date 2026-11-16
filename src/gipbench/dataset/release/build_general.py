@@ -8,6 +8,10 @@ general     : VIVOS test (prompts.txt), Common Voice vi 27.0 test.tsv, G-Group {
               Lấy MỌI câu của split (không lọc câu có từ Anh, khác converter B1/B5). Text = nhãn gốc của bên phát hành.
 code_switch : ViMedCSS split hard (raw/vimedcss_hard/b3_candidates.jsonl, 658 câu), giữ text_tagged (Spec) và
               text_tagged_orig (nhãn gốc). Câu không còn span <en> vẫn giữ (khác v0-draft đã bỏ 134 câu).
+cs_ggroup   : track C1 = câu G-Group test có từ Anh, tag <en> theo quyết định thuật ngữ người duyệt
+              (configs/dataset/labeling/term_decisions.tsv) + phiếu duyệt từng câu. Đầu vào: manifest do build_bench ghi
+              (benchmarks/cs_ggroup_v1_draft/manifest_built.jsonl, lệnh trong docs/dataset_registry.md). Lời thoại = nhãn
+              gốc G-Group (text_orig), chỉ thêm tag.
 Không tải gì, không sửa dữ liệu gốc: audio được THAM CHIẾU bằng đường dẫn tương đối theo manifest (G-Group: file mp3 do
 converter đã ghi; thiếu thì tách bytes gốc từ parquet vào <out>/audio/). Mỗi dòng có audio_sha256. Ghi build_meta.json:
 số câu so với số câu split công bố, câu bị loại kèm lý do, manifest_sha256 (cùng định nghĩa với gipbench.bench.registry).
@@ -124,6 +128,30 @@ def vimedcss_hard(data: Path, limit: int):
         yield row
 
 
+def cs_ggroup(data: Path, limit: int):
+    import pyarrow.parquet as pq
+    built = data / "benchmarks" / "cs_ggroup_v1_draft" / "manifest_built.jsonl"
+    src = list(read_jsonl(str(built)))
+    orig = {}
+    for name in sorted({r["domain"] for r in src}):
+        t = pq.read_table(data / "dl" / "ggroup" / f"{name}.parquet", columns=["id", "text"]).to_pylist()
+        orig.update({f"gg_{name}_{x['id']}": (x["id"], (x["text"] or "").strip()) for x in t})
+    for n, r in enumerate(src):
+        if limit and n >= limit:
+            break
+        if r.get("split") != "B1" or not r.get("trusted_text"):
+            raise SystemExit(f"{built}: dòng lạ {r['id']} (cần B1, trusted_text)")
+        up, text_orig = orig[r["id"]]
+        name = r["domain"]
+        yield {"id": f"c1_{r['id']}", "_abs": (built.parent / r["audio"]).resolve(), "text_tagged": r["text_tagged"],
+               "text_orig": text_orig, "speaker": f"c1_{r['id']}", "source": f"ggroup:{name}:{up}", "upstream_id": up,
+               "dataset": f"ggroup_{name}", "upstream_split": "test", "domain": name, "region": "unk", "gender": "u",
+               "channel": "wideband", "slice": "spontaneous_cs",
+               # term_decisions = tag theo quyết định thuật ngữ; ok / fix = người duyệt cả câu
+               "tag_review": r.get("review"),
+               "_duration": r.get("duration")}
+
+
 def manifest_sha256(rows) -> str:
     h = hashlib.sha256()
     for r in sorted(rows, key=lambda x: str(x["id"])):
@@ -134,7 +162,7 @@ def manifest_sha256(rows) -> str:
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--which", choices=["general", "code_switch"], required=True)
+    ap.add_argument("--which", choices=["general", "code_switch", "cs_ggroup"], required=True)
     ap.add_argument("--data-root", help="mặc định: data_root của core.paths (env GIPBENCH_DATA)")
     ap.add_argument("--out", help="mặc định: <data_root>/benchmarks/<which>_v1_draft")
     ap.add_argument("--limit", type=int, default=0, help="N câu đầu mỗi bộ (thử nhanh)")
@@ -143,9 +171,13 @@ def main():
     name = f"{args.which}_v1_draft"
     out = Path(args.out or data / "benchmarks" / name)
     out.mkdir(parents=True, exist_ok=True)
-    gen = (list(vivos(data, args.limit)) + list(commonvoice(data, args.limit)) + list(ggroup(data, out, args.limit))
-           if args.which == "general" else list(vimedcss_hard(data, args.limit)))
-    split = "G0" if args.which == "general" else "C0"
+    if args.which == "general":
+        gen = list(vivos(data, args.limit)) + list(commonvoice(data, args.limit)) + list(ggroup(data, out, args.limit))
+    elif args.which == "code_switch":
+        gen = list(vimedcss_hard(data, args.limit))
+    else:
+        gen = list(cs_ggroup(data, args.limit))
+    split = {"general": "G0", "code_switch": "C0", "cs_ggroup": "C1"}[args.which]
     rows, dropped = [], []
     for r in gen:
         p = Path(r.pop("_abs"))
@@ -174,7 +206,7 @@ def main():
     meta = {"name": name, "builder": "gipbench.dataset.release.build_general", "args": vars(args), "git_commit": commit,
             "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "rows": len(rows),
             "hours": round(sum(r["duration"] for r in rows) / 3600, 4),
-            "by_dataset": {k: {"rows": v, "expected": EXPECTED.get(k),
+            "by_dataset": {k: {"rows": v, "expected": None if args.which == "cs_ggroup" else EXPECTED.get(k),
                                "hours": round(sum(r["duration"] for r in rows if r["dataset"] == k) / 3600, 4),
                                "speakers": len({r["speaker"] for r in rows if r["dataset"] == k})}
                            for k, v in sorted(by.items())},
@@ -182,7 +214,7 @@ def main():
     (out / "build_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"{name}: {len(rows)} câu, {meta['hours']:.2f} h, loại {len(dropped)} -> {out}/manifest.jsonl")
     for k, v in meta["by_dataset"].items():
-        flag = "" if args.limit or v["expected"] in (None, v["rows"]) else f"  <-- KHÁC số công bố {v['expected']}"
+        flag = "" if args.limit or args.which == "cs_ggroup" or v["expected"] in (None, v["rows"]) else f"  <-- KHÁC số công bố {v['expected']}"
         print(f"  {k:20s} {v['rows']:5d} câu {v['hours']:.2f} h, {v['speakers']} speaker{flag}")
     print(f"manifest_sha256 {meta['manifest_sha256']}")
 

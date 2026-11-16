@@ -21,7 +21,7 @@ from gipbench.core.manifest import read_jsonl
 from gipbench.core.normprofiles import PROFILES
 
 REG_DIR = P.REPO / "configs" / "bench"
-TRACKS = {"G0", "C0", "Z0", "R0", "E0", "C0+R0"}
+TRACKS = {"G0", "C0", "C1", "Z0", "R0", "E0", "C0+R0"}
 EVIDENCE = {"draft", "human_reviewed", "locked"}
 STATUS = {"active", "planned", "blocked"}
 MODES = {"open_vocab", "lm", "context_bias", "oracle_bias"}

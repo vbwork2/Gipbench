@@ -249,7 +249,7 @@ def main():
         ("c", "học ((ai ten)) với cái [[kit]] này")]) + "\n", encoding="utf-8")  # kit: -t không dấu -> không phải tiếng Việt
     # --vi-words rỗng: số liệu tính tay giả định KHÔNG có danh sách vi_abbrev (configs/dataset/labeling/vi_abbrev.txt có vn từ Phase 0d)
     run(G / "src/gipbench/dataset/label/eval_autotag.py", "--gold", gold, "--catalog", cat, "--out", T / "reports/eval", "--spotcheck", "2",
-        "--vi-words")
+        "--vi-words", "--term-decisions", "")  # không phụ thuộc quyết định thuật ngữ thật (vd người dùng chốt gov = vi)
     ev = json.loads((T / "reports/eval.json").read_text(encoding="utf-8"))
     s = ev["subset_en"]
     assert (s["gold_spans"], s["tp"], ev["phonetic_spans"], ev["vi_abbr_spans"]) == (4, 4, 1, 1), s
@@ -263,10 +263,10 @@ def main():
           "mình", "tiếp", "ăn", "ba"]
     assert not [w for w in not_vi if is_vietnamese_token(w)], [w for w in not_vi if is_vietnamese_token(w)]
     assert all(is_vietnamese_token(w) for w in vi), [w for w in vi if not is_vietnamese_token(w)]
-    assert auto_tag("căn cước công dân gắn chip")["spans"] == ["chip"]  # trước đây lọt vào B5
+    assert auto_tag("căn cước công dân gắn chip", term_dec={})["spans"] == ["chip"]  # trước đây lọt vào B5
     # --- Phase 0b, quy ước theo cách đọc: viết tắt ngắn đoán bằng heuristic -> cờ cho người duyệt
-    assert "abbr_reading:crm" in auto_tag("anh mở cái crm lên nhé")["flags"]
-    assert not any(f.startswith("abbr_reading") for f in auto_tag("anh mở cái kpi lên", cat_obj)["flags"])  # có trong catalog
+    assert "abbr_reading:crm" in auto_tag("anh mở cái crm lên nhé", term_dec={})["flags"]
+    assert not any(f.startswith("abbr_reading") for f in auto_tag("anh mở cái kpi lên", cat_obj, term_dec={})["flags"])  # có trong catalog
     # --- Phase 0b T2: vi_abbrev — nguồn giả -> src/gipbench/dataset/label/wordlists.py -> auto_tag không gắn <en>
     import gzip
     lex = T / "lex"
@@ -296,9 +296,9 @@ def main():
     assert any(l.startswith("#-gas\t") and "google-10000" in l for l in ab_lines)  # trùng từ Anh phổ biến -> loại
     assert any(l.startswith("#-api\t") and "catalog" in l for l in ab_lines)       # trùng catalog -> loại
     assert any(l.startswith("#-pt\t") for l in ab_lines)                           # chữ cái đầu Phú Thọ, trùng 'pt'
-    tg = auto_tag("mua fpt với bidv rồi gửi api", cat_obj, vi_words=ab)
+    tg = auto_tag("mua fpt với bidv rồi gửi api", cat_obj, vi_words=ab, term_dec={})
     assert tg["spans"] == ["api"] and "vi_word:fpt" in tg["flags"], tg               # catalog vẫn thắng danh sách
-    assert auto_tag("mua fpt", cat_obj, vi_words=set())["spans"] == ["fpt"]
+    assert auto_tag("mua fpt", cat_obj, vi_words=set(), term_dec={})["spans"] == ["fpt"]
     # Phase 0d T7: quyết định tay (--project-abbrev): add thắng google-10000 (pt), exclude (shs); catalog vẫn thắng (api)
     proj = T / "vi_abbrev_project.tsv"
     proj.write_text("# chú thích\nabbr\taction\tgroup\tfull\tsource\n"
