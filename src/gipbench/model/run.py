@@ -6,16 +6,19 @@
   python -m gipbench.model.run configs/model/experiments/e3_v1b.yaml --stages 0-6 --dry-run     # chỉ in lệnh
 
 Stage (đầu vào chỉ là release + experiment YAML; không đọc data/raw, không import dataset / bench):
-  0 prepare     chép pool + dev từ release ra <work>/inputs/ (audio tuyệt đối), báo cáo rò rỉ so với leak_guard
-                (<work>/leak_report.md, chỉ báo cáo như `validate || true` cũ), ghi experiment đã phân giải
+  0 prepare     chép pool + dev từ release ra <work>/inputs/ (audio tuyệt đối), CỔNG RÒ RỈ đóng khi lỗi: kiểm MỌI bench khoá
+                (configs/dataset/releases.yaml, flags.locked) hợp với leak_guard so với mọi pool + dev + text; có critical chưa
+                miễn trừ thì thoát mã 3 trước khi curate / train (<work>/leak_report.{json,md}; experiment: leak_gate.*).
+                Catalog có span của bench (from_bench) bị từ chối ngay từ đầu (exit 3) trừ catalog_use: oracle_diagnostic
   1 curate      gipbench.model.recipe.curate -> <work>/train_curated.jsonl
   2 features    tách nhóm theo pools.*.datasets -> <work>/group_<nhóm>.jsonl; to_lhotse từng nhóm (speed perturb, mô phỏng
                 8 kHz) + dev -> <work>/lhotse/
   3 mix         mix_cuts theo trọng số nhóm (ghi đè bằng MIX_* hoặc --set pools.<nhóm>.weight=...)
   4 finetune    icefall finetune_cs.py theo đoạn + watchdog (gipbench.model.train.icefall_runner)
   5 candidates  model gốc + checkpoint mỗi epoch ảo -> export int8 -> decode dev
-  6 select      chọn checkpoint trên dev, WiSE-FT các alpha, chọn lại -> artifact (onnx + model_card.json) + system
-                YAML cho bench (configs/bench/systems/<system>.yaml, không ghi đè file đã có)
+  6 select      chọn checkpoint trên dev, WiSE-FT các alpha, chọn lại -> artifact (onnx + model_card.json + leak_report.*)
+                + system YAML cho bench (configs/bench/systems/<system>.yaml, không ghi đè file đã có). Cần báo cáo cổng
+                rò rỉ của stage 0 (không có hoặc blocking -> thoát mã 3)
 Chấm bench KHÔNG nằm ở đây: python -m gipbench.bench.run --bench <bench release> --system configs/bench/systems/<system>.yaml
 """
 import argparse
@@ -23,6 +26,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +34,7 @@ from pathlib import Path
 import yaml
 
 from gipbench.core import paths
+from gipbench.core import leakgate as LG
 from gipbench.core import release as R
 from gipbench.core.manifest import read_jsonl
 from gipbench.core.paths import REPO
@@ -73,11 +78,16 @@ class Ctx:
         self.rd = X.abspath(o["dev_results"])
         self.artifact = X.abspath(o["artifact"])
         self.cat = R.release_dir(exp["catalog"]) / "catalog.tsv"
-        self.bench = R.release_dir(exp["leak_guard"]) / "manifest.jsonl"
+        self.guard_refs = LG.guard_refs(exp)
+        if not self.guard_refs:
+            sys.exit("LỖI: leak_guard rỗng (cần ít nhất một bench release)")
+        self.bench = R.release_dir(self.guard_refs[0]) / "manifest.jsonl"  # LeakGuard cũ (lọc câu trong to_lhotse): bench đầu tiên
+        self.oracle = X.catalog_use(exp) == "oracle_diagnostic"
         self.inputs = [(ref, self.work / "inputs" / f"{safe(ref)}.jsonl") for ref in X.input_refs(exp)]
         self.dev = {k: self.work / "inputs" / f"dev_{k}.jsonl" for k in ("cs", "vi")}
         self.lhotse = self.work / "lhotse"
         self.egs = self.icefall / "egs" / "librispeech" / "ASR"
+        check_catalogs(self)
 
     def run(self, cmd, cwd=None, env=None, log=None):
         cmd = [str(c) for c in cmd]
@@ -95,10 +105,34 @@ class Ctx:
                     PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
 
 
+def check_catalogs(c):
+    """Catalog (và catalog hotwords của system) có span lấy từ chính bench -> thoát mã 3 (audit R05: cải thiện trên bench khi
+    đó là ghi nhớ). Cố ý dùng làm chẩn đoán: catalog_use: oracle_diagnostic (hoặc system khai báo inference_mode: oracle_bias)."""
+    errs = []
+    uses = [("catalog của experiment", c.exp["catalog"], c.oracle)] + [
+        (f"hotwords của system {s}", ref, c.oracle or declared) for s, ref, declared in X.system_hotword_catalogs(c.exp)]
+    for what, ref, allow in uses:
+        try:
+            R.forbid_bench_catalog(ref, what, allow=allow)
+        except R.ReleaseError as e:
+            if not (c.dry and "chưa có release" in str(e)):  # dry-run trên máy chưa có data/releases: không biết cờ, bỏ qua
+                errs.append(str(e))
+    if errs:
+        print("\n".join(f"LỖI {e}" for e in errs))
+        sys.exit(3)
+
+
 # ------------------------------------------------------------------ stage 0
 def stage_prepare(c):
-    print("== 0. prepare: pool + dev từ release -> inputs/ (audio tuyệt đối), báo cáo rò rỉ")
+    print("== 0. prepare: pool + dev từ release -> inputs/ (audio tuyệt đối), cổng rò rỉ đóng khi lỗi")
     jobs = c.inputs + [(c.exp["dev"][k], c.dev[k]) for k in ("cs", "vi")]
+    try:
+        g = LG.gate_config(c.exp)
+    except ValueError as e:
+        sys.exit(f"LỖI {e}")
+    refs, extra = LG.plan_refs(c.guard_refs, R.locked_bench_refs())
+    print(f"  cổng rò rỉ ({g['mode']}) sẽ kiểm {len(refs)} bench: {', '.join(refs)}"
+          + (f"\n  bench khoá không có trong leak_guard (vẫn được kiểm): {', '.join(extra)}" if extra else ""))
     for ref, out in jobs:
         print(f"  {ref} -> {out}")
         if not c.dry:
@@ -108,11 +142,24 @@ def stage_prepare(c):
     c.work.mkdir(parents=True, exist_ok=True)
     (c.work / "experiment.resolved.yaml").write_text(yaml.safe_dump(dict(c.exp), allow_unicode=True, sort_keys=False),
                                                      encoding="utf-8")
+    res = LG.run_gate(c.exp["name"], c.guard_refs, jobs, mode=g["mode"],
+                      exemptions=str(X.abspath(g["exemptions"])) if g["exemptions"] else None,
+                      reserved_terms=str(X.abspath(g["reserved_terms"])) if g["reserved_terms"] else None,
+                      text_files=[str(X.abspath(f)) for f in g["text_files"]], audio_sha=g["audio_sha"],
+                      require_audio_sha=g["require_audio_sha"], near=g["near"], out_dir=c.work)
+    print(f"  cổng rò rỉ: {'ĐẠT' if res['passed'] else 'KHÔNG ĐẠT'}: {res['critical']} critical, {res['review']} cần xem, "
+          f"{res['exempted']} miễn trừ ({res['sec']} s); audio_sha={res['audio_sha']}")
+    for ref, why in res["unresolved"].items():
+        print(f"    CHƯA KIỂM {ref}: {why}")
+    for ref, b in res["benches"].items():
+        for f in b["findings"]:
+            if f["severity"] == "critical":
+                print(f"    {ref}: {f['kind']} {f['count']} giá trị / {f.get('test_rows', '–')} câu test")
     from gipbench.core.leak import LeakGuard
-    cat = Catalog(str(c.cat))
+    cat = Catalog.load(str(c.cat))  # (bản cũ gọi Catalog(str(...)): truyền đường dẫn vào trường `terms`, stage 0 vỡ khi chạy thật)
     guard = LeakGuard(read_jsonl(str(c.bench)), cat)
-    lines = [f"# Báo cáo rò rỉ: {c.exp['name']} so với {c.exp['leak_guard']}", "",
-             "Chỉ báo cáo (như `validate.py ... || true` của bản shell). to_lhotse (stage 2) loại các câu này khỏi cut.", "",
+    lines = [f"## Bộ lọc câu cũ (LeakGuard) so với {c.guard_refs[0]}", "",
+             "Không phải cổng: to_lhotse (stage 2) loại các câu này khỏi cut.", "",
              "| Đầu vào | Số câu | Rò rỉ | Lý do |", "| --- | --- | --- | --- |"]
     for ref, out in jobs:
         rows = read_jsonl(str(out))
@@ -123,15 +170,22 @@ def stage_prepare(c):
                 why[w] = why.get(w, 0) + 1
         lines.append(f"| {ref} | {len(rows)} | {sum(why.values())} | "
                      f"{', '.join(f'{k}: {v}' for k, v in sorted(why.items(), key=lambda x: -x[1])) or '—'} |")
-    (c.work / "leak_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print("\n".join(lines[4:]))
+    md = c.work / "leak_report.md"
+    md.write_text(md.read_text(encoding="utf-8") + "\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    print("\n".join(lines[5:]))
+    if res["blocking"]:
+        print(f"LỖI cổng rò rỉ: {res['critical']} critical chưa được miễn trừ -> DỪNG trước khi curate / train. "
+              f"Báo cáo: {md}. Sửa dữ liệu (loại câu / video trùng) hoặc miễn trừ có ghi chép (leak_gate.exemptions); "
+              "mode: report chỉ cho chẩn đoán có chủ ý.")
+        sys.exit(3)
 
 
 # ------------------------------------------------------------------ stage 1
 def stage_curate(c):
     print("== 1. curate")
     c.run([c.py, "-m", "gipbench.model.recipe.curate", "--manifest", *[p for _, p in c.inputs], "--catalog", c.cat,
-           "--out", c.work / "train_curated.jsonl", *opt_args(c.exp.get("curate"))])
+           "--out", c.work / "train_curated.jsonl", *(["--allow-bench-catalog"] if c.oracle else []),
+           *opt_args(c.exp.get("curate"))])
 
 
 # ------------------------------------------------------------------ stage 2
@@ -240,14 +294,27 @@ def natural(p):
 
 
 def select(c, cands, out):
+    sel = c.exp.get("select", {})
     c.run([c.py, "-m", "gipbench.model.select.select_ckpt", "--catalog", c.cat, "--dev-cs", c.dev["cs"], "--dev-vi", c.dev["vi"],
-           "--base", c.rd / "base", "--cand", *cands, "--max-vi-delta", c.exp.get("select", {}).get("max_vi_delta", 0.3),
+           "--base", c.rd / "base", "--cand", *cands, "--max-vi-delta", sel.get("max_vi_delta", 0.3),
+           "--rule", sel.get("rule", "term_acc_macro"), "--dev-ref-cs", c.exp["dev"]["cs"], "--dev-ref-vi", c.exp["dev"]["vi"],
+           *(["--allow-legacy-dev"] if sel.get("allow_legacy_dev") else []), *(["--allow-bench-catalog"] if c.oracle else []),
            "--out", out])
     return None if c.dry else json.loads(Path(f"{out}.json").read_text(encoding="utf-8"))
 
 
 def stage_select(c):
     alphas = c.exp.get("select", {}).get("wise_alphas", [0.3, 0.5, 0.7, 1.0])
+    gate = None
+    if not c.dry:  # đóng khi lỗi: artifact chỉ được ghi khi có báo cáo cổng rò rỉ của chính experiment này và không blocking
+        lr = c.work / "leak_report.json"
+        if not lr.exists():
+            print(f"LỖI chưa có báo cáo cổng rò rỉ {lr}: chạy stage 0 trước (artifact phải kèm báo cáo cổng).")
+            sys.exit(3)
+        gate = json.loads(lr.read_text(encoding="utf-8"))
+        if gate["blocking"]:
+            print(f"LỖI báo cáo cổng rò rỉ {lr} còn {gate['critical']} critical chưa miễn trừ: không tạo artifact.")
+            sys.exit(3)
     print(f"== 6. chọn checkpoint trên dev, WiSE-FT alpha {' / '.join(map(str, alphas))} của checkpoint đó, chọn lại")
     cks = sorted(c.rd.glob("ck*"), key=natural) if not c.dry else [c.rd / "ck<N>"]
     r = select(c, cks, c.rd / "select_ckpt")
@@ -281,10 +348,19 @@ def stage_select(c):
             "base_model": {"path": str(c.model), "sha256": onnx_export.sha256(c.model / "model.pt")
                            if (c.model / "model.pt").exists() else None},
             "releases_used": {ref: R.resolve(ref).meta["files"] for ref in
-                              [*X.input_refs(c.exp), c.exp["dev"]["cs"], c.exp["dev"]["vi"], c.exp["catalog"], c.exp["leak_guard"]]},
+                              [*X.input_refs(c.exp), c.exp["dev"]["cs"], c.exp["dev"]["vi"], c.exp["catalog"], *c.guard_refs]},
+            "catalog": {"ref": c.exp["catalog"], "flags": R.catalog_flags(c.exp["catalog"]), "use": X.catalog_use(c.exp)},
+            "select": {"rule": c.exp.get("select", {}).get("rule", "term_acc_macro"), "dev": c.exp["dev"],
+                       "dev_flags": {k: R.resolve(c.exp["dev"][k]).meta.get("flags") or {} for k in ("cs", "vi")}},
+            "leak_gate": LG.card_summary(gate, c.work / "leak_report.json"),
+            "leak_report_sha256": hashlib.sha256((c.work / "leak_report.json").read_bytes()).hexdigest(),
             "checkpoint_picked": final, "wise_from": wck, "dev_metrics": rw["results"].get(final),
             "git_commit": R.git_commit()}
+    if c.oracle:
+        card.update(inference_mode="oracle_bias", rankable=False)
     onnx_export.write_artifact(c.artifact, md, card)
+    for ext in ("json", "md"):
+        shutil.copy(c.work / f"leak_report.{ext}", c.artifact / f"leak_report.{ext}")
     write_systems(c)
 
 
@@ -302,10 +378,13 @@ def write_systems(c):
         if hw:
             dec.update({"hotwords_catalog": hw["catalog"], "hotwords_exclude_b3": bool(hw.get("exclude_b3")),
                         "hotwords_score": hw.get("score", 1.5)})
+        body = {"system": s["system"], "model": art}
+        if c.oracle or s.get("inference_mode") == "oracle_bias":  # catalog có span bench: không được xếp hạng
+            body["inference_mode"] = "oracle_bias"
+        body["decode"] = dec
         p.write_text(f"# Sinh bởi gipbench.model.run ({c.exp['_path']}). Chạy: python -m gipbench.bench.run --bench <bench> "
                      f"--system {p.relative_to(REPO).as_posix()}\n"
-                     + yaml.safe_dump({"system": s["system"], "model": art, "decode": dec}, allow_unicode=True, sort_keys=False),
-                     encoding="utf-8")
+                     + yaml.safe_dump(body, allow_unicode=True, sort_keys=False), encoding="utf-8")
         print(f"  đã ghi {p}")
 
 

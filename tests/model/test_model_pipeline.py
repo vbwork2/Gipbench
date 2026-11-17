@@ -151,8 +151,11 @@ def test_icefall_runner(T):
 
 def test_dry_run():
     print("model.run --dry-run")
+    # e3_v1b dùng catalog/v0-draft (có span bench): từ 17/11/2026 model.run từ chối trừ khi khai báo chẩn đoán oracle
+    # (test ngữ nghĩa từ chối: tests/model/test_gate_run.py); ở đây chỉ kiểm lệnh dry-run sinh ra
     p = subprocess.run([sys.executable, "-m", "gipbench.model.run", str(G / "configs/model/experiments/e3_v1b.yaml"),
-                        "--stages", "0-6", "--dry-run"], capture_output=True, text=True, encoding="utf-8", cwd=G)
+                        "--stages", "0-6", "--dry-run", "--set", "catalog_use=oracle_diagnostic"], capture_output=True, text=True,
+                       encoding="utf-8", cwd=G)
     out = p.stdout
     check("dry-run chạy được", p.returncode == 0, p.stderr[-500:])
     for k in ["--holdout-domain finance", "--max-domain-share 0.5", "--cap-exempt other", "cs_real=", ":0.35",

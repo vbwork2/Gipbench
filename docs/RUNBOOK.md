@@ -21,7 +21,9 @@ python tests/golden/capture.py --layout new --out /tmp/g && python tests/golden/
 | vss_cs (nhãn giả + đồng thuận ASR) | `bash scripts/dataset/vss_cs_pilot.sh`, `python -m gipbench.dataset.pseudolabel.vss_cs_run …`, dựng lại từ cache: `bash scripts/dataset/rebuild_vss_cs.sh --bench … --catalog …` |
 | Hyps ASR (venv ASR) | `~/.venvs/gipbench-asr/bin/python -m gipbench.infer.asr_hyps --engine faster-whisper …` |
 | Distill / confusable | `gipbench.dataset.pseudolabel.distill`, `gipbench.dataset.derive.confusables` |
-| TTS | `gipbench.dataset.synth.{make_text,synth,verify}` (`docs/tts_pipeline.md`) |
+| TTS | `gipbench.dataset.synth.{make_text,synth,verify}` (`docs/tts_pipeline.md`); `make_text` BẮT BUỘC `--reserved-terms` và từ chối catalog `from_bench`; ra thêm `tts_text.txt` cho `leak_gate.text_files` |
+| Thuật ngữ giữ riêng (FT-unseen) | đề xuất: `python -m gipbench.dataset.release.propose_reserved_terms [--fraction 0.5]` -> `configs/dataset/reserved_terms_v1.proposal.txt`; người dùng duyệt / sửa rồi đổi tên thành `reserved_terms_v1.txt` (chốt TRƯỚC khi dựng dữ liệu FT) |
+| Catalog train (không có span bench) | `python -m gipbench.dataset.release.build_train_catalog --source pool/vimedcss_train@full:text_tagged_orig --source pool/vss_cs@e3_v1:text_tagged --reserved-terms configs/dataset/reserved_terms_v1.txt --out data/catalogs/train_v1/catalog.tsv` (`--preview` chỉ in số liệu), rồi thêm `catalog/train-v1` (`flags: {from_bench: false}`) vào `releases.yaml` và `register` |
 | Bench từ phiếu duyệt | `python -m gipbench.dataset.release.build_bench …` |
 | Dev / pool cho FT | `gipbench.dataset.release.{prep_e3_v1,build_dev_cs,make_dev_split}` |
 | Kiểm rò rỉ bench ↔ train | `python -m gipbench.dataset.release.validate --bench … --catalog … --train … --dev …` |
@@ -30,6 +32,8 @@ python tests/golden/capture.py --layout new --out /tmp/g && python tests/golden/
 
 Release đã có (16/11/2026): `catalog/v0-draft`, `bench/v0-draft`, `pool/{vimedcss_train@full, vss_cs@e3_v1,
 vivos_train@e3_v1, cv_train@v1, distill@e3_v1, confusable_train@e3_v1}`, `dev/{dev_cs@e3_v1, dev_vi@e3_v1}`.
+Thêm 17/11/2026: `catalog/vimedcss-v1.0`, `bench/{general-v1.0, code-switch-v1.0, cs-ggroup-v1.0, external-v1.0}` (bench khoá: cổng rò rỉ
+của `model.run` đọc danh sách này từ `releases.yaml`, nên phải `register` trước khi chạy experiment).
 
 ## 2. Model: experiment -> artifact
 
@@ -41,6 +45,11 @@ python -m gipbench.model.run configs/model/experiments/e3_v2.yaml --stages 1-3 -
 MIX_SYNTH=0.35 python -m gipbench.model.run … --stages 3                                      # quét trọng số như trước
 python -m gipbench.model.recipe.mix_plan --mix configs/model/experiments/e3_v2.yaml --manifest … --fit-cap
 ```
+
+Stage 0 là **cổng rò rỉ đóng khi lỗi** (thoát mã 3 nếu còn critical chưa miễn trừ; xem `docs/CONTRACTS.md` §5 khoá `leak_gate`,
+`catalog_use`). Xem riêng cổng, không chạm gì khác: `--stages 0 --set output.work_dir=data/work/model/_probe` rồi đọc
+`<work_dir>/leak_report.md`. Catalog `from_bench` (vd `catalog/v0-draft`) bị từ chối: dùng `catalog/train-v1`, hoặc khai báo
+`catalog_use: oracle_diagnostic` (kết quả không xếp hạng). `e3_v1` / `e3_v1b` / `e3_v2` giữ nguyên làm lịch sử nên bị từ chối.
 
 Thí nghiệm mới = chép một file trong `configs/model/experiments/`, đổi `name`, `output`, rồi sửa tham số. Không chép
 shell. Stage 6 ghi artifact (`output.artifact`) và các system YAML cho bench (`configs/bench/systems/<system>.yaml`).
@@ -79,6 +88,22 @@ python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/<x>.jsonl -
 ```
 
 Benchmark đã khoá (`evidence_level: locked`): đổi câu / nhãn / chuẩn hoá = phiên bản mới, không sửa yaml / manifest cũ.
+
+Phiên bản benchmark v1.1 (draft, 17/11/2026; `docs/datasheet_bench_v1.md` mục 9):
+
+```bash
+python -m gipbench.dataset.release.derive_v1_1 --which code_switch   # C0 + train_video_overlap (lát video chưa thấy)
+python -m gipbench.dataset.release.derive_v1_1 --which external      # E0 + audio_sha256 / duration; chạy lại khi ViMD tải xong
+# E0 khi còn bộ đang tải: giải mã phần đã có audio, sau đó chạy lại với manifest đủ (transcribe resume theo id)
+python -m gipbench.bench.transcribe --model <m>.yaml --benchmark external_v1_1 --manifest <data>/benchmarks/external_v1_1/manifest_with_audio.jsonl --out <dir>
+# Whisper (faster-whisper / ctranslate2, venv gipbench-asr): cần cuBLAS 12 + cuDNN 9 của torch trong venv
+SITE=$(python -c "import site; print(site.getsitepackages()[0])")
+export LD_LIBRARY_PATH=$SITE/nvidia/cublas/lib:$SITE/nvidia/cudnn/lib:$LD_LIBRARY_PATH
+```
+
+VieGem + KenLM (`viegem_lm.yaml`) cần module Python `kenlm` trong venv gipbench-viegem; build từ mã nguồn nên cần
+trình biên dịch: `sudo apt install build-essential cmake` rồi `uv pip install --python ~/.venvs/gipbench-viegem/bin/python kenlm`
+(`pypi-kenlm` không có wheel cho Python 3.11).
 
 ## Đổi hướng thì sửa ở đâu
 

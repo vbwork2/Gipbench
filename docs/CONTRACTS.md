@@ -113,8 +113,15 @@ domain, số câu CS).
 ## 5. Experiment: `configs/model/experiments/<exp>.yaml` (người làm thí nghiệm -> model)
 
 Chạy: `python -m gipbench.model.run <exp>.yaml --stages 0-6 [--set khoá.con=giá_trị] [--dry-run]`. Ví dụ đầy đủ:
-`e3_v1b.yaml`. Khoá bắt buộc: `name`, `base_model`, `catalog` (ref), `leak_guard` (ref bench, chỉ dùng để chặn rò rỉ),
-`dev.{cs,vi}` (ref), `pools`, `output`.
+`e3_v1b.yaml`. Khoá bắt buộc: `name`, `base_model`, `catalog` (ref), `leak_guard` (ref bench hoặc danh sách ref; chỉ dùng để
+chặn rò rỉ), `dev.{cs,vi}` (ref), `pools`, `output`.
+
+**Cổng rò rỉ (stage 0, đóng khi lỗi; 17/11/2026, audit R02 / R03):** `model.run` kiểm MỌI bench khoá trong
+`configs/dataset/releases.yaml` (`flags.locked: true`, hợp với `leak_guard`) với mọi pool + dev + text (TTS / LM) của
+experiment, bằng `core.decontam.audit` (trùng id, nguồn / video chuẩn hoá, mã clip gốc, sha256 audio, text). Có critical
+chưa được miễn trừ thì **thoát mã 3 trước khi curate / train**. Bench khoá không resolve được (chưa `register`) cũng là lỗi.
+Báo cáo `<work_dir>/leak_report.{json,md}`; stage 6 từ chối tạo artifact nếu thiếu báo cáo hoặc còn blocking, rồi chép báo cáo
+vào artifact. Catalog (và catalog hotwords của system) có `flags.from_bench` bị từ chối ở mọi stage (kể cả `--dry-run`).
 
 | Khoá | Ý nghĩa |
 | --- | --- |
@@ -123,10 +130,12 @@ Chạy: `python -m gipbench.model.run <exp>.yaml --stages 0-6 [--set khoá.con=g
 | `features` | `speed_perturb`, `phone_sim` |
 | `mix` | `epochs`, `epoch_hours` (epoch ảo) |
 | `train` | `lr`, `max_duration`, `freeze`, `model_args`, `drop_ctc`, `workers`, `buckets`, `keep_last_k`, `segments_per_epoch`, `watchdog.{disk_path, min_free_disk_gb, min_ram_mb, ram_grace_s, hang_s, poll_s}` |
-| `select` | `max_vi_delta`, `wise_alphas` |
+| `select` | `max_vi_delta`, `wise_alphas`, `rule` (`term_acc_macro` mặc định, hoặc `cs_wer`; đăng ký TRƯỚC khi chạy, ghi vào select.json + model_card), `allow_legacy_dev` (chạy lại dev không có `flags.independent`; mặc định dev như vậy bị từ chối) |
+| `leak_gate` | `mode` (`fail` mặc định, hoặc `report`: chỉ báo cáo, cho chẩn đoán có chủ ý), `exemptions` (yaml `[{kind, value hoặc test_id, reason, approved_by, date}]`; thiếu ghi chép bị từ chối; miễn trừ từng loại, từng giá trị), `reserved_terms` (file thuật ngữ giữ riêng: có trong text train / dev / text thì critical; file rỗng = lỗi), `text_files` (text TTS / LM so với bench), `audio_sha` (`metadata` mặc định: chỉ dùng `audio_sha256` có sẵn, không đọc file; `hash`: đọc file khi thiếu; `skip`), `require_audio_sha` (thiếu hash = critical), `near` (text gần trùng, mặc định tắt) |
+| `catalog_use` | `train` (mặc định), hoặc `oracle_diagnostic`: cố ý dùng catalog có span bench làm chẩn đoán; artifact + system YAML gắn `inference_mode: oracle_bias`, `rankable: false` |
 | `decode_dev` | `threads`, `batch` |
 | `output` | `exp_dir` (checkpoint), `work_dir` (manifest trung gian, lhotse, log), `dev_results`, `artifact`; nhận `${exp_root}` |
-| `systems` | system YAML sinh ở cuối stage 6: `[{system, hotwords?: {catalog, exclude_b3, score}, decode?: {...}}]` |
+| `systems` | system YAML sinh ở cuối stage 6: `[{system, inference_mode?: oracle_bias, hotwords?: {catalog, exclude_b3, score}, decode?: {...}}]`; hotwords từ catalog `from_bench` bắt buộc khai báo `inference_mode: oracle_bias` |
 
 ## 6. Model artifact: `<exp_root>/artifacts/<exp>/` (model -> bench)
 
@@ -138,6 +147,9 @@ model_card.json
 `model_card.json`: `system`, `experiment` (`path`, `overrides`, `sha256`), `base_model` (`path`, `sha256` của
 `model.pt`), `releases_used` (`{ref: files của release.json}`), `checkpoint_picked` (vd `wise_1`, `ck4132`, `base`),
 `wise_from`, `dev_metrics` (dòng của select_wise), `git_commit`, `files` (sha256 từng file onnx), `created`.
+Thêm 17/11/2026: `catalog` (`ref`, `flags`, `use`), `select` (`rule`, `dev`, `dev_flags`), `leak_gate` (`mode`, `passed`, `critical`,
+`exempted`, `benches_checked`, `audio_sha`, `reserved_terms_sha256`, `exemptions_sha256`, `report_sha256`), `leak_report_sha256`;
+`inference_mode: oracle_bias` + `rankable: false` khi `catalog_use: oracle_diagnostic`. Cạnh model card: `leak_report.json` / `.md`.
 
 ## 7. System: `configs/bench/systems/<system>.yaml` (model / người dùng -> bench)
 

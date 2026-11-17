@@ -126,3 +126,18 @@ bản đồ hiện tại: `README.md`, `docs/ARCHITECTURE.md`.
 - Chưa đổi (cần người dùng chốt): bỏ `--agreement-hyps` khỏi curate (lọc đồng thuận thuộc dataset); dựng catalog không
   chứa span của bench; đổi tên `data/raw` -> `data/interim`, `data/dl` -> `data/sources`; giữ hay xoá `ingest/sea.py`;
   giữ `reports/dataset/eda_current/*.csv` trong git hay không.
+
+## 14. Cổng rò rỉ và catalog sạch (17/11/2026, nhánh `fix/scorer-leak-audit`, audit R02 / R03 / R05)
+
+- `model.run` stage 0 là cổng ĐÓNG KHI LỖI (`core.leakgate`): kiểm mọi bench khoá + `leak_guard` với mọi pool / dev / text; critical
+  chưa miễn trừ thì thoát mã 3 trước curate / train. Bench khoá chưa register cũng dừng. Báo cáo đi theo artifact (sha256 trong
+  `model_card.json`). Miễn trừ phải ghi lý do, người duyệt, ngày; miễn từng loại, từng giá trị.
+- Hệ quả đã biết: mọi experiment dùng `pool/vimedcss_train@full` sẽ bị chặn (388 / 658 câu C0 và 1 514 / 1 614 câu E0 ViMedCSS test
+  chung video với pool này). Cần pool `v2` đã loại video có trong bench khoá (TODO 2c), không phải miễn trừ.
+- Catalog có `flags.from_bench` bị từ chối ở `model.run`, `curate`, `select_ckpt`, `make_text`; dùng làm chẩn đoán oracle phải khai báo
+  (`catalog_use: oracle_diagnostic`) và kết quả không được xếp hạng. `e3_v1` / `e3_v1b` / `e3_v2` giữ nguyên làm lịch sử nên bị từ chối.
+- `catalog/train-v1` = thuật ngữ <en> của text train, trừ span của mọi bench khoá và trừ `reserved_terms_v1` (người dùng chốt TRƯỚC khi
+  dựng dữ liệu). `make_text` bắt buộc `--reserved-terms`. Công cụ đề xuất danh sách: `dataset.release.propose_reserved_terms`.
+- `select_ckpt` ghi luật chọn (đăng ký trước, `select.rule`) và từ chối dev không có `flags.independent: true`.
+- Sửa lỗi có sẵn: stage 0 của `model.run` gọi `Catalog(str(path))` thay vì `Catalog.load`, nên vỡ khi chạy thật (refactor 16/11 chỉ
+  kiểm bằng `--dry-run`).

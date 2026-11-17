@@ -35,6 +35,45 @@ Hiệu ứng đo được của strict_v1 so với legacy_v0 trên v0-draft (E0)
 Hồ sơ lenient: CS-WER và term recall lấy theo bảng phonetic (`err_en_len`, `matched_terms_len`), WER tính lại theo cùng
 bảng.
 
+### 2b. Metric thêm từ scorer 1.1.0 (17/11/2026, audit R08 / IP-04)
+
+Chỉ **thêm** trường; định nghĩa và giá trị các metric ở bảng trên không đổi (kiểm: chấm lại 6 kết quả v1 + cặp C1,
+3 013 giá trị cũ gồm CI và Δ cặp khớp tới 1e-9). Cài ở `core.scoring.cs_breakdown`, tỉ lệ ở `core.evalstats.RATIOS`.
+
+| Tên | Định nghĩa | Câu hỏi nó trả lời |
+| --- | --- | --- |
+| `cs_errors` | `S_en`, `D_en` (thay / xoá token span Anh); `I_en_left` (chèn, token ref trái là Anh); `I_en_right_only` (chèn, trái là Việt hoặc đầu câu, phải là Anh); `boundary_ins` (chèn có hai token ref kề bên khác ngôn ngữ). Bất biến: `err_en` = `S_en + D_en + I_en_left + I_en_right_only` | lỗi nằm ở chính từ Anh hay ở ranh giới chuyển ngữ? |
+| `cs_wer_sd` | (`S_en` + `D_en`) / N_en | model có nhận ra đúng từ Anh không, bỏ qua lỗi chèn |
+| `boundary_ins_rate` | `boundary_ins` / N_en | mức lỗi chèn ở ranh giới Việt \| Anh |
+| `vi_only_wer` | lỗi / token ref trên câu **thuần Việt**: không có span `<en>` và không có token ref "giống từ Anh" | FT có làm hỏng tiếng Việt không? |
+| `en_hallucination_per100` | 100 · token hyp "giống từ Anh" không có trong ref / số câu thuần Việt | FT có làm model chèn từ Anh vào câu Việt không? |
+
+"Giống từ Anh" (`core.scoring.en_like`): chỉ gồm chữ Latin không dấu, dài ≥ 2, và **không** phải một âm tiết tiếng Việt
+hợp lệ khi viết không dấu (phụ âm đầu + vần + âm cuối, vd `anh`, `cho`, `ban` là âm tiết Việt; `ok`, `team`, `file` thì
+không). Kiểm trên ref VIVOS: 0 token bị nhận nhầm. Từ Anh trùng chính tả với âm tiết Việt (`the`, `man`, `ai`) bị bỏ sót:
+metric là cận dưới.
+
+Lưu ý khi đọc:
+
+- **Quy ước quy lỗi chèn ảnh hưởng ~10 điểm CS-WER** (audit 2.2). Trên C1: Gipformer `cs_wer` 70.25 / `cs_wer_sd` 56.37 /
+  `I_en_right_only` 328; VieGem 82.39 / 71.56 / 266. Luôn báo `cs_wer` kèm `cs_wer_sd`. So với số của bên ngoài
+  (định nghĩa khác) là không hợp lệ.
+- **Số chính để báo: `cs_wer` theo `text_tagged`** (nhãn chính của benchmark). Đổi `--label-field` (vd `text_tagged_orig`
+  của C0) làm CS-WER đổi ~6 điểm theo hai chiều ngược nhau cho hai model. Final mode chỉ nhận nhãn chính hoặc trường trong
+  `alt_label_fields` của benchmark, và `summary.json` ghi `label_field` + `overrides`.
+- `vi_only_wer` / `en_hallucination_per100` chỉ có nghĩa khi bench có câu thuần Việt: G0 (VIVOS, CV, G-Group không có từ
+  Anh), không có ở C1 (mọi câu đều có span Anh).
+
+### 2c. Provenance trong `summary.json` (scorer 1.1.0, audit R07 / R13 / IP-03)
+
+| Trường | Nội dung |
+| --- | --- |
+| `scorer_code_sha256` | sha256 mã nguồn chấm điểm (`core/{textnorm,normprofiles,align,scoring,evalstats}.py` + `bench/evaluate.py`, đọc bytes, `\r\n` → `\n`). Code chấm đổi thì hash đổi |
+| `profile.code_sha256` | sha256 `normprofiles.py` + `textnorm.py`. `profile.sha256` vẫn chỉ băm spec (không đổi, để bản khoá còn hiệu lực) |
+| `label_field`, `overrides` | trường nhãn đã chấm; mọi giá trị manifest / catalog / hồ sơ / nhãn khác mặc định của benchmark |
+| `baseline_hyps_sha256`, `baseline_hyp_check` | baseline của so cặp được kiểm như hyps chính |
+| `metric_definitions` | định nghĩa các metric ở mục 2b |
+
 ## 3. Vì sao CS-WER strict = lenient trên v0-draft (đã điều tra)
 
 Catalog `data/bench_v0_draft/catalog_v0_draft.tsv` có 1 933 thuật ngữ, **0** dòng có cột `phonetic`, **0** dòng có cột
@@ -46,7 +85,9 @@ Không được lấy từ lỗi của model trên test.
 ## 4. Kiểm hyps
 
 `check_hyps`: id thiếu, id thừa, id trùng (trong hyps và trong manifest), số hyp rỗng. Final mode: lệch bất kỳ → thoát mã 2.
-Diagnostic: hyp thiếu tính là rỗng và ghi cảnh báo (giống score.py).
+Diagnostic: hyp thiếu tính là rỗng và ghi cảnh báo (giống score.py). Từ scorer 1.1.0, `--baseline-hyps` được kiểm y hệt
+(trước đó baseline thiếu câu vẫn chạy: cắt baseline C1 còn 630 / 1 260 câu làm Δ CS-WER đổi từ +12.13 thành −2.57 mà
+vẫn thoát mã 0).
 
 ## 5. Khoảng tin cậy
 
@@ -61,5 +102,6 @@ Diagnostic: hyp thiếu tính là rỗng và ghi cảnh báo (giống score.py).
 
 `tests/core/test_scoring_v1.py` (30 ca: 1 từ Anh → 2 token, chèn ở ranh giới, API / KPI / A.P.I, vitamin, Zalo,
 pull request, code / cốt strict vs lenient, "cốt lõi" không bị đổi thành "code", số, dấu câu, hoà / hòa, span giữ nguyên,
-CER, kiểm hyps, bootstrap, final mode), `tests/core/test_normalization.py` (15 ví dụ + bất biến),
+CER, kiểm hyps, bootstrap, final mode; thêm 1.1.0: phân rã S / D / I span Anh, ranh giới, câu thuần Việt, từ Anh chèn,
+bất biến `err_en`, kiểm baseline, `label_field`, `scorer_code_sha256`), `tests/core/test_normalization.py` (15 ví dụ + bất biến),
 `tests/core/test_leakage.py`, `tests/bench/test_registry.py`, `tests/infer/test_adapters.py`.

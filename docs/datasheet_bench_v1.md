@@ -115,8 +115,15 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
    - model card VieGem-ASR ghi đã train trên Common Voice 17 và ViMedCSS train (đã lọc câu test theo lời họ);
    - model không công bố dữ liệu train (vd Gipformer) thì mức trùng là "unknown".
    Mức trùng của từng bộ với từng model: `configs/datasets.yaml` trong gói, trường `pretraining_overlap`.
-2. **ViMedCSS không tách theo video**: 308 / 658 câu hard đến từ 201 video YouTube có cả trong ViMedCSS train. Model
-   train trên ViMedCSS train đã nghe cùng người nói.
+2. **ViMedCSS không tách theo video, nên C0 và E0 `vimedcss_test` KHÔNG đo tổng quát** cho model đã train trên
+   ViMedCSS train (VieGem, mọi FT dùng ViMedCSS):
+   - C0: **388 / 658 câu (59.0%) đến từ 248 video YouTube có cả trong ViMedCSS train** (đính chính 17/11/2026: bản
+     trước ghi 308 / 201, không tái lập được từ manifest nào; số mới tính bằng khoá nguồn chuẩn hoá
+     `core.decontam.source_key` so với `pool/vimedcss_train@full`);
+   - E0 `vimedcss_test`: **1 514 / 1 614 câu (93.8%)**, 898 / 995 video;
+   - C0 và E0 `vimedcss_test` chung 113 video.
+   Chỉ lát **video chưa thấy** đo được tổng quát: C0 v1.1 `train_video_overlap:False` (270 câu / 156 video), E0 v1.1
+   (100 câu). Kết quả trên lát này: mục 8b.
 3. **VIVOS dùng lại câu đọc** giữa train và test (~194 / 760 câu test có cùng lời với câu train, người đọc khác).
 4. **G-Group không có id người nói**: CI tính theo câu, hẹp hơn thực tế nếu một người nói nhiều câu.
 5. Lời thoại chưa được gipbench duyệt lại; tag `<en>` của gipbench là tự động + quy ước, đang được duyệt.
@@ -130,7 +137,10 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 10. **E0 trùng nguồn train của VieGem** ở FLEURS, CV17, PhoAudiobook, LSVSC, Bud500, GigaSpeech2, ViMD, ViMedCSS
     (model card VieGem liệt kê các bộ này trong dữ liệu train, "đã lọc theo câu test"). VietMed và Speech-MASSIVE không có
     trong danh sách đó. Mức trùng của Gipformer: unknown (không công bố dữ liệu train).
-11. **E0 chưa có kết quả tham chiếu** (chưa chạy model nào trên E0 ở v1.1).
+11. **E0 chưa có kết quả tham chiếu** (17/11/2026: đang chạy Gipformer + VieGem trên E0 v1.1, trừ ViMD đang tải audio).
+12. **Bộ trùng nhau giữa các track**: C1 ⊂ G0 (1 260 câu cùng audio); CV17 test (E0) chứa 1 024 / 1 274 clip của CV27 test
+    (G0), 143 / 146 người nói; C0 ∩ E0 `vimedcss_test` 113 video. Số câu **không trùng** của cả gói là **36 237**
+    (= 4 400 + 658 + 32 203 − 1 024; đính chính: bản trước ghi 37 261, chưa trừ clip CV trùng).
 
 ## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 
@@ -146,6 +156,25 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 
 Đọc kèm mục 7: G-Group (G0, C1) trùng tổ chức với Gipformer; ViMedCSS trùng dữ liệu train với VieGem. Δ ghép cặp
 VieGem − Gipformer trên C1: CS-WER +12.13 [9.24, 14.91], WER +9.73 [8.82, 10.56].
+
+### 8b. C0 tách theo video đã thấy khi train (code_switch v1.1, draft, cùng hyps với mục 8; 17/11/2026)
+
+| Lát C0 | Câu | Gipformer WER / CS-WER / CS-WER S+D / term recall | VieGem WER / CS-WER / CS-WER S+D / term recall |
+| --- | --- | --- | --- |
+| Video có trong ViMedCSS train | 388 | 22.12 / 107.71 / 88.44 / 9.10 | 20.66 / 84.35 / 71.77 / **20.75** |
+| Video chưa thấy khi train | 270 | 21.63 / 105.88 / 87.53 / 10.41 | 21.60 / 84.94 / 77.41 / **10.09** |
+
+Δ ghép cặp VieGem − Gipformer (CI95, bootstrap theo video):
+
+| Lát | WER | CS-WER |
+| --- | --- | --- |
+| Video có trong train | −1.46 [−3.11, −0.14] | −23.36 [−32.06, −12.97] |
+| Video chưa thấy | **−0.03 [−1.26, +1.27]** | −20.94 [−28.61, −11.97] |
+
+Cách đọc: lợi thế WER và term recall của VieGem trên C0 nằm ở video nó đã nghe khi train; trên video chưa thấy, WER
+hai model ngang nhau và term recall của VieGem giảm một nửa (20.75 → 10.09). Lợi thế CS-WER còn lại một phần do VieGem
+học đúng quy ước viết từ Anh của ViMedCSS (đổi bản tag làm CS-WER đổi ~6 điểm theo hai chiều; `docs/evaluation_metrics_v1.md`
+mục 2b), không chỉ do nhận dạng tốt hơn.
 
 ## 9. Phiên bản và bảo trì
 
@@ -163,5 +192,16 @@ VieGem − Gipformer trên C1: CS-WER +12.13 [9.24, 14.91], WER +9.73 [8.82, 10.
 
   C0 khoá cả catalog chấm (`catalog_sha256` `a21c590e…`). manifest_sha256 tính trên mọi trường trừ đường dẫn `audio`,
   nên manifest do `fetch` ghi ra (thêm đường dẫn audio cục bộ) vẫn khớp bản khoá.
+- **Phiên bản benchmark v1.1 (draft, 17/11/2026).** Lưu ý tên: "bench v1.1" ở trên là phiên bản **gói**; `code_switch v1.1`
+  / `external v1.1` là phiên bản **từng benchmark**, sẽ vào gói kế tiếp khi được khoá. Cùng câu, lời thoại, chuẩn hoá với
+  v1.0 (bản khoá v1.0 giữ nguyên); dựng bằng `python -m gipbench.dataset.release.derive_v1_1`.
+
+  | Benchmark | Khác v1.0 | manifest_sha256 lúc dựng | Trạng thái |
+  | --- | --- | --- | --- |
+  | `code_switch_v1_1` | thêm `train_video_overlap`; nhóm báo cáo theo trường này; `alt_label_fields: [text_tagged_orig]` | `3af637ff…` | draft, chờ duyệt khoá |
+  | `external_v1_1` | `audio` + `audio_sha256` + `duration` thật (5 951 sha256 của v1.0 khớp lại sha256 lúc tải); speaker / source ViMedCSS test chuẩn hoá `yt_<ID>` / `youtube:<ID>` + `train_video_overlap`; bootstrap FLEURS theo `sentence_id` | `723d5cac…` (đổi khi ViMD tải xong) | draft: ViMD còn 1 736 câu chưa có audio; khoá cần đủ sha256 (`require_audio_sha`) |
+
+- **Đính chính 17/11/2026** (audit `reports/audits/full_research_audit_vi.md`): số trùng video ViMedCSS 308 / 201 → **388 / 248**;
+  số câu không trùng của gói 37 261 → **36 237**. Không bộ khoá nào bị sửa.
 - License của gói = license của từng bộ nguồn (mục 2); phần phái sinh từ VIVOS phân phối theo CC-BY-NC-SA-4.0.
   Trích dẫn từng bộ nguồn khi dùng.

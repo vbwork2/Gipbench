@@ -15,7 +15,7 @@ E0 chỉ có kết quả của chính bạn: gói không kèm hyps của model g
 
 ## Các bộ trong gói
 
-C1 là tập con của G0 nên số câu không trùng là 37 261 (4 400 + 658 + 32 203). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng.
+Số câu không trùng là 36 237 (4 400 + 658 + 32 203 − 1 024): C1 là tập con của G0, và 1 024 clip CV17 test (E0) cũng có trong CV27 test (G0). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng.
 
 | Track | Bộ | Nguồn | Split | Câu | Giờ | Người nói | License | Lời thoại trong gói | Train VieGem (model card) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -106,7 +106,7 @@ Chạy lại lệnh này cho cả `code_switch_v1` và `cs_ggroup_v1`.
   - Các trường hợp "gần trùng" cần người xem lại trong `leak/<x>/leak_report.md`.
 - **Trùng lặp đã biết sẵn:**
   - VIVOS train và test dùng lại khoảng 194 câu đọc.
-  - ViMedCSS train và hard có chung 201 video.
+  - ViMedCSS train và hard có chung 248 video (388 / 658 câu hard); ViMedCSS train và test chung 898 video (1 514 / 1 614 câu).
   - Nếu bạn FT trên VIVOS train hoặc ViMedCSS train, hãy ghi rõ khi báo số.
 
 ## 4. Chạy model để ra hyps.jsonl

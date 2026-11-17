@@ -10,7 +10,7 @@ và luật quyết định cố định TRƯỚC khi có số, để tránh ch�
 | --- | --- | --- |
 | (i) benchmark đã kiểm, có phiên bản | **CHƯA ĐẠT**: G0 / C0 / v0 đều `draft`; nhãn B1 + B3 chờ người dùng duyệt | `configs/bench/benchmarks/*.yaml` |
 | (ii) dev độc lập với test | **CHƯA ĐẠT**: dev_cs của E3 lấy từ ViMedCSS validation, mà ViMedCSS không tách theo video | `docs/dataset_registry.md` §3 |
-| (iii) báo cáo rò rỉ sạch | **CHƯA ĐẠT**: C0 trùng 201 video với ViMedCSS train; G0 (VIVOS) trùng text 194 câu với VIVOS train | `leak_audit` |
+| (iii) báo cáo rò rỉ sạch | **CHƯA ĐẠT**: C0 trùng 248 video (388 câu) với ViMedCSS train; G0 (VIVOS) trùng text 194 câu với VIVOS train | `leak_audit` |
 | (iv) baseline chạy được | ĐẠT một phần: Gipformer G0 + C0 đã chạy; VieGem xem báo cáo tiến độ | `reports/general_asr_progress_vi.md` |
 | (v) giao thức đánh giá không dùng test | ĐẠT (code): `evaluate --mode final`, inference mode, chặn oracle | `src/gipbench/bench/` |
 | (vi) đủ compute / dữ liệu / license | **CHƯA ĐẠT** cho VieGem (RTX 3050 4 GB); Gipformer: chỉ chạy thử nhỏ | mục 4 |

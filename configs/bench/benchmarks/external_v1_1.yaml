@@ -1,0 +1,45 @@
+# E0 v1.1 (17/11/2026, audit IP-07 / R12 / R20): cùng 32 203 câu, lời thoại, chuẩn hoá với external_v1 (v1.0 khoá, giữ nguyên).
+# Khác v1.0:
+#   * mọi câu có `audio` + `audio_sha256` + `duration` thật (v1.0: 26 252 câu chỉ khoá bằng metadata). 5 951 sha256 của
+#     v1.0 khớp lại sha256 lúc tải. require_audio_sha: khoá chỉ khi ĐỦ sha256 mọi câu (ViMD đang tải: 1 736 câu thiếu).
+#   * ViMedCSS test: speaker = yt_<ID>, source = youtube:<ID> (cùng định dạng ViMedCSS train; giá trị gốc ở
+#     speaker_upstream) + train_video_overlap (1 514 / 1 614 câu từ video có trong ViMedCSS train).
+#   * bootstrap theo từng bộ: FLEURS lặp câu đọc (857 câu / 347 câu gốc) nên đơn vị là sentence_id.
+# Dựng bằng: python -m gipbench.dataset.release.derive_v1_1 --which external   (chạy lại khi ViMD tải xong)
+benchmark_id: external
+version: v1.1
+track: E0
+purpose: >-
+  Đo trên split test chính thức của các bộ công khai khác (FLEURS vi, Common Voice 17 vi, VietMed, LSVSC, ViMD,
+  Speech-MASSIVE vi dev + test, ViMedCSS test, PhoAudiobook, Bud500, GigaSpeech2 vi), lời thoại gốc của bên phát hành,
+  báo theo từng bộ. Nhiều bộ trùng nguồn với dữ liệu train của VieGem (pretraining_overlap). ViMedCSS test: 93.8% câu
+  đến từ video có trong ViMedCSS train, nên chỉ lát train_video_overlap:False (100 câu) đo tổng quát cho model đã train
+  trên ViMedCSS train.
+evidence_level: draft          # chờ ViMD tải xong (require_audio_sha) và duyệt khoá
+status: active
+manifest: ${data_root}/benchmarks/external_v1_1/manifest.jsonl
+manifest_sha256: null          # ghi khi khoá (manifest còn đổi khi ViMD tải xong)
+require_audio_sha: true
+catalog: null
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0]
+primary_metric: wer
+group_by: [dataset, domain, gender, train_video_overlap]   # train_video_overlap chỉ có ở vimedcss_test (bộ khác: unk)
+aggregate: macro_by_dataset
+boot_unit: per_dataset
+boot_units: {default: speaker, fleurs_vi: sentence_id}   # bộ không có id người nói (LSVSC, Bud500...): speaker = id câu
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm]
+sources:
+  - {dataset: fleurs_vi, split: test, slice: read_wiki}
+  - {dataset: cv17_vi, split: test, slice: read_crowd}
+  - {dataset: vietmed, split: test, slice: medical_conversation}
+  - {dataset: lsvsc, split: test, slice: mixed}
+  - {dataset: vimd, split: test, slice: dialect}
+  - {dataset: speech_massive_vi, split: validation, slice: voice_assistant}
+  - {dataset: speech_massive_test_vi, split: test, slice: voice_assistant}
+  - {dataset: vimedcss_test, split: test, slice: medical_cs}
+  - {dataset: phoaudiobook, split: test, slice: audiobook}
+  - {dataset: bud500, split: test, slice: mixed_tight}
+  - {dataset: gigaspeech2_vi, split: test, slice: youtube}

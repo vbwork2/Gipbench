@@ -68,6 +68,24 @@ def input_refs(exp):
     return [r for g in groups(exp) for r in g["refs"]]
 
 
+CATALOG_USES = ("train", "oracle_diagnostic")
+
+
+def catalog_use(exp):
+    """`catalog_use`: train (mặc định; catalog dựng từ text train, không có span của bench) | oracle_diagnostic (cố ý dùng
+    catalog có span bench làm chẩn đoán: artifact + system YAML gắn inference_mode oracle_bias, không được xếp hạng)."""
+    u = exp.get("catalog_use", "train")
+    if u not in CATALOG_USES:
+        raise SystemExit(f"catalog_use phải thuộc {CATALOG_USES}, không phải {u!r}")
+    return u
+
+
+def system_hotword_catalogs(exp):
+    """[(tên system, catalog ref, đã khai báo inference_mode oracle_bias)] của các system có hotwords."""
+    return [(s["system"], (s.get("hotwords") or {})["catalog"], s.get("inference_mode") == "oracle_bias")
+            for s in exp.get("systems", []) if (s.get("hotwords") or {}).get("catalog")]
+
+
 def abspath(p):
     p = Path(os.path.expanduser(str(p)))
     return p if p.is_absolute() else REPO / p

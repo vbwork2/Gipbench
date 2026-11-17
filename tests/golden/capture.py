@@ -52,6 +52,12 @@ def py(layout, step):
     return [sys.executable] + s.split()
 
 
+def bench_catalog_flag(layout):
+    """Golden chạy lại hành vi CŨ trên catalog v0-draft (có span bench). Code mới từ chối catalog đó (17/11/2026, audit R05)
+    trừ khi có --allow-bench-catalog; code cũ không biết cờ này nên chỉ thêm cho layout new."""
+    return ["--allow-bench-catalog"] if layout == "new" else []
+
+
 def run(argv, log):
     t = time.time()
     p = subprocess.run([str(a) for a in argv], cwd=G, capture_output=True, text=True, encoding="utf-8")
@@ -163,7 +169,7 @@ def main():
         print("curate")
         cur.parent.mkdir(parents=True)
         run(py(L, "curate") + ["--manifest", *TRAIN_IN, "--catalog", CATALOG, "--out", cur, "--holdout-domain", "finance",
-                               "--max-domain-share", "0.50", "--cap-exempt", "other"], O / "curate.log")
+                               "--max-domain-share", "0.50", "--cap-exempt", "other", *bench_catalog_flag(L)], O / "curate.log")
     else:
         skipped.append("curate")
     if want("split_groups") and cur.exists():
@@ -186,11 +192,11 @@ def main():
     if want("select_ckpt") and cands and exists(CATALOG, *DEV):
         print("select_ckpt")
         run(py(L, "select_ckpt") + ["--catalog", CATALOG, "--dev-cs", DEV[0], "--dev-vi", DEV[1], "--base", rd / "base",
-                                    "--cand", *cands, "--out", O / "select_ckpt"], O / "select_ckpt.log")
+                                    "--cand", *cands, "--out", O / "select_ckpt", *bench_catalog_flag(L)], O / "select_ckpt.log")
         wise = sorted(p for p in rd.glob("wise_*") if p.is_dir())
         if wise:
             run(py(L, "select_ckpt") + ["--catalog", CATALOG, "--dev-cs", DEV[0], "--dev-vi", DEV[1], "--base",
-                                        rd / "base", "--cand", *wise, "--out", O / "select_wise"], O / "select_wise.log")
+                                        rd / "base", "--cand", *wise, "--out", O / "select_wise", *bench_catalog_flag(L)], O / "select_wise.log")
     else:
         skipped.append("select_ckpt")
     # 6. chuẩn bị dữ liệu E3 v1 (chỉ lấy mẫu theo seed, không đụng audio) + heredoc stage 0

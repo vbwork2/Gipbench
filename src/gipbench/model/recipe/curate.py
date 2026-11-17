@@ -30,6 +30,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from gipbench.core import release as R
 from gipbench.core.agreement_rules import agree
 from gipbench.core.sampling import pick_diverse
 from gipbench.infer.cache import HashIndex, HypLookup
@@ -128,6 +129,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--manifest", nargs="+", required=True)
     ap.add_argument("--catalog")
+    ap.add_argument("--allow-bench-catalog", action="store_true",
+                    help="cho phép catalog có span lấy từ chính bench (from_bench): chỉ để chẩn đoán oracle, kết quả không xếp hạng")
     ap.add_argument("--out", required=True)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--holdout-domain", nargs="*", default=[])
@@ -146,6 +149,12 @@ def main():
     ap.add_argument("--max-synthetic-share", type=float, default=0.5, help="0 = tắt")
     add_block_arg(ap)
     args = ap.parse_args()
+    if args.catalog:  # --max-per-term đếm thuật ngữ theo catalog: catalog có span bench làm lệch chọn dữ liệu (audit R05)
+        try:
+            R.forbid_bench_catalog(args.catalog, "curate", allow=args.allow_bench_catalog)
+        except R.ReleaseError as e:
+            print("LỖI", e)
+            sys.exit(3)
     rnd = random.Random(args.seed)
     cat = Catalog.load(args.catalog)
     rows = [r for m in args.manifest for r in read_jsonl(m)]

@@ -5,6 +5,7 @@ phải gọi các hàm ở đây để bench và chọn checkpoint không lệch
 """
 import json
 import random
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -89,6 +90,65 @@ def score_utt(r, hyp_text, cat, label_field="text_tagged", freq=None):
         rec["hyp_terms" + sfx] = hyp_hits
         rec["false_terms" + sfx] = sum(max(0, c - ref_terms.get(t, 0)) for t, c in hyp_terms.items())
     return rec
+
+
+# --- phân rã CS-WER và giữ tiếng Việt (IP-04; chỉ THÊM trường, không đổi score_utt / agg) ---
+# Âm tiết tiếng Việt viết không dấu (vd 'anh', 'cho', 'con', 'ban'): phụ âm đầu + vần + âm cuối theo luật chính tả.
+# Token ASCII không khớp mẫu này (vd 'ok', 'meeting', 'team', 'code') được coi là "giống từ Anh".
+_VI_INIT = "ngh|ng|nh|ch|gh|gi|kh|ph|qu|th|tr|[bcdghklmnprstvx]"
+_VI_NUC = ("oai|oao|oay|oeo|uay|uoi|uou|uya|uye|uyu|ieu|yeu|ai|ao|au|ay|eo|eu|ia|ie|iu|oa|oe|oi|oo|ua|ue|ui|uo|uu|uy|"
+           "ya|ye|[aeiouy]")
+_VI_SYL = re.compile(rf"(?:{_VI_INIT})?(?:{_VI_NUC})(?:ch|ng|nh|[cmnpt])?")
+_ASCII_WORD = re.compile(r"[a-z]{2,}")
+
+
+def en_like(tok: str) -> bool:
+    """Token chỉ gồm chữ Latin không dấu, dài >= 2, và không phải một âm tiết tiếng Việt hợp lệ khi viết không dấu."""
+    return bool(_ASCII_WORD.fullmatch(tok)) and not _VI_SYL.fullmatch(tok)
+
+
+def cs_breakdown(ops, ref_span, ref_toks, hyp_toks):
+    """Đếm theo câu (cùng ops / span với score_utt nên Σ = err_en):
+    S_en, D_en              : thay / xoá token span Anh;
+    I_en_left               : chèn có token ref bên trái thuộc span Anh;
+    I_en_right_only         : chèn có token ref bên trái là tiếng Việt (hoặc đầu câu), bên phải thuộc span Anh
+                              (luật hiện tại tính cho tiếng Anh; audit 2.2: ~10-16% lỗi EN của C1 là loại này);
+    boundary_ins            : chèn mà token ref trái và phải khác ngôn ngữ (ranh giới chuyển ngữ; thiếu một bên thì không);
+    err_en_sd               : S_en + D_en (CS-WER không tính chèn);
+    utt_vi_only, n_vi_only, err_vi_only: câu thuần Việt = ref không rỗng, không có span Anh VÀ không có token ref nào
+                              `en_like` (bộ không gắn tag như G0 có từ Anh trong ref không tag: câu đó không tính);
+    hyp_latin_extra         : (chỉ câu thuần Việt) số token hyp `en_like` không có trong ref (từ Anh chèn vào câu Việt).
+    """
+    next_ref = [None] * len(ops)
+    nxt = None
+    for k in range(len(ops) - 1, -1, -1):
+        next_ref[k] = nxt
+        if ops[k][1] is not None:
+            nxt = ops[k][1]
+    c = Counter()
+    last_ref = None
+    for k, (t, ri, _) in enumerate(ops):
+        if t != "I":
+            if t in ("S", "D") and ref_span[ri] >= 0:
+                c["S_en" if t == "S" else "D_en"] += 1
+            last_ref = ri
+            continue
+        left = ref_span[last_ref] if last_ref is not None else None
+        right = ref_span[next_ref[k]] if next_ref[k] is not None else None
+        if left is not None and left >= 0:
+            c["I_en_left"] += 1
+        elif right is not None and right >= 0:
+            c["I_en_right_only"] += 1
+        if left is not None and right is not None and (left >= 0) != (right >= 0):
+            c["boundary_ins"] += 1
+    n_en = sum(s >= 0 for s in ref_span)
+    vi_only = n_en == 0 and len(ref_toks) > 0 and not any(en_like(t) for t in ref_toks)
+    rset = set(ref_toks)
+    out = {k: c[k] for k in ("S_en", "D_en", "I_en_left", "I_en_right_only", "boundary_ins")}
+    out.update(err_en_sd=c["S_en"] + c["D_en"], utt_vi_only=int(vi_only), n_vi_only=len(ref_toks) if vi_only else 0,
+               err_vi_only=sum(o[0] != "C" for o in ops) if vi_only else 0,
+               hyp_latin_extra=sum(1 for h in hyp_toks if h not in rset and en_like(h)) if vi_only else 0)
+    return out
 
 
 def term_weights(recs):

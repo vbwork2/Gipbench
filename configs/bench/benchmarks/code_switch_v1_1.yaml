@@ -1,0 +1,31 @@
+# C0 v1.1 (17/11/2026, audit IP-07 / R04): cùng 658 câu, nhãn, chuẩn hoá với code_switch_v1 (v1.0 khoá, giữ nguyên).
+# Thêm trường `train_video_overlap`: câu đến từ video YouTube có trong ViMedCSS train (388 câu / 248 video).
+# Lát `train_video_overlap:False` (270 câu / 156 video) là lát DUY NHẤT của C0 đo được tổng quát cho model đã train
+# trên ViMedCSS train (VieGem, mọi FT của dự án). Số overall của C0 với các model đó là in-domain.
+# Dựng bằng: python -m gipbench.dataset.release.derive_v1_1 --which code_switch
+benchmark_id: code_switch
+version: v1.1
+track: C0
+purpose: >-
+  Đo từ tiếng Anh trong câu tiếng Việt (CS-WER strict, term recall, span accuracy) trên ViMedCSS split hard, báo riêng
+  lát video chưa có trong ViMedCSS train. VieGem-ASR đã train trên ViMedCSS train (cùng bộ) nên số overall KHÔNG phải
+  zero-shot với VieGem; đọc lát train_video_overlap:False.
+evidence_level: draft          # chờ duyệt khoá; câu / nhãn giống hệt v1.0, chỉ thêm trường đánh dấu
+status: active
+manifest: ${data_root}/benchmarks/code_switch_v1_1/manifest.jsonl
+manifest_sha256: 3af637ffa603b0259268c98ec4432ff56d23d16f014cc575d90a347199d079ba   # sha lúc dựng (chưa khoá)
+catalog: ${data_root}/raw/vimedcss_hard/catalog_vimedcss.tsv
+catalog_sha256: a21c590e064dc3799961c6e58fdbf43ae3eb1a1b4daa56a5803dfe35088589f5
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0, gipbench_lenient_diagnostic_v1]
+primary_metric: cs_wer
+primary_label_field: text_tagged
+alt_label_fields: [text_tagged_orig]   # tag gốc ViMedCSS: chỉ để đo độ nhạy quy ước (audit 2.2), không phải số chính
+group_by: [dataset, train_video_overlap, topic]
+aggregate: none
+boot_unit: speaker             # = video YouTube
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm, context_bias]
+sources:
+  - {dataset: vimedcss, split: hard, slice: medical_cs}

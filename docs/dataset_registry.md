@@ -58,8 +58,10 @@ catalog_proxy được ghép từ bench tạm. Phiếu duyệt câu `ai`: bản 
 
 ## 3. Phát hiện cần biết khi đọc kết quả
 
-1. **ViMedCSS không tách theo video.** 308 / 658 câu hard đến từ 201 video YouTube **có cả trong ViMedCSS train**
-   (leak_audit so với `data/e3_v1b/train_curated.jsonl`). Mọi model đã train trên ViMedCSS train (VieGem, E3) đã nghe
+1. **ViMedCSS không tách theo video.** 388 / 658 câu hard đến từ 248 video YouTube **có cả trong ViMedCSS train**
+   (đính chính 17/11/2026: so với `pool/vimedcss_train@full` bằng khoá nguồn chuẩn hoá; bản trước ghi 308 / 201 theo
+   `data/e3_v1b/train_curated.jsonl`, không tái lập được). E0 `vimedcss_test`: 1 514 / 1 614 câu. Lát video chưa thấy:
+   `code_switch_v1_1` nhóm `train_video_overlap:False` (270 câu). Mọi model đã train trên ViMedCSS train (VieGem, E3) đã nghe
    cùng người nói / cùng video. C0 trên ViMedCSS vì vậy không phải đo tổng quát sang người nói mới.
 2. **VIVOS dùng lại câu đọc giữa train và test.** Khoảng 194 / 760 câu test có cùng text (sau chuẩn hoá) với câu VIVOS
    train (người đọc khác). Model FT trên VIVOS train (E3) có lợi thế về text ở các câu này. Common Voice: 3 câu.

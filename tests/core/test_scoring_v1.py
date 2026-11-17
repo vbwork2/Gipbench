@@ -134,8 +134,91 @@ def main():
     s = E.main(["--manifest", str(man), "--hyps", str(hy), "--mode", "final", "--allow-draft", "--inference-mode",
                 "open_vocab", "--iters", "50"])
     check("evaluate final: đủ hyps -> chạy, WER 0", s["profiles"]["gipbench_strict_v1"]["overall"]["wer"] == 0)
+    provenance_and_baseline(E, d, man, hy)
+    cs_breakdown_cases()
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")
     sys.exit(1 if FAIL else 0)
+
+
+def bd(ref, hyp, prof="gipbench_strict_v1"):
+    """Phân rã CS-WER của một câu (core.scoring.cs_breakdown) kèm bản ghi score_utt cùng hồ sơ."""
+    from gipbench.core.align import align
+    from gipbench.core.scoring import cs_breakdown
+    p = get_profile(prof)
+    rt = normalize_ref(p.pre(ref), Catalog(), "strict")[0]
+    ht = normalize_hyp(p.pre(hyp), Catalog(), "strict")
+    ref_t, sp = [t.tok for t in rt], [t.span for t in rt]
+    return cs_breakdown(align(ref_t, ht), sp, ref_t, ht), utt(ref, hyp, prof, Catalog())
+
+
+def cs_breakdown_cases():
+    # audit 2.2 / IP-04: tách S / D / I của lỗi span Anh, lỗi ở ranh giới, giữ tiếng Việt, chèn từ Anh vào câu Việt
+    # căn chỉnh đặt 'mít' là chèn TRƯỚC 'meeting'->'tinh' (khi bằng điểm): chèn chỉ kề phải, ở ranh giới Việt | Anh
+    b, r = bd("họp <en>meeting</en> nhé", "họp mít tinh nhé")
+    check("meeting -> mít tinh: S_en 1 + I_en_right_only 1 (ranh giới), cs_wer_sd chỉ tính S",
+          (b["S_en"], b["D_en"], b["I_en_left"], b["I_en_right_only"], b["boundary_ins"], b["err_en_sd"])
+          == (1, 0, 0, 1, 1, 1), b)
+    b, r = bd("<en>meeting</en> nhé", "mít tinh nhé")
+    check("span Anh đầu câu, chèn sau phép thay: I_en_left", b["I_en_left"] + b["I_en_right_only"] == 1 and b["S_en"] == 1, b)
+    b, r = bd("tôi <en>deploy</en>", "tôi à deploy")
+    check("chèn giữa token Việt (trái) và token Anh (phải): I_en_right_only + boundary_ins",
+          b["I_en_right_only"] == 1 and b["boundary_ins"] == 1 and b["err_en_sd"] == 0, b)
+    b, r = bd("<en>deploy</en> <en>server</en>", "deploy à server")
+    check("chèn giữa hai span Anh: không phải ranh giới chuyển ngữ", b["boundary_ins"] == 0 and b["I_en_left"] == 1, b)
+    b, r = bd("xin chào bạn", "ok xin chào bạn")
+    check("câu thuần Việt, hyp có 'ok' thừa: hyp_latin_extra 1, vi_only err 1 / 3",
+          (b["utt_vi_only"], b["hyp_latin_extra"], b["err_vi_only"], b["n_vi_only"]) == (1, 1, 1, 3), b)
+    b, r = bd("xin chào bạn", "xin chào cho bạn")
+    check("âm tiết Việt không dấu ('cho') không tính là từ Anh chèn", b["hyp_latin_extra"] == 0 and b["err_vi_only"] == 1, b)
+    b, r = bd("anh ấy họp", "anh ấy meeting team")
+    check("'meeting', 'team' (không phải âm tiết Việt) tính là từ Anh chèn", b["hyp_latin_extra"] == 2, b)
+    b, r = bd("gửi file cho anh", "gửi file ok cho anh")
+    check("ref không tag nhưng có từ Anh ('file'): không phải câu thuần Việt", b["utt_vi_only"] == 0 and b["hyp_latin_extra"] == 0, b)
+    b, r = bd("họp <en>meeting</en> nhé", "họp meeting ok nhé")
+    check("câu có span Anh: không tính vi_only / hyp_latin_extra", b["utt_vi_only"] == 0 and b["hyp_latin_extra"] == 0
+          and b["n_vi_only"] == 0, b)
+    for ref, hyp in [("họp <en>meeting</en> nhé", "họp mít tinh nhé"), ("tôi <en>deploy</en> nhé", "tôi đi ploy nhé"),
+                     ("<en>pull request</en> này của <en>team</en> mình", "bun ri quét này team"),
+                     ("a <en>b c</en> d", ""), ("", "x y"), ("xin <en>chào</en>", "xin chào chào chào")]:
+        b, r = bd(ref, hyp)
+        check(f"bất biến err_en = S_en + D_en + I_en_left + I_en_right_only ({ref!r} / {hyp!r})",
+              r["err_en"] == b["S_en"] + b["D_en"] + b["I_en_left"] + b["I_en_right_only"], (r, b))
+
+
+def provenance_and_baseline(E, d, man, hy):
+    # IP-03: baseline hyps phải được kiểm như hyps chính (audit: cắt baseline còn 1/2 -> Δ đảo dấu mà vẫn thoát 0)
+    base = d / "base" / "hyps.jsonl"
+    base.parent.mkdir()
+    base.write_text("".join(json.dumps({"id": f"u{i}", "hyp": "xin chào"}) + "\n" for i in range(3)), encoding="utf-8")
+    try:
+        E.main(["--manifest", str(man), "--hyps", str(hy), "--mode", "final", "--allow-draft", "--inference-mode",
+                "open_vocab", "--iters", "20", "--baseline-hyps", str(base), "--out", str(d / "o1")])
+        check("evaluate final: baseline thiếu id -> thoát mã 2", False, "không thoát")
+    except SystemExit as e:
+        check("evaluate final: baseline thiếu id -> thoát mã 2", e.code == 2, e.code)
+    s = E.main(["--manifest", str(man), "--hyps", str(hy), "--iters", "20", "--baseline-hyps", str(base), "--out", str(d / "o2")])
+    check("evaluate diagnostic: baseline thiếu id -> cảnh báo + baseline_hyp_check",
+          s["baseline_hyp_check"]["missing"] == 3 and any("baseline" in w for w in s["warnings"]), s.get("baseline_hyp_check"))
+    check("summary: baseline_hyps_sha256", len(s.get("baseline_hyps_sha256") or "") == 64)
+    # provenance: label_field, overrides, scorer_code_sha256 ổn định
+    s2 = E.main(["--manifest", str(man), "--hyps", str(hy), "--iters", "20", "--out", str(d / "o3")])
+    check("summary: label_field", s2.get("label_field") == "text_tagged", s2.get("label_field"))
+    check("summary: scorer_code_sha256 (64 hex) ổn định giữa hai lần chạy",
+          len(s2.get("scorer_code_sha256") or "") == 64 and s2["scorer_code_sha256"] == s["scorer_code_sha256"])
+    check("summary: profile.code_sha256", len(s2["profile"].get("code_sha256") or "") == 64)
+    check("summary: overrides ghi manifest khi chấm ngoài registry", "manifest" in (s2.get("overrides") or {}), s2.get("overrides"))
+    ov = s2["profiles"]["gipbench_strict_v1"]["overall"]
+    check("summary: có metric mới cs_wer_sd / boundary_ins_rate / vi_only_wer / en_hallucination_per100 / cs_errors",
+          all(k in ov for k in ("cs_wer_sd", "boundary_ins_rate", "vi_only_wer", "en_hallucination_per100", "cs_errors")), list(ov))
+    s3 = E.main(["--manifest", str(man), "--hyps", str(hy), "--iters", "20", "--label-field", "text", "--out", str(d / "o4")])
+    check("summary: --label-field khác mặc định ghi vào overrides",
+          s3["label_field"] == "text" and s3["overrides"].get("label_field") == "text", s3.get("overrides"))
+    try:
+        E.main(["--manifest", str(man), "--hyps", str(hy), "--mode", "final", "--allow-draft", "--inference-mode",
+                "open_vocab", "--iters", "20", "--label-field", "text_tagged_orig", "--out", str(d / "o5")])
+        check("evaluate final: label_field không khai báo trong benchmark -> thoát mã 2", False, "không thoát")
+    except SystemExit as e:
+        check("evaluate final: label_field không khai báo trong benchmark -> thoát mã 2", e.code == 2, e.code)
 
 
 if __name__ == "__main__":

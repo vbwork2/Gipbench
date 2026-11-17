@@ -1,0 +1,825 @@
+# ĐỀ XUẤT reserved_terms_v1 (CHƯA CHỐT). Xem docs: tool dataset.release.propose_reserved_terms.
+# bench: bench/general-v1.0, bench/code-switch-v1.0, bench/cs-ggroup-v1.0, bench/external-v1.0
+# pool / dev đã kiểm: pool/vimedcss_train@full, pool/vss_cs@e3_v1, pool/vivos_train@e3_v1, pool/cv_train@v1, pool/distill@e3_v1, pool/confusable_train@e3_v1, dev/dev_cs@e3_v1, dev/dev_vi@e3_v1
+# fraction 0.5, salt reserved-terms-v1; {"bench_terms": 2476, "seen_in_pools": 843, "candidates": 1633, "reserved": 820, "by_domain": {"edu": {"candidates": 305, "reserved": 150}, "finance": {"candidates": 282, "reserved": 143}, "medical": {"candidates": 447, "reserved": 217}, "pubadmin": {"candidates": 75, "reserved": 39}, "tech": {"candidates": 524, "reserved": 271}}}
+# Sửa tay được (thêm / bớt dòng), rồi đổi tên thành reserved_terms_v1.txt. Cột 2+ chỉ là chú thích.
+a s	bench/cs-ggroup-v1.0; finance; 1 span
+aabl	bench/cs-ggroup-v1.0; finance; 1 span
+ac	bench/cs-ggroup-v1.0; tech; 2 span
+access rights	bench/cs-ggroup-v1.0; tech; 1 span
+account	bench/cs-ggroup-v1.0; tech; 2 span
+accounting	bench/cs-ggroup-v1.0; edu; 1 span
+accounting and finance	bench/cs-ggroup-v1.0; edu; 1 span
+acetylsalicylic	bench/code-switch-v1.0; medical; 1 span
+act	bench/cs-ggroup-v1.0; edu; 2 span
+action undo	bench/cs-ggroup-v1.0; tech; 1 span
+activator or upa and its receptor upar	bench/code-switch-v1.0; medical; 1 span
+actuary	bench/cs-ggroup-v1.0; edu; 1 span
+ada	bench/cs-ggroup-v1.0; finance; 2 span
+adapt	bench/cs-ggroup-v1.0; edu; 1 span
+add data this data module	bench/cs-ggroup-v1.0; tech; 1 span
+adult basic education	bench/cs-ggroup-v1.0; edu; 1 span
+aeh	bench/cs-ggroup-v1.0; edu; 1 span
+agen	bench/cs-ggroup-v1.0; finance; 1 span
+ai all in one	bench/cs-ggroup-v1.0; tech; 1 span
+air speedy	bench/cs-ggroup-v1.0; tech; 1 span
+aka	bench/cs-ggroup-v1.0; tech; 2 span
+akam	bench/cs-ggroup-v1.0; finance; 1 span
+aldehyde	bench/code-switch-v1.0; medical; 1 span
+aldosteron	bench/code-switch-v1.0; medical; 1 span
+alginic	bench/code-switch-v1.0; medical; 1 span
+align center center left	bench/cs-ggroup-v1.0; tech; 1 span
+alkp	bench/code-switch-v1.0; medical; 1 span
+all in	bench/cs-ggroup-v1.0; finance; 1 span
+altcoin	bench/cs-ggroup-v1.0; finance; 2 span
+amatoxin	bench/code-switch-v1.0; medical; 1 span
+amibroker	bench/cs-ggroup-v1.0; finance; 1 span
+amit	bench/cs-ggroup-v1.0; tech; 1 span
+ampicillin	bench/code-switch-v1.0; medical; 1 span
+amylaza men	bench/code-switch-v1.0; medical; 1 span
+analysis is ideal for solid semi solid and liquid samples	bench/code-switch-v1.0; medical; 1 span
+analyst	bench/cs-ggroup-v1.0; tech; 1 span
+anbar	bench/cs-ggroup-v1.0; edu; 1 span
+anchoring the past	bench/cs-ggroup-v1.0; finance; 1 span
+application	bench/cs-ggroup-v1.0; edu; 1 span
+apply	bench/cs-ggroup-v1.0; edu; 5 span
+arab telora	bench/cs-ggroup-v1.0; tech; 1 span
+arabinose	bench/code-switch-v1.0; medical; 1 span
+arbitrage	bench/cs-ggroup-v1.0; finance; 1 span
+archimedes	bench/cs-ggroup-v1.0; edu; 1 span
+asean	bench/cs-ggroup-v1.0; pubadmin; 1 span
+asherman	bench/code-switch-v1.0; medical; 1 span
+asset action	bench/cs-ggroup-v1.0; tech; 1 span
+assign total supply	bench/cs-ggroup-v1.0; tech; 1 span
+associate apply silence	bench/cs-ggroup-v1.0; edu; 1 span
+astragalus	bench/code-switch-v1.0; medical; 1 span
+atoi	bench/cs-ggroup-v1.0; tech; 1 span
+atomic	bench/cs-ggroup-v1.0; tech; 1 span
+australia	bench/cs-ggroup-v1.0; edu; 1 span
+autoburn	bench/cs-ggroup-v1.0; tech; 1 span
+available international students	bench/cs-ggroup-v1.0; edu; 1 span
+azelaic	bench/code-switch-v1.0; medical; 1 span
+bachelor	bench/cs-ggroup-v1.0; edu; 6 span
+bachmann	bench/code-switch-v1.0; medical; 2 span
+back history	bench/cs-ggroup-v1.0; tech; 1 span
+ballet	bench/code-switch-v1.0; medical; 1 span
+bamberger	bench/code-switch-v1.0; medical; 1 span
+barbital	bench/code-switch-v1.0; medical; 2 span
+barista	bench/cs-ggroup-v1.0; edu; 1 span
+bart	bench/code-switch-v1.0; medical; 1 span
+barthel	bench/code-switch-v1.0; medical; 1 span
+bci one	bench/cs-ggroup-v1.0; finance; 1 span
+beck	bench/code-switch-v1.0; medical; 1 span
+benjamin graham	bench/cs-ggroup-v1.0; finance; 1 span
+betaloc	bench/code-switch-v1.0; medical; 1 span
+betaloc zok	bench/code-switch-v1.0; medical; 2 span
+biliverdin	bench/code-switch-v1.0; medical; 2 span
+binance binance labs	bench/cs-ggroup-v1.0; finance; 1 span
+binance swap	bench/cs-ggroup-v1.0; finance; 1 span
+bing	bench/cs-ggroup-v1.0; tech; 1 span
+biocubafarma	bench/code-switch-v1.0; medical; 1 span
+birthday	bench/cs-ggroup-v1.0; tech; 1 span
+bja	bench/cs-ggroup-v1.0; pubadmin; 1 span
+bkav	bench/cs-ggroup-v1.0; pubadmin; 1 span
+bla bla	bench/cs-ggroup-v1.0; edu; 1 span
+blockchain platform	bench/cs-ggroup-v1.0; tech; 1 span
+blockfolio	bench/cs-ggroup-v1.0; finance; 1 span
+body can	bench/cs-ggroup-v1.0; tech; 1 span
+bollinger band	bench/cs-ggroup-v1.0; finance; 1 span
+bookworm vnu ulis	bench/cs-ggroup-v1.0; edu; 1 span
+bou edit vietroperty	bench/cs-ggroup-v1.0; tech; 1 span
+brca	bench/code-switch-v1.0; medical; 2 span
+brenner	bench/code-switch-v1.0; medical; 2 span
+browser	bench/cs-ggroup-v1.0; tech; 1 span
+bullish	bench/cs-ggroup-v1.0; finance; 1 span
+business case	bench/cs-ggroup-v1.0; finance; 1 span
+business license	bench/cs-ggroup-v1.0; pubadmin; 2 span
+button mod	bench/cs-ggroup-v1.0; tech; 1 span
+cafef	bench/cs-ggroup-v1.0; finance; 1 span
+calcitonin	bench/code-switch-v1.0; medical; 3 span
+call margin call force sell	bench/cs-ggroup-v1.0; finance; 1 span
+calorimeter digital phoehenix	bench/cs-ggroup-v1.0; tech; 1 span
+cambridge	bench/cs-ggroup-v1.0; edu; 1 span
+campus housing	bench/cs-ggroup-v1.0; edu; 1 span
+canadian citizen	bench/cs-ggroup-v1.0; edu; 1 span
+canslim	bench/cs-ggroup-v1.0; finance; 2 span
+capcha	bench/cs-ggroup-v1.0; pubadmin; 1 span
+capsid	bench/code-switch-v1.0; medical; 1 span
+capsome	bench/code-switch-v1.0; medical; 1 span
+carbonat	bench/external-v1.0; medical; 1 span
+carboxylic	bench/code-switch-v1.0; medical; 2 span
+casa	bench/cs-ggroup-v1.0; finance; 1 span
+casena	bench/cs-ggroup-v1.0; pubadmin; 1 span
+casser	bench/code-switch-v1.0; medical; 2 span
+castellani	bench/code-switch-v1.0; medical; 1 span
+cbi	bench/cs-ggroup-v1.0; finance; 1 span
+ceftriaxone	bench/code-switch-v1.0; medical; 1 span
+celo	bench/cs-ggroup-v1.0; finance; 1 span
+certifr	bench/cs-ggroup-v1.0; edu; 1 span
+cetyl	bench/code-switch-v1.0; medical; 1 span
+cfa	bench/cs-ggroup-v1.0; finance; 2 span
+cfo	bench/cs-ggroup-v1.0; finance; 1 span
+char	bench/cs-ggroup-v1.0; tech; 1 span
+check out	bench/cs-ggroup-v1.0; tech; 1 span
+check security	bench/cs-ggroup-v1.0; tech; 1 span
+chevening	bench/cs-ggroup-v1.0; edu; 1 span
+chlamidia	bench/code-switch-v1.0; medical; 1 span
+chlorua	bench/code-switch-v1.0; medical; 1 span
+cholic	bench/code-switch-v1.0; medical; 1 span
+chrome	bench/cs-ggroup-v1.0; tech; 1 span
+citizenship	bench/cs-ggroup-v1.0; edu; 1 span
+classic world championship	bench/cs-ggroup-v1.0; finance; 1 span
+claude	bench/code-switch-v1.0+bench/cs-ggroup-v1.0; medical; 2 span
+client side	bench/cs-ggroup-v1.0; tech; 1 span
+close	bench/cs-ggroup-v1.0; tech; 1 span
+cloud hub	bench/cs-ggroup-v1.0; tech; 1 span
+cloudflare user name	bench/cs-ggroup-v1.0; tech; 1 span
+clowd	bench/cs-ggroup-v1.0; tech; 1 span
+coin gecko	bench/cs-ggroup-v1.0; finance; 1 span
+college compus	bench/cs-ggroup-v1.0; edu; 1 span
+colum	bench/cs-ggroup-v1.0; tech; 1 span
+combine	bench/cs-ggroup-v1.0; tech; 1 span
+comment ireland	bench/cs-ggroup-v1.0; edu; 1 span
+commerce	bench/cs-ggroup-v1.0; tech; 1 span
+commercial property	bench/cs-ggroup-v1.0; finance; 1 span
+community plugin	bench/cs-ggroup-v1.0; tech; 1 span
+complete	bench/cs-ggroup-v1.0; tech; 1 span
+complete sentences	bench/cs-ggroup-v1.0; edu; 1 span
+computer science data science	bench/cs-ggroup-v1.0; edu; 1 span
+condylom	bench/code-switch-v1.0; medical; 1 span
+contest	bench/cs-ggroup-v1.0; tech; 1 span
+continue	bench/cs-ggroup-v1.0; edu; 2 span
+corticotropin	bench/code-switch-v1.0; medical; 1 span
+coss of attendance	bench/cs-ggroup-v1.0; edu; 1 span
+coupon	bench/cs-ggroup-v1.0; finance; 2 span
+course exam	bench/cs-ggroup-v1.0; edu; 1 span
+coursework	bench/cs-ggroup-v1.0; edu; 1 span
+cover call	bench/cs-ggroup-v1.0; finance; 1 span
+cpo	bench/cs-ggroup-v1.0; tech; 1 span
+crawler	bench/cs-ggroup-v1.0; tech; 1 span
+creatine	bench/external-v1.0; medical; 1 span
+creative and cultural	bench/cs-ggroup-v1.0; edu; 1 span
+cro	bench/cs-ggroup-v1.0; tech; 1 span
+crude lands	bench/cs-ggroup-v1.0; tech; 1 span
+curriculum	bench/cs-ggroup-v1.0; edu; 1 span
+custom mode	bench/cs-ggroup-v1.0; tech; 1 span
+cut	bench/cs-ggroup-v1.0; tech; 1 span
+cute vip pro	bench/cs-ggroup-v1.0; finance; 1 span
+cyanhydric	bench/code-switch-v1.0; medical; 2 span
+cyber	bench/cs-ggroup-v1.0; finance; 1 span
+cyber master	bench/cs-ggroup-v1.0; tech; 1 span
+cytochrome bc một	bench/code-switch-v1.0; medical; 1 span
+dabase	bench/cs-ggroup-v1.0; tech; 1 span
+dallas college dallas college	bench/cs-ggroup-v1.0; edu; 1 span
+dark rover	bench/cs-ggroup-v1.0; finance; 1 span
+dashboard	bench/cs-ggroup-v1.0; finance; 2 span
+data analyst	bench/cs-ggroup-v1.0; tech; 1 span
+data loss prevention	bench/cs-ggroup-v1.0; tech; 1 span
+data quiz	bench/cs-ggroup-v1.0; tech; 1 span
+data set	bench/cs-ggroup-v1.0; tech; 1 span
+data set creation	bench/cs-ggroup-v1.0; tech; 1 span
+data transfer cost	bench/cs-ggroup-v1.0; tech; 1 span
+david dodd	bench/cs-ggroup-v1.0; finance; 1 span
+dca	bench/cs-ggroup-v1.0; finance; 1 span
+deacetylase	bench/code-switch-v1.0; medical; 1 span
+deakin	bench/cs-ggroup-v1.0; edu; 1 span
+debug	bench/cs-ggroup-v1.0; tech; 1 span
+debugger debugger	bench/cs-ggroup-v1.0; tech; 1 span
+default	bench/cs-ggroup-v1.0; tech; 2 span
+default gateway	bench/cs-ggroup-v1.0; tech; 1 span
+deflationary	bench/cs-ggroup-v1.0; tech; 1 span
+deoxyribonucleic	bench/code-switch-v1.0; medical; 2 span
+deploy	bench/cs-ggroup-v1.0; tech; 5 span
+deployment of two arm	bench/cs-ggroup-v1.0; tech; 1 span
+descemet	bench/code-switch-v1.0; medical; 1 span
+desig	bench/cs-ggroup-v1.0; edu; 1 span
+desk	bench/cs-ggroup-v1.0; tech; 1 span
+dev	bench/cs-ggroup-v1.0; tech; 2 span
+device	bench/cs-ggroup-v1.0; tech; 1 span
+dewey	bench/code-switch-v1.0; medical; 1 span
+diastase	bench/code-switch-v1.0; medical; 2 span
+dictionary	bench/cs-ggroup-v1.0; tech; 1 span
+dieffenbach	bench/code-switch-v1.0; medical; 1 span
+digital film and	bench/cs-ggroup-v1.0; edu; 1 span
+digitalis	bench/external-v1.0; medical; 1 span
+digiworld	bench/cs-ggroup-v1.0; finance; 1 span
+dimethyl	bench/code-switch-v1.0; medical; 1 span
+dimetyl	bench/code-switch-v1.0; medical; 1 span
+dipifr	bench/cs-ggroup-v1.0; edu; 1 span
+diploma	bench/cs-ggroup-v1.0; edu; 3 span
+direct link forward rate	bench/cs-ggroup-v1.0; tech; 1 span
+display name	bench/cs-ggroup-v1.0; tech; 1 span
+dividend you	bench/cs-ggroup-v1.0; finance; 1 span
+dmi	bench/cs-ggroup-v1.0; finance; 2 span
+do samilo	bench/code-switch-v1.0; medical; 1 span
+doc	bench/cs-ggroup-v1.0; pubadmin; 2 span
+docker	bench/cs-ggroup-v1.0; tech; 3 span
+document	bench/cs-ggroup-v1.0; tech; 2 span
+dogecoin	bench/cs-ggroup-v1.0; finance; 1 span
+dogi	bench/cs-ggroup-v1.0; finance; 1 span
+dollar post	bench/cs-ggroup-v1.0; tech; 1 span
+donald trump	bench/cs-ggroup-v1.0; finance; 1 span
+doping watson	bench/cs-ggroup-v1.0; tech; 1 span
+dostinex	bench/code-switch-v1.0; medical; 2 span
+dotcom	bench/cs-ggroup-v1.0; finance; 3 span
+double income	bench/cs-ggroup-v1.0; finance; 1 span
+dov	bench/cs-ggroup-v1.0; pubadmin; 1 span
+downlod	bench/cs-ggroup-v1.0; pubadmin; 1 span
+doxylamine	bench/code-switch-v1.0; medical; 1 span
+duchenne muscular dystrophy what is the positive	bench/code-switch-v1.0; medical; 1 span
+ducreyi	bench/code-switch-v1.0; medical; 2 span
+earning percent	bench/cs-ggroup-v1.0; finance; 1 span
+easy	bench/cs-ggroup-v1.0; edu; 1 span
+eaut	bench/cs-ggroup-v1.0; edu; 1 span
+echinococcus	bench/code-switch-v1.0; medical; 2 span
+ecn	bench/cs-ggroup-v1.0; finance; 1 span
+edoctor	bench/code-switch-v1.0; medical; 1 span
+edu	bench/cs-ggroup-v1.0; edu; 12 span
+education	bench/cs-ggroup-v1.0; edu; 2 span
+education group	bench/cs-ggroup-v1.0; edu; 1 span
+ee tok	bench/cs-ggroup-v1.0; edu; 1 span
+ehrlich	bench/code-switch-v1.0; medical; 2 span
+electronbie	bench/cs-ggroup-v1.0; tech; 1 span
+ema	bench/cs-ggroup-v1.0; finance; 3 span
+emk global	bench/cs-ggroup-v1.0; edu; 1 span
+enable	bench/cs-ggroup-v1.0; tech; 1 span
+end port number	bench/cs-ggroup-v1.0; tech; 1 span
+engineering	bench/cs-ggroup-v1.0; edu; 2 span
+epc	bench/cs-ggroup-v1.0; pubadmin; 1 span
+epic	bench/cs-ggroup-v1.0; tech; 2 span
+epid	bench/cs-ggroup-v1.0; finance; 1 span
+etax mobile	bench/cs-ggroup-v1.0; pubadmin; 1 span
+eth	bench/cs-ggroup-v1.0; finance; 1 span
+ethanolamine or	bench/code-switch-v1.0; medical; 1 span
+eugen	bench/code-switch-v1.0; medical; 1 span
+eur idr	bench/cs-ggroup-v1.0; finance; 1 span
+everest education	bench/cs-ggroup-v1.0; edu; 1 span
+exam	bench/cs-ggroup-v1.0; edu; 1 span
+example of	bench/code-switch-v1.0; medical; 1 span
+exenatide	bench/code-switch-v1.0; medical; 1 span
+exercise pro	bench/cs-ggroup-v1.0; pubadmin; 1 span
+expert advisor	bench/cs-ggroup-v1.0; finance; 1 span
+export	bench/cs-ggroup-v1.0; tech; 1 span
+expose	bench/cs-ggroup-v1.0; edu; 1 span
+express validator	bench/cs-ggroup-v1.0; tech; 1 span
+extension	bench/cs-ggroup-v1.0; tech; 3 span
+extra volume	bench/cs-ggroup-v1.0; finance; 1 span
+face to face interview	bench/cs-ggroup-v1.0; edu; 1 span
+fama french	bench/cs-ggroup-v1.0; finance; 1 span
+faster and morgate	bench/cs-ggroup-v1.0; tech; 1 span
+file boot model	bench/cs-ggroup-v1.0; tech; 1 span
+file demo playwright	bench/cs-ggroup-v1.0; tech; 1 span
+fill up	bench/cs-ggroup-v1.0; tech; 1 span
+finally	bench/code-switch-v1.0; medical; 1 span
+financial aid	bench/cs-ggroup-v1.0; edu; 1 span
+fisher	bench/code-switch-v1.0; medical; 1 span
+fitz hugh curtis	bench/code-switch-v1.0; medical; 1 span
+fleischner	bench/code-switch-v1.0; medical; 1 span
+floper habit	bench/cs-ggroup-v1.0; tech; 1 span
+flower pollen	bench/cs-ggroup-v1.0; tech; 1 span
+flyballoonpad	bench/cs-ggroup-v1.0; finance; 1 span
+folder	bench/cs-ggroup-v1.0; finance; 2 span
+folder debug	bench/cs-ggroup-v1.0; tech; 1 span
+forestier	bench/code-switch-v1.0; medical; 1 span
+forget it and move on	bench/cs-ggroup-v1.0; finance; 1 span
+formic	bench/code-switch-v1.0; medical; 2 span
+fosamax	bench/code-switch-v1.0; medical; 3 span
+foundation	bench/cs-ggroup-v1.0; edu; 2 span
+four year undergraduate	bench/cs-ggroup-v1.0; edu; 1 span
+fumaric	bench/code-switch-v1.0; medical; 1 span
+future	bench/cs-ggroup-v1.0; finance; 1 span
+game room gourna oncros	bench/cs-ggroup-v1.0; tech; 1 span
+gangliosides	bench/code-switch-v1.0; medical; 1 span
+gemini	bench/cs-ggroup-v1.0; tech; 1 span
+general education	bench/cs-ggroup-v1.0; edu; 1 span
+general major	bench/cs-ggroup-v1.0; edu; 1 span
+gilbert	bench/code-switch-v1.0; medical; 6 span
+git	bench/cs-ggroup-v1.0; tech; 1 span
+global citizen	bench/cs-ggroup-v1.0; edu; 1 span
+glucoside	bench/code-switch-v1.0; medical; 2 span
+glycosides	bench/code-switch-v1.0; medical; 1 span
+gmail	bench/cs-ggroup-v1.0; pubadmin; 5 span
+gmat	bench/cs-ggroup-v1.0; edu; 1 span
+godot	bench/cs-ggroup-v1.0; tech; 1 span
+google search google search	bench/cs-ggroup-v1.0; tech; 1 span
+gradient descent	bench/cs-ggroup-v1.0; tech; 1 span
+graduate	bench/cs-ggroup-v1.0; edu; 1 span
+grey	bench/code-switch-v1.0; medical; 1 span
+griffith	bench/cs-ggroup-v1.0; edu; 1 span
+gross	bench/code-switch-v1.0; medical; 1 span
+group attached at the	bench/code-switch-v1.0; medical; 1 span
+grover	bench/code-switch-v1.0; medical; 1 span
+gut	bench/code-switch-v1.0; medical; 2 span
+gzip	bench/cs-ggroup-v1.0; tech; 2 span
+haemophilus	bench/code-switch-v1.0; medical; 1 span
+halsted	bench/code-switch-v1.0; medical; 2 span
+hamburg	bench/cs-ggroup-v1.0; edu; 1 span
+hanoi	bench/cs-ggroup-v1.0; pubadmin; 3 span
+harvard college offers	bench/cs-ggroup-v1.0; edu; 1 span
+hcn	bench/code-switch-v1.0; medical; 2 span
+hdac	bench/code-switch-v1.0; medical; 1 span
+hdmi	bench/cs-ggroup-v1.0; tech; 2 span
+head up display	bench/cs-ggroup-v1.0; tech; 1 span
+heading	bench/cs-ggroup-v1.0; tech; 1 span
+hectrison	bench/cs-ggroup-v1.0; tech; 1 span
+heinz	bench/code-switch-v1.0; medical; 1 span
+helicase	bench/code-switch-v1.0; medical; 2 span
+heman emil	bench/code-switch-v1.0; medical; 1 span
+hendersonula dermatophytes	bench/code-switch-v1.0; medical; 1 span
+herceptin	bench/code-switch-v1.0; medical; 1 span
+here the way ive drawn it ive drawn phosphocholine so this is	bench/code-switch-v1.0; medical; 1 span
+high school	bench/cs-ggroup-v1.0; edu; 2 span
+hikari	bench/code-switch-v1.0; medical; 1 span
+histone	bench/code-switch-v1.0; medical; 1 span
+hobi premium	bench/cs-ggroup-v1.0; finance; 1 span
+hold blockchain platform	bench/cs-ggroup-v1.0; tech; 1 span
+hotline	bench/cs-ggroup-v1.0; edu; 1 span
+hounsfield	bench/code-switch-v1.0; medical; 2 span
+houston community college	bench/cs-ggroup-v1.0; edu; 1 span
+hsa	bench/cs-ggroup-v1.0; edu; 2 span
+html table	bench/cs-ggroup-v1.0; tech; 1 span
+http tsnh	bench/cs-ggroup-v1.0; edu; 1 span
+https	bench/cs-ggroup-v1.0; pubadmin; 5 span
+hybrid model	bench/cs-ggroup-v1.0; tech; 1 span
+hydrogel	bench/code-switch-v1.0; medical; 1 span
+ib	bench/cs-ggroup-v1.0; edu; 1 span
+ibc	bench/cs-ggroup-v1.0; finance; 1 span
+ic ic	bench/cs-ggroup-v1.0; tech; 1 span
+icmp echo request	bench/cs-ggroup-v1.0; tech; 1 span
+icp	bench/cs-ggroup-v1.0; finance; 1 span
+ict	bench/cs-ggroup-v1.0; edu; 3 span
+ida	bench/cs-ggroup-v1.0; tech; 1 span
+ide	bench/cs-ggroup-v1.0; tech; 1 span
+ideal token fbs	bench/cs-ggroup-v1.0; finance; 1 span
+identity protection	bench/cs-ggroup-v1.0; tech; 1 span
+ido	bench/cs-ggroup-v1.0; finance; 1 span
+iels	bench/cs-ggroup-v1.0; edu; 2 span
+ielts	bench/cs-ggroup-v1.0; edu; 13 span
+igcse	bench/cs-ggroup-v1.0; edu; 1 span
+iib	bench/code-switch-v1.0; medical; 1 span
+import	bench/cs-ggroup-v1.0; tech; 1 span
+import product	bench/cs-ggroup-v1.0; tech; 1 span
+in alpha	bench/cs-ggroup-v1.0; finance; 1 span
+in hello world	bench/cs-ggroup-v1.0; tech; 1 span
+index	bench/cs-ggroup-v1.0; finance; 2 span
+infinion	bench/cs-ggroup-v1.0; edu; 1 span
+infrastructure	bench/cs-ggroup-v1.0; finance; 1 span
+infrastructure provision	bench/cs-ggroup-v1.0; tech; 1 span
+insert page number	bench/cs-ggroup-v1.0; pubadmin; 1 span
+instance	bench/cs-ggroup-v1.0; tech; 1 span
+int	bench/cs-ggroup-v1.0; tech; 1 span
+intergity	bench/cs-ggroup-v1.0; tech; 1 span
+intern part time	bench/cs-ggroup-v1.0; edu; 1 span
+intest	bench/cs-ggroup-v1.0; tech; 1 span
+invertase	bench/code-switch-v1.0; medical; 2 span
+investor	bench/cs-ggroup-v1.0; finance; 1 span
+invoice	bench/cs-ggroup-v1.0; tech; 1 span
+io	bench/cs-ggroup-v1.0; tech; 1 span
+ip	bench/cs-ggroup-v1.0; tech; 4 span
+ipo	bench/cs-ggroup-v1.0; finance; 2 span
+ips	bench/cs-ggroup-v1.0; finance; 1 span
+irukandji	bench/code-switch-v1.0; medical; 2 span
+island visa	bench/cs-ggroup-v1.0; edu; 1 span
+israel	bench/code-switch-v1.0; medical; 1 span
+it can also lead to cancers including nasopharyngeal	bench/code-switch-v1.0; medical; 1 span
+italy	bench/code-switch-v1.0; medical; 1 span
+item	bench/cs-ggroup-v1.0; tech; 1 span
+itenty	bench/cs-ggroup-v1.0; edu; 1 span
+ivy league	bench/cs-ggroup-v1.0; edu; 1 span
+jailbreak	bench/cs-ggroup-v1.0; tech; 1 span
+james cook	bench/cs-ggroup-v1.0; edu; 2 span
+java script	bench/cs-ggroup-v1.0; tech; 2 span
+javascript	bench/cs-ggroup-v1.0; tech; 1 span
+jejuni	bench/code-switch-v1.0; medical; 1 span
+jenkins	bench/cs-ggroup-v1.0; tech; 3 span
+kagoshima	bench/cs-ggroup-v1.0; edu; 1 span
+kematex	bench/cs-ggroup-v1.0; tech; 1 span
+kennedy	bench/code-switch-v1.0; medical; 1 span
+kiernan	bench/code-switch-v1.0; medical; 1 span
+killip	bench/code-switch-v1.0; medical; 1 span
+kis	bench/cs-ggroup-v1.0; finance; 1 span
+kisso	bench/cs-ggroup-v1.0; pubadmin; 1 span
+kitin	bench/code-switch-v1.0; medical; 1 span
+kjeldahl	bench/code-switch-v1.0; medical; 1 span
+kleine levin	bench/code-switch-v1.0; medical; 2 span
+kls	bench/code-switch-v1.0; medical; 1 span
+koch	bench/code-switch-v1.0; medical; 5 span
+koebner	bench/code-switch-v1.0; medical; 1 span
+korea fair	bench/cs-ggroup-v1.0; edu; 1 span
+krukenberg	bench/code-switch-v1.0; medical; 2 span
+kusama	bench/cs-ggroup-v1.0; tech; 1 span
+lacton	bench/code-switch-v1.0; medical; 2 span
+lactose monohydrat	bench/code-switch-v1.0; medical; 1 span
+lambda function work file	bench/cs-ggroup-v1.0; tech; 1 span
+landsteiner	bench/code-switch-v1.0; medical; 1 span
+lassa	bench/code-switch-v1.0; medical; 1 span
+launchpad	bench/cs-ggroup-v1.0; finance; 1 span
+launchpool	bench/cs-ggroup-v1.0; finance; 1 span
+law	bench/cs-ggroup-v1.0; edu; 1 span
+layer photoshop	bench/cs-ggroup-v1.0; tech; 1 span
+lazy file	bench/cs-ggroup-v1.0; tech; 1 span
+legal studies	bench/cs-ggroup-v1.0; edu; 1 span
+lennox gastaut	bench/code-switch-v1.0; medical; 2 span
+lesch nyhan	bench/code-switch-v1.0; medical; 1 span
+leverage	bench/cs-ggroup-v1.0; finance; 1 span
+levy	bench/code-switch-v1.0; medical; 1 span
+library	bench/cs-ggroup-v1.0; tech; 1 span
+license	bench/cs-ggroup-v1.0; tech; 1 span
+lichtenstein	bench/code-switch-v1.0; medical; 1 span
+lieberkühn	bench/code-switch-v1.0; medical; 1 span
+limit	bench/cs-ggroup-v1.0; tech; 1 span
+limonene	bench/code-switch-v1.0; medical; 1 span
+link landing page	bench/cs-ggroup-v1.0; tech; 1 span
+link zone	bench/cs-ggroup-v1.0; tech; 2 span
+linolenic	bench/code-switch-v1.0; medical; 4 span
+liquid	bench/cs-ggroup-v1.0; finance; 2 span
+liquidity pool	bench/cs-ggroup-v1.0; finance; 1 span
+listen	bench/cs-ggroup-v1.0; tech; 1 span
+listening reading speaking writing	bench/cs-ggroup-v1.0; edu; 1 span
+liston	bench/code-switch-v1.0; medical; 2 span
+liverpool john moores	bench/cs-ggroup-v1.0; edu; 1 span
+lizzy	bench/cs-ggroup-v1.0; tech; 1 span
+load	bench/cs-ggroup-v1.0; tech; 2 span
+load more	bench/cs-ggroup-v1.0; tech; 2 span
+local	bench/cs-ggroup-v1.0; tech; 1 span
+localhost	bench/cs-ggroup-v1.0; tech; 1 span
+location service	bench/cs-ggroup-v1.0; tech; 1 span
+lock	bench/cs-ggroup-v1.0; finance; 2 span
+lock token ksm	bench/cs-ggroup-v1.0; tech; 1 span
+locus	bench/code-switch-v1.0; medical; 1 span
+login	bench/cs-ggroup-v1.0; tech; 2 span
+lone star community college college	bench/cs-ggroup-v1.0; edu; 1 span
+lor	bench/cs-ggroup-v1.0; edu; 1 span
+low income super tax offset	bench/cs-ggroup-v1.0; finance; 1 span
+lymphoma and primary central nervous system lymphoma	bench/code-switch-v1.0; medical; 2 span
+mac	bench/cs-ggroup-v1.0; tech; 2 span
+mainstream	bench/cs-ggroup-v1.0; tech; 1 span
+malpighi	bench/code-switch-v1.0; medical; 1 span
+manage	bench/cs-ggroup-v1.0; tech; 1 span
+mantoux	bench/code-switch-v1.0; medical; 4 span
+margin	bench/cs-ggroup-v1.0; finance; 2 span
+mario	bench/code-switch-v1.0; medical; 2 span
+mark	bench/cs-ggroup-v1.0; finance; 1 span
+maskin	bench/cs-ggroup-v1.0; tech; 1 span
+matthew	bench/code-switch-v1.0; medical; 1 span
+max supply	bench/cs-ggroup-v1.0; finance; 1 span
+mcburney	bench/code-switch-v1.0; medical; 4 span
+mccune albright	bench/code-switch-v1.0; medical; 2 span
+mcmurray	bench/code-switch-v1.0; medical; 1 span
+mebo mid up	bench/cs-ggroup-v1.0; tech; 1 span
+media entertainment	bench/cs-ggroup-v1.0; edu; 1 span
+men glucuronyltransferase	bench/code-switch-v1.0; medical; 1 span
+mendel	bench/code-switch-v1.0; medical; 2 span
+meningitidis	bench/code-switch-v1.0; medical; 1 span
+menthol	bench/code-switch-v1.0; medical; 1 span
+mescaline	bench/code-switch-v1.0; medical; 2 span
+metatrader	bench/cs-ggroup-v1.0; finance; 2 span
+metoprolol	bench/code-switch-v1.0; medical; 2 span
+mext sgu	bench/cs-ggroup-v1.0; edu; 1 span
+mfa	bench/cs-ggroup-v1.0; tech; 1 span
+microbiota not alone bifidobacteria	bench/code-switch-v1.0; medical; 1 span
+microsoft edge	bench/cs-ggroup-v1.0; tech; 2 span
+microsoft learn	bench/cs-ggroup-v1.0; tech; 1 span
+midcap	bench/cs-ggroup-v1.0; finance; 1 span
+midcap blue chip	bench/cs-ggroup-v1.0; finance; 1 span
+milan	bench/code-switch-v1.0; medical; 1 span
+miligam	bench/cs-ggroup-v1.0; pubadmin; 2 span
+mililit	bench/cs-ggroup-v1.0; pubadmin; 1 span
+minimum	bench/cs-ggroup-v1.0; finance; 1 span
+missing value	bench/cs-ggroup-v1.0; tech; 1 span
+mit	bench/cs-ggroup-v1.0; edu; 1 span
+ml flow	bench/cs-ggroup-v1.0; tech; 1 span
+model	bench/cs-ggroup-v1.0; tech; 1 span
+module	bench/cs-ggroup-v1.0; edu; 6 span
+module led	bench/cs-ggroup-v1.0; tech; 1 span
+module relay	bench/cs-ggroup-v1.0; tech; 1 span
+module slot	bench/cs-ggroup-v1.0; tech; 1 span
+monocytogenes	bench/code-switch-v1.0; medical; 5 span
+monoxit	bench/code-switch-v1.0; medical; 1 span
+morphine	bench/external-v1.0; medical; 1 span
+mos	bench/cs-ggroup-v1.0; tech; 2 span
+msci emerging market	bench/cs-ggroup-v1.0; finance; 1 span
+mucopolysacarit	bench/code-switch-v1.0; medical; 1 span
+mucormycosis	bench/code-switch-v1.0; medical; 1 span
+multi az	bench/cs-ggroup-v1.0; tech; 1 span
+muscarin	bench/code-switch-v1.0; medical; 2 span
+muscarine	bench/code-switch-v1.0; medical; 2 span
+mycobacterium tuberculosis	bench/code-switch-v1.0; medical; 1 span
+n acylsphinganine which is just sphinganine with an	bench/code-switch-v1.0; medical; 1 span
+name	bench/cs-ggroup-v1.0; tech; 2 span
+name from	bench/cs-ggroup-v1.0; tech; 1 span
+nat	bench/cs-ggroup-v1.0; tech; 1 span
+nat coffee	bench/cs-ggroup-v1.0; finance; 1 span
+national institutes of health	bench/code-switch-v1.0; medical; 1 span
+national sydney	bench/cs-ggroup-v1.0; edu; 1 span
+negri	bench/code-switch-v1.0; medical; 2 span
+neill	bench/cs-ggroup-v1.0; finance; 1 span
+neisseria	bench/code-switch-v1.0; medical; 1 span
+neural check	bench/cs-ggroup-v1.0; tech; 1 span
+new south wales	bench/cs-ggroup-v1.0; edu; 1 span
+new vekf	bench/cs-ggroup-v1.0; tech; 1 span
+newberg	bench/cs-ggroup-v1.0; edu; 1 span
+newcastle university	bench/cs-ggroup-v1.0; edu; 1 span
+next next next	bench/cs-ggroup-v1.0; tech; 1 span
+nissen	bench/code-switch-v1.0; medical; 2 span
+node	bench/code-switch-v1.0+bench/cs-ggroup-v1.0; medical; 2 span
+node js	bench/cs-ggroup-v1.0; tech; 2 span
+normal way under normal	bench/cs-ggroup-v1.0; pubadmin; 1 span
+not found	bench/cs-ggroup-v1.0; tech; 1 span
+nova novaland	bench/cs-ggroup-v1.0; finance; 1 span
+null	bench/cs-ggroup-v1.0; tech; 1 span
+number	bench/cs-ggroup-v1.0; tech; 1 span
+nussbaum	bench/code-switch-v1.0; medical; 2 span
+object	bench/cs-ggroup-v1.0; tech; 1 span
+of the backbone	bench/code-switch-v1.0; medical; 1 span
+off train	bench/cs-ggroup-v1.0; finance; 1 span
+office office	bench/cs-ggroup-v1.0; tech; 1 span
+official guide	bench/cs-ggroup-v1.0; edu; 1 span
+offset	bench/cs-ggroup-v1.0; finance; 1 span
+omega zh	bench/cs-ggroup-v1.0; tech; 1 span
+on ready stage	bench/cs-ggroup-v1.0; tech; 1 span
+on train	bench/cs-ggroup-v1.0; finance; 1 span
+oop	bench/cs-ggroup-v1.0; tech; 1 span
+open work commit	bench/cs-ggroup-v1.0; pubadmin; 1 span
+opisthorchis	bench/code-switch-v1.0; medical; 2 span
+optimisum abitum metis	bench/cs-ggroup-v1.0; finance; 1 span
+oracle	bench/cs-ggroup-v1.0; tech; 1 span
+otp	bench/cs-ggroup-v1.0; pubadmin; 2 span
+over here	bench/code-switch-v1.0; medical; 1 span
+over supply	bench/cs-ggroup-v1.0; finance; 1 span
+overview	bench/cs-ggroup-v1.0; tech; 1 span
+painting	bench/cs-ggroup-v1.0; edu; 1 span
+palmitoleic	bench/code-switch-v1.0; medical; 1 span
+palmitoyltransferase	bench/code-switch-v1.0; medical; 1 span
+pantothenic	bench/code-switch-v1.0; medical; 1 span
+partition	bench/cs-ggroup-v1.0; tech; 2 span
+partners industry partners	bench/cs-ggroup-v1.0; edu; 1 span
+parvovirus	bench/code-switch-v1.0; medical; 2 span
+paul	bench/code-switch-v1.0; medical; 2 span
+pauline	bench/cs-ggroup-v1.0; finance; 1 span
+pentobarbitan	bench/external-v1.0; medical; 1 span
+performance	bench/cs-ggroup-v1.0; tech; 1 span
+personal detail	bench/cs-ggroup-v1.0; pubadmin; 1 span
+peter	bench/cs-ggroup-v1.0; tech; 1 span
+phospholipids	bench/code-switch-v1.0+bench/external-v1.0; medical; 3 span
+photo so	bench/cs-ggroup-v1.0; pubadmin; 1 span
+phytate	bench/code-switch-v1.0; medical; 2 span
+piercing	bench/cs-ggroup-v1.0; finance; 1 span
+planning	bench/cs-ggroup-v1.0; edu; 1 span
+platform template	bench/cs-ggroup-v1.0; tech; 1 span
+polygon	bench/cs-ggroup-v1.0; finance; 2 span
+polysacarit	bench/code-switch-v1.0; medical; 2 span
+polystyrene	bench/code-switch-v1.0; medical; 1 span
+pomina	bench/cs-ggroup-v1.0; finance; 1 span
+portfolio manager management	bench/cs-ggroup-v1.0; edu; 1 span
+postgres	bench/cs-ggroup-v1.0; tech; 1 span
+potio	bench/code-switch-v1.0; medical; 1 span
+povidon k ba mươi magnesi	bench/code-switch-v1.0; medical; 1 span
+power ase	bench/cs-ggroup-v1.0; tech; 1 span
+powerpoint	bench/cs-ggroup-v1.0; tech; 1 span
+prednison	bench/code-switch-v1.0; medical; 2 span
+private evd	bench/cs-ggroup-v1.0; finance; 1 span
+private school	bench/cs-ggroup-v1.0; edu; 1 span
+private subnet	bench/cs-ggroup-v1.0; tech; 1 span
+proce	bench/cs-ggroup-v1.0; tech; 1 span
+procedure	bench/cs-ggroup-v1.0; edu; 1 span
+program outcomes assessment system	bench/cs-ggroup-v1.0; edu; 1 span
+progress	bench/cs-ggroup-v1.0; tech; 1 span
+prolink	bench/code-switch-v1.0; medical; 2 span
+proof of stake	bench/cs-ggroup-v1.0; finance; 2 span
+public builder tree	bench/cs-ggroup-v1.0; tech; 1 span
+pull up	bench/cs-ggroup-v1.0; tech; 1 span
+python developer	bench/cs-ggroup-v1.0; edu; 1 span
+pytorch	bench/cs-ggroup-v1.0; tech; 1 span
+qd ub	bench/cs-ggroup-v1.0; pubadmin; 1 span
+qualitative research	bench/cs-ggroup-v1.0; tech; 1 span
+quochoitv	bench/cs-ggroup-v1.0; pubadmin; 1 span
+r m i t	bench/cs-ggroup-v1.0; edu; 1 span
+radical behaviorist	bench/code-switch-v1.0; medical; 1 span
+react angular	bench/cs-ggroup-v1.0; tech; 2 span
+real time	bench/cs-ggroup-v1.0; finance; 1 span
+realtime	bench/cs-ggroup-v1.0; tech; 1 span
+refesh	bench/cs-ggroup-v1.0; tech; 1 span
+refly	bench/cs-ggroup-v1.0; tech; 1 span
+register	bench/cs-ggroup-v1.0; tech; 1 span
+reinvent	bench/cs-ggroup-v1.0; tech; 1 span
+remote computer	bench/cs-ggroup-v1.0; tech; 1 span
+remove	bench/cs-ggroup-v1.0; tech; 1 span
+render	bench/cs-ggroup-v1.0; tech; 1 span
+renew release	bench/cs-ggroup-v1.0; tech; 1 span
+replacement of for	bench/cs-ggroup-v1.0; tech; 1 span
+reserpin	bench/code-switch-v1.0; medical; 1 span
+rhesus	bench/code-switch-v1.0; medical; 1 span
+rhodopsin	bench/code-switch-v1.0; medical; 2 span
+ribonucleic	bench/code-switch-v1.0; medical; 2 span
+rick rick management	bench/cs-ggroup-v1.0; tech; 1 span
+riley day	bench/code-switch-v1.0; medical; 2 span
+robert	bench/code-switch-v1.0; medical; 2 span
+root	bench/cs-ggroup-v1.0; tech; 1 span
+roth ira	bench/cs-ggroup-v1.0; finance; 1 span
+router	bench/cs-ggroup-v1.0; tech; 2 span
+ruijie	bench/cs-ggroup-v1.0; tech; 1 span
+rule	bench/cs-ggroup-v1.0; tech; 3 span
+rumic	bench/cs-ggroup-v1.0; finance; 1 span
+russell group	bench/cs-ggroup-v1.0; edu; 1 span
+rust	bench/cs-ggroup-v1.0; tech; 1 span
+sagemaker	bench/cs-ggroup-v1.0; tech; 1 span
+sakura	bench/cs-ggroup-v1.0; edu; 1 span
+sapa	bench/cs-ggroup-v1.0; edu; 1 span
+saskatchewan	bench/cs-ggroup-v1.0; edu; 1 span
+sat	bench/cs-ggroup-v1.0; edu; 2 span
+sata	bench/cs-ggroup-v1.0; finance; 1 span
+schmorl	bench/code-switch-v1.0; medical; 1 span
+scholarship	bench/cs-ggroup-v1.0; edu; 4 span
+school of media arts and science	bench/cs-ggroup-v1.0; edu; 1 span
+scientist	bench/cs-ggroup-v1.0; tech; 1 span
+script	bench/cs-ggroup-v1.0; tech; 1 span
+script hhcompile	bench/cs-ggroup-v1.0; tech; 1 span
+script hhtest	bench/cs-ggroup-v1.0; tech; 1 span
+scrum	bench/cs-ggroup-v1.0; tech; 1 span
+search visual studio	bench/cs-ggroup-v1.0; tech; 1 span
+security	bench/cs-ggroup-v1.0; tech; 1 span
+security group so	bench/cs-ggroup-v1.0; tech; 1 span
+sekiry group	bench/cs-ggroup-v1.0; tech; 2 span
+self learning ai	bench/cs-ggroup-v1.0; edu; 1 span
+sell	bench/cs-ggroup-v1.0; finance; 3 span
+sensor	bench/cs-ggroup-v1.0; tech; 1 span
+sent	bench/cs-ggroup-v1.0; tech; 2 span
+seri	bench/cs-ggroup-v1.0; pubadmin; 1 span
+serum	bench/code-switch-v1.0; medical; 1 span
+server	bench/cs-ggroup-v1.0; tech; 7 span
+session	bench/cs-ggroup-v1.0; edu; 2 span
+set dragon config	bench/cs-ggroup-v1.0; tech; 1 span
+set the riona	bench/cs-ggroup-v1.0; tech; 1 span
+sevis	bench/cs-ggroup-v1.0; edu; 1 span
+sgot sgpt phosphatase	bench/code-switch-v1.0; medical; 1 span
+shanghai jiao	bench/cs-ggroup-v1.0; edu; 1 span
+sheet	bench/cs-ggroup-v1.0; tech; 2 span
+shiga	bench/code-switch-v1.0; medical; 1 span
+shin jung	bench/cs-ggroup-v1.0; finance; 1 span
+sideway	bench/cs-ggroup-v1.0; finance; 3 span
+sideway long short	bench/cs-ggroup-v1.0; finance; 1 span
+sideways	bench/cs-ggroup-v1.0; finance; 1 span
+sign if you ask	bench/code-switch-v1.0; medical; 1 span
+sign into console	bench/cs-ggroup-v1.0; tech; 1 span
+signo candle	bench/cs-ggroup-v1.0; finance; 1 span
+silicon valley bank	bench/cs-ggroup-v1.0; finance; 1 span
+sim sport and artistic talent award	bench/cs-ggroup-v1.0; edu; 1 span
+simon	bench/code-switch-v1.0; medical; 1 span
+singleton	bench/cs-ggroup-v1.0; tech; 1 span
+sistrunk	bench/code-switch-v1.0; medical; 1 span
+sitosterol	bench/code-switch-v1.0; medical; 1 span
+skene	bench/code-switch-v1.0; medical; 1 span
+skill lab	bench/cs-ggroup-v1.0; edu; 1 span
+sky line	bench/cs-ggroup-v1.0; edu; 1 span
+small and medium enterprises	bench/cs-ggroup-v1.0; finance; 1 span
+smart	bench/cs-ggroup-v1.0; edu; 1 span
+smart contract	bench/cs-ggroup-v1.0; tech; 5 span
+sme	bench/cs-ggroup-v1.0; finance; 1 span
+snapshot	bench/cs-ggroup-v1.0; tech; 1 span
+social media educating	bench/cs-ggroup-v1.0; edu; 1 span
+software engineer	bench/cs-ggroup-v1.0; edu; 1 span
+soure	bench/cs-ggroup-v1.0; tech; 1 span
+speaking listening	bench/cs-ggroup-v1.0; edu; 1 span
+specifically like	bench/code-switch-v1.0; medical; 1 span
+spee	bench/code-switch-v1.0; medical; 2 span
+spin	bench/cs-ggroup-v1.0; tech; 1 span
+sporothrix schenckii	bench/code-switch-v1.0; medical; 1 span
+spread	bench/cs-ggroup-v1.0; finance; 1 span
+spread global	bench/cs-ggroup-v1.0; finance; 1 span
+squalene	bench/code-switch-v1.0; medical; 1 span
+stakeholder	bench/cs-ggroup-v1.0; tech; 1 span
+steakking	bench/cs-ggroup-v1.0; finance; 1 span
+stearat	bench/code-switch-v1.0; medical; 2 span
+stem	bench/cs-ggroup-v1.0; edu; 3 span
+stop loss	bench/cs-ggroup-v1.0; finance; 2 span
+store	bench/cs-ggroup-v1.0; tech; 1 span
+store in	bench/cs-ggroup-v1.0; tech; 1 span
+stream	bench/cs-ggroup-v1.0; tech; 1 span
+string	bench/cs-ggroup-v1.0; tech; 1 span
+stripe edc	bench/cs-ggroup-v1.0; tech; 1 span
+structure	bench/cs-ggroup-v1.0; tech; 1 span
+studentaid	bench/cs-ggroup-v1.0; edu; 1 span
+students live and study ino	bench/cs-ggroup-v1.0; edu; 1 span
+succinic	bench/code-switch-v1.0; medical; 2 span
+sudico	bench/cs-ggroup-v1.0; finance; 1 span
+suggest	bench/cs-ggroup-v1.0; edu; 1 span
+sulfon	bench/code-switch-v1.0; medical; 1 span
+sulfone	bench/code-switch-v1.0; medical; 1 span
+super government	bench/cs-ggroup-v1.0; finance; 1 span
+supply max supply	bench/cs-ggroup-v1.0; finance; 1 span
+survey modeling parallel assembly modeling	bench/cs-ggroup-v1.0; tech; 1 span
+swif	bench/cs-ggroup-v1.0; finance; 1 span
+swift	bench/cs-ggroup-v1.0; tech; 1 span
+tab usb	bench/cs-ggroup-v1.0; pubadmin; 1 span
+table	bench/cs-ggroup-v1.0; tech; 2 span
+tag name	bench/cs-ggroup-v1.0; tech; 1 span
+tanic	bench/code-switch-v1.0; medical; 2 span
+teacher	bench/cs-ggroup-v1.0; tech; 1 span
+tech brofit tech brofit stop	bench/cs-ggroup-v1.0; finance; 1 span
+techcombank	bench/cs-ggroup-v1.0; finance; 3 span
+technic	bench/cs-ggroup-v1.0; tech; 1 span
+telescope	bench/cs-ggroup-v1.0; tech; 1 span
+terminal	bench/cs-ggroup-v1.0; finance; 2 span
+test case	bench/cs-ggroup-v1.0; tech; 1 span
+tester	bench/cs-ggroup-v1.0; tech; 4 span
+testing	bench/cs-ggroup-v1.0; pubadmin; 1 span
+tex	bench/cs-ggroup-v1.0; tech; 1 span
+thaco	bench/cs-ggroup-v1.0; pubadmin; 1 span
+the steve	bench/cs-ggroup-v1.0; edu; 1 span
+the task two	bench/cs-ggroup-v1.0; edu; 1 span
+theobromine	bench/code-switch-v1.0; medical; 2 span
+theta	bench/cs-ggroup-v1.0; finance; 1 span
+third person controller	bench/cs-ggroup-v1.0; tech; 1 span
+this could of course work with other	bench/code-switch-v1.0; medical; 1 span
+tick	bench/cs-ggroup-v1.0; tech; 1 span
+tinel	bench/code-switch-v1.0; medical; 1 span
+tmo	bench/cs-ggroup-v1.0; finance; 1 span
+to another table using value from this row	bench/cs-ggroup-v1.0; tech; 1 span
+to campus	bench/cs-ggroup-v1.0; edu; 1 span
+toefl	bench/cs-ggroup-v1.0; edu; 3 span
+token cods	bench/cs-ggroup-v1.0; finance; 1 span
+top coin	bench/cs-ggroup-v1.0; finance; 1 span
+top of page	bench/cs-ggroup-v1.0; pubadmin; 1 span
+top ranking	bench/cs-ggroup-v1.0; edu; 1 span
+topload	bench/cs-ggroup-v1.0; finance; 1 span
+topo	bench/cs-ggroup-v1.0; edu; 2 span
+toto mouse tech	bench/cs-ggroup-v1.0; finance; 1 span
+tova	bench/cs-ggroup-v1.0; tech; 1 span
+tplink	bench/cs-ggroup-v1.0; tech; 1 span
+trade panel	bench/cs-ggroup-v1.0; finance; 1 span
+transfer	bench/cs-ggroup-v1.0; edu; 2 span
+transistor	bench/cs-ggroup-v1.0; tech; 1 span
+transmission	bench/cs-ggroup-v1.0; tech; 1 span
+treasury note	bench/cs-ggroup-v1.0; finance; 1 span
+trevor	bench/code-switch-v1.0; medical; 1 span
+trichloroacetic	bench/code-switch-v1.0; medical; 1 span
+trichophyton	bench/code-switch-v1.0; medical; 1 span
+trihydrat	bench/code-switch-v1.0; medical; 1 span
+trypsin	bench/code-switch-v1.0; medical; 1 span
+tsutsugamushi	bench/code-switch-v1.0; medical; 1 span
+tuvietanhviet	bench/cs-ggroup-v1.0; edu; 1 span
+uart	bench/cs-ggroup-v1.0; tech; 1 span
+ubn	bench/cs-ggroup-v1.0; pubadmin; 1 span
+ubuntu	bench/cs-ggroup-v1.0; tech; 1 span
+ugt	bench/code-switch-v1.0; medical; 1 span
+uit	bench/cs-ggroup-v1.0; edu; 1 span
+undo undo	bench/cs-ggroup-v1.0; tech; 1 span
+unique	bench/cs-ggroup-v1.0; tech; 2 span
+university	bench/cs-ggroup-v1.0; edu; 3 span
+university john hopkins	bench/cs-ggroup-v1.0; edu; 2 span
+upcom	bench/cs-ggroup-v1.0; finance; 2 span
+upcoming	bench/cs-ggroup-v1.0; finance; 1 span
+upload	bench/cs-ggroup-v1.0; edu; 2 span
+usb token	bench/cs-ggroup-v1.0; pubadmin; 3 span
+user root	bench/cs-ggroup-v1.0; tech; 1 span
+utc ae utc	bench/cs-ggroup-v1.0; edu; 1 span
+utp tcp	bench/cs-ggroup-v1.0; tech; 1 span
+uupn	bench/cs-ggroup-v1.0; pubadmin; 1 span
+vancomycin	bench/code-switch-v1.0; medical; 1 span
+verbal behavior	bench/code-switch-v1.0; medical; 1 span
+vercel	bench/cs-ggroup-v1.0; tech; 1 span
+verify	bench/cs-ggroup-v1.0; tech; 1 span
+vga	bench/cs-ggroup-v1.0; tech; 1 span
+vga gigabyte aorus rtx	bench/cs-ggroup-v1.0; tech; 1 span
+vietcombank	bench/cs-ggroup-v1.0; finance; 7 span
+vietcombank bid	bench/cs-ggroup-v1.0; finance; 1 span
+vietinbank	bench/cs-ggroup-v1.0; finance; 1 span
+vinhome ocean park	bench/cs-ggroup-v1.0; finance; 1 span
+vinhomes	bench/cs-ggroup-v1.0; finance; 2 span
+vip	bench/cs-ggroup-v1.0; finance; 3 span
+vision check copy	bench/cs-ggroup-v1.0; tech; 1 span
+vivu	bench/cs-ggroup-v1.0; finance; 1 span
+vneid	bench/cs-ggroup-v1.0; pubadmin; 1 span
+vnu	bench/cs-ggroup-v1.0; edu; 1 span
+vpn	bench/cs-ggroup-v1.0; tech; 1 span
+vssid	bench/cs-ggroup-v1.0; pubadmin; 1 span
+vti	bench/cs-ggroup-v1.0; edu; 1 span
+vti education	bench/cs-ggroup-v1.0; edu; 1 span
+vue	bench/cs-ggroup-v1.0; tech; 1 span
+vuihoc	bench/cs-ggroup-v1.0; edu; 2 span
+waldeyer	bench/code-switch-v1.0; medical; 2 span
+walter parson	bench/code-switch-v1.0; medical; 1 span
+warren buffett	bench/cs-ggroup-v1.0; finance; 1 span
+we have many high fever patients which they used to present with malaria so this is	bench/code-switch-v1.0; medical; 1 span
+webpay	bench/cs-ggroup-v1.0; tech; 1 span
+website	bench/cs-ggroup-v1.0; pubadmin; 19 span
+welcome	bench/cs-ggroup-v1.0; tech; 2 span
+whale	bench/cs-ggroup-v1.0; finance; 1 span
+while true	bench/cs-ggroup-v1.0; tech; 1 span
+wifi	bench/cs-ggroup-v1.0; tech; 2 span
+will poke your hand	bench/code-switch-v1.0; medical; 1 span
+window	bench/cs-ggroup-v1.0; tech; 1 span
+wireshark	bench/cs-ggroup-v1.0; tech; 1 span
+wisconsin	bench/cs-ggroup-v1.0; edu; 1 span
+work launcher	bench/cs-ggroup-v1.0; tech; 2 span
+world ranking	bench/cs-ggroup-v1.0; edu; 1 span
+world university rankings	bench/cs-ggroup-v1.0; edu; 1 span
+wrap	bench/cs-ggroup-v1.0; pubadmin; 1 span
+wunderlich	bench/code-switch-v1.0; medical; 1 span
+xanhsm platform	bench/cs-ggroup-v1.0; finance; 1 span
+yea	bench/cs-ggroup-v1.0; edu; 1 span
+yes no	bench/cs-ggroup-v1.0; edu; 1 span
+zalo	bench/cs-ggroup-v1.0; pubadmin; 4 span
+zero touch automation	bench/cs-ggroup-v1.0; tech; 1 span
+zip	bench/cs-ggroup-v1.0; edu; 2 span

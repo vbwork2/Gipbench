@@ -12,7 +12,7 @@ license test_only / nguồn riêng tư, hoặc nguồn không có trong gipbench
 Người nhận: python -m gipbench.dataset.release.fetch --manifest manifests/<x>.jsonl --out ... (xem README trong gói).
 Gói kèm code/ (src gipbench tối thiểu + configs + pyproject, tính bằng AST từ fetch / leak_audit / evaluate / transcribe):
 người nhận cài bằng `pip install -e code/`, không cần repo. Đóng gói dừng nếu code đó import module train / dữ liệu train
-(CODE_FORBIDDEN).
+(`forbidden` trong configs/dataset/share_code.yaml).
 """
 import argparse
 import hashlib
@@ -63,15 +63,17 @@ def strip_text(rows):
 # --- code chấm điểm kèm gói (--with-code) ---
 # Gói chạy độc lập: người nhận không cần repo. Chỉ copy các module mà fetch / leak_audit / evaluate / transcribe import
 # (tính bằng AST lúc đóng gói, nên không lệch khi code đổi), và DỪNG nếu có module thuộc phần train / dữ liệu train.
-CODE_ROOTS = ["gipbench.bench.evaluate", "gipbench.bench.transcribe",
-              "gipbench.dataset.release.fetch", "gipbench.dataset.release.leak_audit"]
-CODE_FORBIDDEN = ("gipbench.model", "gipbench.dataset.pseudolabel", "gipbench.dataset.label", "gipbench.dataset.derive",
-                  "gipbench.dataset.synth", "gipbench.dataset.report")
-CODE_CONFIGS = ["configs/bench/datasets.yaml", "configs/dataset/labeling/term_decisions.tsv"] + [
-    f"configs/bench/asr_models/{n}.yaml" for n in ("gip15_mbs4_open", "gip15_greedy_open", "viegem_greedy", "viegem_lm")]
-# Adapter whisper / qwen3 (chỉ để chẩn đoán) kéo theo infer/asr_hyps.py và cache.py, có docstring về nguồn dữ liệu nội bộ:
-# không kèm. Người nhận chấm model khác bằng script tự viết (README mục 4a) hoặc adapter Gipformer / VieGem.
-CODE_SKIP = {"gipbench.infer.adapters.hf_multilingual"}
+# Danh sách module nằm ở configs/dataset/share_code.yaml (tầng dataset không được nhắc tên module bench / model trong code).
+SHARE_CODE_CONFIG = P.REPO / "configs" / "dataset" / "share_code.yaml"
+
+
+def share_code(path=SHARE_CODE_CONFIG):
+    """Đọc share_code.yaml (lúc gọi, không lúc import: import module này không cần pyyaml).
+    Trả {roots: list, forbidden: tuple, configs: list, skip: set}."""
+    import yaml
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {"roots": list(cfg["roots"]), "forbidden": tuple(cfg["forbidden"]),
+            "configs": list(cfg["configs"]), "skip": set(cfg.get("skip") or ())}
 # core/paths.py của repo có đường dẫn máy, khoá của pipeline train (icefall, exp_root) và file chặn bộ test-only:
 # bản kèm gói chỉ có các khoá bench dùng.
 CODE_PATHS = '''"""Đường dẫn gốc của gói code (REPO = thư mục chứa src/ và configs/) và thư mục dữ liệu / kết quả.
@@ -124,13 +126,18 @@ def _module_file(src: Path, mod: str):
     return None
 
 
-def code_closure(src: Path, roots=CODE_ROOTS):
-    """Tập module gipbench.* mà `roots` import (kể cả gián tiếp, và các package cha). Trả {tên: file}."""
+def code_closure(src: Path, roots=None, skip=None):
+    """Tập module gipbench.* mà `roots` import (kể cả gián tiếp, và các package cha). Trả {tên: file}.
+    Mặc định `roots` / `skip` lấy từ share_code.yaml."""
     import ast
+    if roots is None or skip is None:
+        cfg = share_code()
+        roots = cfg["roots"] if roots is None else roots
+        skip = cfg["skip"] if skip is None else skip
     seen, todo = {}, list(roots)
     while todo:
         m = todo.pop()
-        if m in seen or m in CODE_SKIP:
+        if m in seen or m in skip:
             continue
         f = _module_file(src, m)
         if f is None:
@@ -148,8 +155,9 @@ def code_closure(src: Path, roots=CODE_ROOTS):
 
 def copy_code(dst: Path, version: str):
     src = P.REPO / "src"
-    mods = code_closure(src)
-    bad = sorted(m for m in mods if m.startswith(CODE_FORBIDDEN))
+    cfg = share_code()
+    mods = code_closure(src, cfg["roots"], cfg["skip"])
+    bad = sorted(m for m in mods if m.startswith(cfg["forbidden"]))
     if bad:
         raise SystemExit(f"code chấm điểm import module không được share: {bad}")
     out = dst / "code"
@@ -157,7 +165,7 @@ def copy_code(dst: Path, version: str):
         t = out / "src" / f.relative_to(src)
         t.parent.mkdir(parents=True, exist_ok=True)
         t.write_bytes((CODE_PATHS.encode("utf-8") if m == "gipbench.core.paths" else f.read_bytes()).replace(b"\r\n", b"\n"))
-    for rel in CODE_CONFIGS:
+    for rel in cfg["configs"]:
         s = P.REPO / rel
         if not s.exists():
             raise SystemExit(f"thiếu {rel} để kèm trong code/")
