@@ -52,6 +52,19 @@ SOURCES = {
 DERIVED = {"vimedcss"}  # audio phái sinh: sha256 phụ thuộc phiên bản thư viện
 
 
+def _evalset_sources():
+    """Các bộ test bổ sung (track E0): nguồn khoá trong gipbench.dataset.ingest.evalsets.SPECS."""
+    from gipbench.dataset.ingest.evalsets import SPECS as EV
+    return {k: {"kind": "evalset", "repo": v["repo"], "revision": v["revision"], "files": v["files"]} for k, v in EV.items()}
+
+
+SOURCES.update(_evalset_sources())
+
+
+def is_derived(r) -> bool:
+    return r.get("audio_derivation") == "soxr_hq_16k_mono_pcm16" or r["dataset"] in DERIVED
+
+
 def sha256_file(p) -> str:
     h = hashlib.sha256()
     with open(p, "rb") as f:
@@ -130,6 +143,23 @@ def fetch_tar(files, rows, out_dir: Path):
     return got
 
 
+def fetch_evalset(key, files, rows, out_dir: Path):
+    """Bộ E0: tách đúng các upstream_id cần bằng cùng code với lúc nhập (giữ byte hoặc resample 16 kHz)."""
+    from gipbench.dataset.ingest.evalsets import materialize
+    by_up = {str(r["upstream_id"]): r for r in rows}
+    got = {}
+    for row, why in materialize(key, files, out_dir, want=set(by_up)):
+        if why or "_path" not in row:
+            continue
+        r = by_up[row["upstream_id"]]
+        src = Path(row["_path"])
+        dst = out_dir / f"{r['id']}{src.suffix}"
+        if src != dst:
+            src.replace(dst)
+        got[r["id"]] = dst
+    return got
+
+
 def fetch_cv(cv_root, rows, out_dir: Path):
     out_dir.mkdir(parents=True, exist_ok=True)
     got = {}
@@ -192,6 +222,8 @@ def main(argv=None):
                 files = download(src, args.cache)
             if src["kind"] == "tar":
                 g = fetch_tar(files, by[d], adir)
+            elif src["kind"] == "evalset":
+                g = fetch_evalset(d, files, by[d], adir)
             else:
                 g = fetch_parquet(files, by[d], adir, src["id_col"],
                                   src.get("target_sr") if src["kind"] == "parquet_resample" else None)
@@ -207,7 +239,7 @@ def main(argv=None):
             problems["thiếu file"] += 1
             continue
         if sha256_file(p) != r.get("audio_sha256"):
-            if r["dataset"] in DERIVED and abs(duration(p) - float(r.get("duration") or 0)) <= 0.011:
+            if is_derived(r) and abs(duration(p) - float(r.get("duration") or 0)) <= 0.011:
                 warn.append(r["id"])
             else:
                 problems["sha256 lệch"] += 1
@@ -233,7 +265,7 @@ def main(argv=None):
     (out / "fetch_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(rep, ensure_ascii=False, indent=1))
     if warn:
-        print(f"CẢNH BÁO: {len(warn)} file ViMedCSS khác sha256 (resample khác phiên bản thư viện) nhưng độ dài khớp")
+        print(f"CẢNH BÁO: {len(warn)} file audio phái sinh khác sha256 (resample khác phiên bản thư viện) nhưng độ dài khớp")
     sys.exit(1 if problems else 0)
 
 

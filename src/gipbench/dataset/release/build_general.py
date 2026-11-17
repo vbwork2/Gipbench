@@ -8,6 +8,10 @@ general     : VIVOS test (prompts.txt), Common Voice vi 27.0 test.tsv, G-Group {
               Lấy MỌI câu của split (không lọc câu có từ Anh, khác converter B1/B5). Text = nhãn gốc của bên phát hành.
 code_switch : ViMedCSS split hard (raw/vimedcss_hard/b3_candidates.jsonl, 658 câu), giữ text_tagged (Spec) và
               text_tagged_orig (nhãn gốc). Câu không còn span <en> vẫn giữ (khác v0-draft đã bỏ 134 câu).
+external    : track E0 = các bộ test công khai bổ sung đã nhập bằng gipbench.dataset.ingest.evalsets
+              (<data_root>/dl/evalsets/<bộ>/rows.jsonl): FLEURS vi, Common Voice 17 vi, VietMed, LSVSC, ViMD,
+              Speech-MASSIVE vi (dev), ViMedCSS test. Lời thoại = nhãn gốc. ViMedCSS test: text_tagged = lời gốc + tag <en>
+              quanh đúng các thuật ngữ trong cs_terms_list của dataset (để chấm CS-WER), text_orig = lời gốc.
 cs_ggroup   : track C1 = câu G-Group test có từ Anh, tag <en> theo quyết định thuật ngữ người duyệt
               (configs/dataset/labeling/term_decisions.tsv) + phiếu duyệt từng câu. Đầu vào: manifest do build_bench ghi
               (benchmarks/cs_ggroup_v1_draft/manifest_built.jsonl, lệnh trong docs/dataset_registry.md). Lời thoại = nhãn
@@ -153,6 +157,33 @@ def cs_ggroup(data: Path, limit: int):
                "_duration": r.get("duration")}
 
 
+EXTERNAL_SETS = ["fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "vimedcss_test"]
+
+
+def external(data: Path, limit: int):
+    from gipbench.core.tagging import auto_tag
+    from gipbench.dataset.ingest.evalsets import SPECS
+    for key in EXTERNAL_SETS:
+        base = data / "dl" / "evalsets" / key
+        if not (base / "rows.jsonl").exists():
+            print(f"  (bỏ qua {key}: chưa nhập, chạy gipbench.dataset.ingest.evalsets --sets {key})")
+            continue
+        EXPECTED[key] = SPECS[key].get("expected")
+        LICENSE[key] = SPECS[key]["license"]
+        for n, r in enumerate(read_jsonl(str(base / "rows.jsonl"))):
+            if limit and n >= limit:
+                break
+            row = {k: v for k, v in r.items() if k not in ("audio", "audio_sha256", "duration")}
+            row.update({"_abs": base / r["audio"], "_duration": r["duration"], "slice": key})
+            if key == "vimedcss_test":
+                terms = [t.strip() for t in str(r.get("cs_terms_list") or "").split(";") if t.strip()]
+                # chỉ thêm tag <en> quanh đúng thuật ngữ của dataset (không đổi chữ, không đổi WER); text_orig = bản gốc
+                row["text_orig"] = r["text_tagged"]
+                row["text_tagged"] = auto_tag(r["text_tagged"], None, terms, vi_words=set(), heuristic=False,
+                                              term_dec={})["text_tagged"]
+            yield row
+
+
 def manifest_sha256(rows) -> str:
     h = hashlib.sha256()
     for r in sorted(rows, key=lambda x: str(x["id"])):
@@ -163,7 +194,7 @@ def manifest_sha256(rows) -> str:
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--which", choices=["general", "code_switch", "cs_ggroup"], required=True)
+    ap.add_argument("--which", choices=["general", "code_switch", "cs_ggroup", "external"], required=True)
     ap.add_argument("--data-root", help="mặc định: data_root của core.paths (env GIPBENCH_DATA)")
     ap.add_argument("--name", help="tên benchmark (mặc định <which>_v1_draft); bản khoá: general_v1 / code_switch_v1 / cs_ggroup_v1")
     ap.add_argument("--bench-version", help="giá trị bench_version mỗi dòng (mặc định = tên, '_' thành '-')")
@@ -178,9 +209,11 @@ def main():
         gen = list(vivos(data, args.limit)) + list(commonvoice(data, args.limit)) + list(ggroup(data, out, args.limit))
     elif args.which == "code_switch":
         gen = list(vimedcss_hard(data, args.limit))
-    else:
+    elif args.which == "cs_ggroup":
         gen = list(cs_ggroup(data, args.limit))
-    split = {"general": "G0", "code_switch": "C0", "cs_ggroup": "C1"}[args.which]
+    else:
+        gen = list(external(data, args.limit))
+    split = {"general": "G0", "code_switch": "C0", "cs_ggroup": "C1", "external": "E0"}[args.which]
     rows, dropped = [], []
     for r in gen:
         p = Path(r.pop("_abs"))
@@ -193,7 +226,8 @@ def main():
             continue
         r.update({"audio": os.path.relpath(p, out).replace(os.sep, "/"), "audio_sha256": sha256_file(p),
                   # cách fetch tái dựng audio; nằm trong manifest để bản share có cùng manifest_sha256
-                  "audio_derivation": "soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED else "upstream_bytes",
+                  "audio_derivation": r.get("audio_derivation") or ("soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED
+                                                                     else "upstream_bytes"),
                   "duration": d if d else audio_duration(str(p)), "split": split, "track": split,
                   "license": LICENSE.get(r["dataset"]), "annotation_status": "upstream_human",
                   "bench_version": args.bench_version or name.replace("_", "-")})
