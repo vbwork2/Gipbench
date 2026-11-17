@@ -60,6 +60,26 @@ python -m gipbench.bench.report.eda --bench data/releases/bench/v0-draft/manifes
 
 Model ngoài / hậu xử lý: tạo system YAML với `hyps: <đường dẫn hyps.jsonl>` thay cho `model:`.
 
+## 3b. Bench v1 (ASR tổng quát): benchmark khoá -> transcribe -> evaluate -> gói share
+
+Giao thức: `docs/benchmark_protocol_v1.md`; metric: `docs/evaluation_metrics_v1.md`; datasheet: `docs/datasheet_bench_v1.md`.
+
+```bash
+export GIPBENCH_DATA=<data_root> GIPBENCH_MODELS=<models_root>
+python -m gipbench.bench.registry                                          # kiểm datasets.yaml + benchmarks/*.yaml
+python -m gipbench.dataset.release.build_general --which general --name general_v1 --bench-version general-v1.0
+python -m gipbench.dataset.ingest.evalsets --sets fleurs_vi cv17_vi vietmed     # E0; --metadata-only: không tải audio
+python -m gipbench.dataset.release.build_general --which external --name external_v1 --bench-version external-v1.0
+python -m gipbench.bench.transcribe --model configs/bench/asr_models/gip15_mbs4_open.yaml --benchmark general_v1 --out <dir>
+python -m gipbench.bench.evaluate --benchmark general_v1 --hyps <dir>/hyps.jsonl --mode final [--baseline-hyps <hyps gốc>]
+python -m gipbench.bench.compare --benchmark general_v1 --runs results/general_asr/general_v1/*
+python -m gipbench.dataset.release.leak_audit --test <manifest bench> --train <manifest train ...> --out reports/leak/<x>
+python -m gipbench.dataset.release.package --benchmarks general_v1 code_switch_v1 cs_ggroup_v1 external_v1 --name gipbench-bench-v1.1 --baselines <results>/<bench>/<hệ> ...
+python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/<x>.jsonl --out bench_data/<x>   # phía người nhận
+```
+
+Benchmark đã khoá (`evidence_level: locked`): đổi câu / nhãn / chuẩn hoá = phiên bản mới, không sửa yaml / manifest cũ.
+
 ## Đổi hướng thì sửa ở đâu
 
 Xem bảng cuối `docs/ARCHITECTURE.md`.

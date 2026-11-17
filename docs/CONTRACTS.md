@@ -159,3 +159,36 @@ decode:                                        # = tham số gipbench.infer.deco
 Chạy: `python -m gipbench.bench.run --bench bench/v0-draft --system configs/bench/systems/e7_v1.yaml`. Kết quả ghi vào
 `results/<version bench, '-' -> '_'>/<system>/` theo định dạng mục 3. Luật chọn của leaderboard nằm ở
 `configs/bench/rules.yaml`.
+
+## 8. Benchmark v1 (thêm 17/11/2026): `configs/bench/benchmarks/<tên>.yaml` (dataset -> bench)
+
+Đọc bằng `gipbench.bench.registry` (kiểm trường bắt buộc, `tests/bench/test_registry.py`). Nguồn dữ liệu từng bộ:
+`configs/bench/datasets.yaml` (`hf_id`, `revision`, `license`, `pretraining_overlap` theo model ...).
+
+| Khoá | Ý nghĩa |
+| --- | --- |
+| `benchmark_id`, `version`, `track` | vd `general`, `v1.0`, `G0` (`G0`, `C0`, `C1`, `E0`, `Z0`, `R0`) |
+| `evidence_level` | `draft` -> `human_reviewed` -> `locked`; `locked` bắt buộc có `manifest_sha256` |
+| `manifest`, `manifest_sha256` | manifest JSONL; sha256 tính trên mọi trường trừ `audio` và trường bắt đầu bằng `_`, dòng sắp theo `id` |
+| `catalog`, `catalog_sha256`, `catalog_from_bench` | catalog chấm CS-WER (null = không catalog); khoá cả catalog nếu có |
+| `profile`, `also_report_profiles` | hồ sơ chuẩn hoá (`gipbench.core.normprofiles`): `gipbench_strict_v1` (chính), `legacy_v0` (= score.py cũ) |
+| `primary_metric`, `group_by`, `aggregate`, `boot_unit`, `seed`, `iters` | metric chính; nhóm báo cáo; `macro_by_dataset`; đơn vị bootstrap |
+| `allowed_inference_modes` | `open_vocab`, `lm`, `context_bias`, `oracle_bias` |
+| `sources` | `[{dataset, split, slice}]`, mỗi `dataset` phải có trong `datasets.yaml` |
+
+Manifest v1 theo mục 1, thêm: `dataset`, `upstream_id`, `upstream_split`, `audio_sha256`, `audio_derivation`
+(`upstream_bytes` | `soxr_hq_16k_mono_pcm16` | `pinned_source_extract` = bộ E0 khoá bằng metadata, không có
+`audio_sha256` / `duration` từng câu), `license`, `annotation_status`, `bench_version`; tuỳ chọn `text_orig`,
+`tag_review` (C1), `text_redistributable: false` (lời thoại không được phân phối lại: gói share bỏ, `fetch` lấy lại).
+Ngoại lệ so với mục 1: dòng `pinned_source_extract` không có `audio` / `duration` cho tới khi người dùng chạy `fetch`.
+
+`run_meta.json` (cạnh `hyps.jsonl`, schema `gipbench.run_meta/1`): `system`, `engine`, `model_id`, `revision`,
+`inference_mode`, `decoding`, `device`, `precision`, `batch_size`, `context_vocab` (`provenance`: `external` |
+`test_derived`), `hyps_sha256`, `manifest_sha256`, `rtf`, `hardware`. `gipbench.bench.evaluate --mode final` cần ít
+nhất `inference_mode` (hoặc `--inference-mode`).
+
+Kết quả `evaluate`: `<out>/utt_scores.jsonl`, `summary.json` (theo hồ sơ, nhóm, CI, Δ ghép cặp), `report.md`.
+
+Gói share (`gipbench.dataset.release.package`): `manifests/<tên>.jsonl` (không `audio`), `<tên>.benchmark.yaml`,
+`<tên>.catalog.tsv`, `baselines/<tên>/<hệ>/{hyps.jsonl,run_meta.json,report.md}`, `docs/`, `configs/`, `README.md`,
+`release.json`, `SHA256SUMS`. Package từ chối dòng `test_only`, catalog lấy từ bench, manifest / catalog khác bản khoá.

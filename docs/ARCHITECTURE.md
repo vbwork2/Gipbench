@@ -11,11 +11,15 @@ pipeline đó. Hai pipeline còn lại không sửa code, không chạy lại.
 
 ```
 gipbench.core      textnorm · align · manifest · leak · tagging · term_decisions · domain · sampling · scoring ·
-                   agreement_rules · release · paths · svgcharts
-gipbench.infer     decode (sherpa-onnx) · asr_hyps (faster-whisper, Qwen3-ASR) · cache        -> hyps.jsonl
-gipbench.dataset   ingest · label · pseudolabel · synth · derive · release · report           -> data release
+                   agreement_rules · release · paths · svgcharts ·
+                   normprofiles (chuẩn hoá có phiên bản) · evalstats (bootstrap cụm / ghép cặp) · decontam · langspans
+gipbench.infer     decode (sherpa-onnx) · asr_hyps (faster-whisper, Qwen3-ASR) · cache ·
+                   adapters (Gipformer / VieGem / faster-whisper / Qwen3; model bất kỳ)   -> hyps.jsonl + run_meta.json
+gipbench.dataset   ingest (+ evalsets: bộ test công khai) · label · pseudolabel · synth · derive ·
+                   release (+ build_general, leak_audit, fetch, package) · report   -> data release, benchmark v1, gói share
 gipbench.model     recipe · features · train · select · export · systems · run               -> artifact + system YAML
-gipbench.bench     run · score · leaderboard · report                                         -> results, leaderboard
+gipbench.bench     run · score · leaderboard · report ·
+                   registry · transcribe · evaluate · compare (benchmark v1)        -> results, leaderboard, report.md
 ```
 
 | Tầng | Được import | Cấm import |
@@ -56,6 +60,9 @@ Quy tắc phân định: **lọc chất lượng thuộc dataset; chọn và câ
 | Model artifact `<exp_root>/artifacts/<exp>/` (onnx + `model_card.json`) | `gipbench.model.run` stage 6 | bench qua system YAML |
 | System YAML `configs/bench/systems/<system>.yaml` (model hoặc hyps + tham số decode) | model stage 6 / người dùng | `gipbench.bench.run` |
 | `hyps.jsonl`, `utt_scores.jsonl`, `decode_summary.json`, manifest JSONL, catalog TSV, CutSet Lhotse | như trước refactor | như trước refactor |
+| Benchmark v1 `configs/bench/benchmarks/<tên>.yaml` + manifest khoá `manifest_sha256` (CONTRACTS mục 8) | `gipbench.dataset.release.build_general` | `gipbench.bench.{transcribe,evaluate}`; đăng ký thêm thành release `bench/<tên>-v1.0` cho `leak_guard` |
+| `run_meta.json` cạnh `hyps.jsonl` (model, revision, inference mode, decode) | `gipbench.bench.transcribe` / người dùng | `gipbench.bench.evaluate` |
+| Gói share (manifest không audio + datasheet + yaml khoá + SHA256SUMS) | `gipbench.dataset.release.package` | người nhận: `gipbench.dataset.release.fetch`, rồi `bench.evaluate` |
 
 ## Đổi hướng thì sửa ở đâu
 
@@ -68,7 +75,8 @@ Quy tắc phân định: **lọc chất lượng thuộc dataset; chọn và câ
 | Hậu xử lý sửa thuật ngữ (E8) | script ghi `hyps.jsonl` mới + system YAML `hyps:` | dataset, model, code bench |
 | Thêm metric | `core/scoring` + `bench/leaderboard`; `bench.run --hyps-only` chấm lại | dataset, model; không decode lại |
 | Đổi luật chọn | `configs/bench/rules.yaml` | mọi thứ khác |
-| Bench v1 (đã duyệt) thay v0-draft | `dataset/release/build_bench` -> release `bench/v1`; `bench.run --bench bench/v1` với system YAML cũ | model (chỉ đổi `leak_guard` khi train lại) |
+| Bench v1 thay v0-draft (đã làm 17/11/2026) | `dataset/release/build_general` -> `configs/bench/benchmarks/{general,code_switch,cs_ggroup,external}_v1.yaml` (khoá sha256) + release `bench/{general,code-switch,cs-ggroup,external}-v1.0`; chấm bằng `bench.transcribe` + `bench.evaluate` (hồ sơ `gipbench_strict_v1`); `bench.run` / `score.py` giữ cho v0-draft | model (chỉ đổi `leak_guard` khi train lại) |
+| Thêm một bộ test công khai | `dataset/ingest/evalsets.SPECS` (repo, revision, sha256 file) + `configs/bench/datasets.yaml`; benchmark mới hoặc version mới | code bench, model |
 
 ## Thư mục
 

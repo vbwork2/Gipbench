@@ -63,3 +63,35 @@ releases:
   dev/dev_vi@e3_v1:
     manifest: data/e3_v1/dev_vi.jsonl
     built_by: gipbench.dataset.release.prep_e3_v1 (VIVOS train, 4 người nói held-out, 0.96 h)
+
+  # --- bench v1 (ASR tổng quát, 17/11/2026): cùng manifest với configs/bench/benchmarks/*_v1.yaml (đã khoá sha256) ---
+  catalog/vimedcss-v1.0:
+    catalog: data/raw/vimedcss_hard/catalog_vimedcss.tsv
+    built_by: gipbench.dataset.ingest.vimedcss (split hard; thuật ngữ theo cs_terms_list của dataset)
+    flags: {from_bench: false}
+    notes: "Catalog chấm C0 (= catalog_sha256 a21c590e của code_switch_v1)."
+
+  bench/general-v1.0:
+    manifest: data/benchmarks/general_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which general --name general_v1 --bench-version general-v1.0
+    flags: {locked: true, manifest_sha256: e908c75a3f23c949b2ae0f2b82d6ec98e75eca1204f07dd44a50139e352c3dcb}
+    notes: "G0: VIVOS, Common Voice 27, G-Group x4 test (4 400 câu). Chấm bằng bench.evaluate --benchmark general_v1."
+
+  bench/code-switch-v1.0:
+    manifest: data/benchmarks/code_switch_v1/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.build_general --which code_switch --name code_switch_v1 --bench-version code-switch-v1.0
+    flags: {locked: true, manifest_sha256: 744d4773d4a0f01161f7ff5694b8a8e3466f93efaff91ebb74750e70388dc06a}
+    notes: "C0: ViMedCSS hard (658 câu)."
+
+  bench/cs-ggroup-v1.0:
+    manifest: data/benchmarks/cs_ggroup_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which cs_ggroup --name cs_ggroup_v1 --bench-version cs-ggroup-v1.0
+    flags: {locked: true, manifest_sha256: e3c3cc1b91027fefc529dbfe2bb23d1b52b0948899d17af0b1cbcb9edac496af}
+    notes: "C1: câu G-Group test có từ Anh (1 260 câu), cùng audio với G0."
+
+  bench/external-v1.0:
+    manifest: data/benchmarks/external_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which external --name external_v1 --bench-version external-v1.0
+    flags: {locked: true, manifest_sha256: f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd}
+    notes: "E0: 11 bộ test công khai (32 203 câu); 7 bộ khoá bằng metadata (chưa có audio cho tới khi tải)."
