@@ -49,11 +49,25 @@ def share_rows(rows):
     return sorted(out, key=lambda x: x["id"])
 
 
+def clean_meta(m):
+    """run_meta.json cho bản share: bỏ đường dẫn máy (manifest, file model), giữ cấu hình giải mã + sha256."""
+    if isinstance(m, dict):
+        return {k: clean_meta(v) for k, v in m.items() if k not in ("path", "manifest", "dir", "encoder_dir")}
+    if isinstance(m, list):
+        return [clean_meta(x) for x in m]
+    if isinstance(m, str) and (m.startswith("/") or (len(m) > 2 and m[1] == ":" and m[2] in "\\/")):
+        return "<local path>"
+    return m
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--benchmarks", nargs="+", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--out", help="mặc định: <data_root>/share")
+    ap.add_argument("--baselines", nargs="*", default=[], metavar="DIR",
+                    help="thư mục kết quả <results>/<benchmark>/<hệ> (hyps.jsonl + run_meta.json): chép vào baselines/ để "
+                         "người nhận so ghép cặp (evaluate --baseline-hyps); bỏ mọi trường đường dẫn máy")
     args = ap.parse_args(argv)
     dst = Path(args.out or P.path("data_root") / "share") / args.name
     if dst.exists():
@@ -94,13 +108,33 @@ def main(argv=None):
             d["hours"] = round(d["hours"] + (r.get("duration") or 0) / 3600, 4)
         summary[name] = {"rows": len(rows), "evidence_level": bm.get("evidence_level"), "track": bm.get("track"),
                          "by_dataset": by}
+    for bdir in args.baselines:
+        bdir = Path(bdir)
+        bench, system = bdir.parent.name.replace("_draft", ""), bdir.name
+        if bench not in summary:
+            raise SystemExit(f"{bdir}: benchmark '{bench}' không có trong --benchmarks")
+        ids = {json.loads(l)["id"] for l in open(dst / "manifests" / f"{bench}.jsonl", encoding="utf-8") if l.strip()}
+        hyps = [json.loads(l) for l in open(bdir / "hyps.jsonl", encoding="utf-8") if l.strip()]
+        if {h["id"] for h in hyps} != ids or len(hyps) != len(ids):
+            raise SystemExit(f"{bdir}: hyps không khớp đúng một dòng cho mỗi id của {bench}")
+        out = dst / "baselines" / bench / system
+        out.mkdir(parents=True)
+        with open(out / "hyps.jsonl", "w", encoding="utf-8", newline="\n") as f:
+            for h in hyps:
+                f.write(json.dumps({"id": h["id"], "hyp": h.get("hyp", "")}, ensure_ascii=False) + "\n")
+        meta = json.loads((bdir / "run_meta.json").read_text(encoding="utf-8"))
+        (out / "run_meta.json").write_text(json.dumps(clean_meta(meta), ensure_ascii=False, indent=1), encoding="utf-8")
+        if (bdir / "report.md").exists():
+            shutil.copyfile(bdir / "report.md", out / "report.md")
+        summary[bench].setdefault("baselines", []).append(system)
     for rel in DOCS + CONFIGS:
         src = P.REPO / rel
         if src.exists():
             sub = dst / ("docs" if rel.startswith("docs/") else "configs")
             sub.mkdir(exist_ok=True)
             shutil.copyfile(src, sub / Path(rel).name)
-    (dst / "README.md").write_text(README.format(name=args.name, summary=json.dumps(summary, ensure_ascii=False, indent=1)),
+    (dst / "README.md").write_text(README.replace("{name}", args.name).replace(
+        "{summary}", "```json\n" + json.dumps(summary, ensure_ascii=False, indent=1) + "\n```"),
                                    encoding="utf-8")
     (dst / "release.json").write_text(json.dumps({"name": args.name, "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                                                   "benchmarks": summary}, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -112,50 +146,8 @@ def main(argv=None):
     print(json.dumps(summary, ensure_ascii=False, indent=1))
 
 
-README = """# {name}
+README = (Path(__file__).with_name("share_readme.md")).read_text(encoding="utf-8")
 
-Bench ASR tiếng Việt và Việt – Anh code-switching của gipbench. Gói này **không chứa audio**: chạy `fetch` để tải từ nguồn gốc
-(revision cố định, kiểm sha256). Đọc `docs/datasheet_bench_v1.md` trước khi dùng (license, giới hạn, trùng dữ liệu train).
-
-## Cài và tải audio
-
-```bash
-git clone <repo gipbench> && cd gipbench && pip install -e ".[audio]" huggingface_hub pyarrow pyyaml
-export HF_HUB_DISABLE_XET=1     # nếu tải bị treo
-python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/general_v1.jsonl --out bench_data/general_v1 \\
-    --cv-root /path/cv-corpus-27.0-2026-09-11/vi     # Common Voice vi 27.0: tải tay tại commonvoice.mozilla.org
-python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/code_switch_v1.jsonl --out bench_data/code_switch_v1
-python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/cs_ggroup_v1.jsonl --out bench_data/cs_ggroup_v1
-```
-`fetch` báo lỗi (thoát mã 1) nếu file tải về khác sha256 trong manifest (riêng ViMedCSS resample: chỉ cảnh báo khi độ dài
-khớp, vì byte phụ thuộc phiên bản soxr / libsndfile).
-
-## Chấm model của bạn
-
-1. Giải mã mọi câu trong `bench_data/<x>/manifest.jsonl`, ghi `hyps.jsonl`: mỗi dòng `{{"id": ..., "hyp": ...}}`, đúng một
-   dòng mỗi id. Khai báo cách giải mã trong `run_meta.json` cạnh hyps (ít nhất `"inference_mode"`: open_vocab | lm |
-   context_bias | oracle_bias), hoặc dùng `python -m gipbench.bench.transcribe` với adapter có sẵn.
-2. Chấm:
-```bash
-python -m gipbench.bench.evaluate --benchmark <gói>/manifests/general_v1.benchmark.yaml \\
-    --manifest bench_data/general_v1/manifest.jsonl --hyps my_system/hyps.jsonl --mode final
-python -m gipbench.bench.evaluate --benchmark <gói>/manifests/code_switch_v1.benchmark.yaml \\
-    --manifest bench_data/code_switch_v1/manifest.jsonl --catalog <gói>/manifests/code_switch_v1.catalog.tsv \\
-    --hyps my_system_c0/hyps.jsonl --mode final
-python -m gipbench.bench.evaluate --benchmark <gói>/manifests/cs_ggroup_v1.benchmark.yaml \\
-    --manifest bench_data/cs_ggroup_v1/manifest.jsonl --hyps my_system_c1/hyps.jsonl --mode final
-```
-Benchmark đã khoá (`evidence_level: locked`, `manifest_sha256`, C0 thêm `catalog_sha256`): `evaluate` thoát mã 2 nếu
-manifest / catalog khác bản khoá, hyps thiếu / thừa / trùng id, hoặc inference mode không khai báo / không được phép.
-Báo kết quả theo TỪNG bộ dữ liệu, kèm hồ sơ chuẩn hoá (`gipbench_strict_v1`) và inference mode. C1 dùng chung audio với
-phần G-Group của G0: không cộng gộp hai track như hai bằng chứng độc lập.
-
-## Nội dung
-
-{summary}
-
-`SHA256SUMS`: sha256 mọi file trong gói.
-"""
 
 if __name__ == "__main__":
     main()
