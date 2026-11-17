@@ -44,7 +44,7 @@ SCRIPTS = {
     "build_dev_cs": (None, "-m gipbench.dataset.release.build_dev_cs"),
 }
 MIX_OLD = "configs/train_mix.tsv"
-EXP_NEW = "configs/model/experiments/e3_v1b.yaml"
+EXP_NEW = "configs/model/experiments/e3_v2.yaml"  # trọng số = configs/train_mix.tsv cuối (mốc old)
 
 
 def py(layout, step):
@@ -216,6 +216,22 @@ def main():
                                          "--out-dir", d], O / "build_dev_cs.log")
     else:
         skipped.append("build_dev_cs")
+    # 6b. đầu vào của E3 v1b: old = các file TRAIN_IN + dev mà run_e3_v1b.sh dùng; new = materialize từ release theo
+    #     thứ tự pools của experiment (stage 0 của gipbench.model.run). Phải giống từng byte.
+    if want("inputs") and exists(*TRAIN_IN, *DEV):
+        print("inputs")
+        d = O / "inputs"
+        d.mkdir()
+        if L == "old":
+            for i, p in enumerate(TRAIN_IN + DEV):
+                shutil.copy(G / p, d / f"{i:02d}.jsonl")
+        else:
+            sys.path.insert(0, str(G / "src"))
+            from gipbench.core import release as R
+            from gipbench.model.recipe import experiment as X
+            e = X.load(G / "configs/model/experiments/e3_v1b.yaml")
+            for i, ref in enumerate(X.input_refs(e) + [e["dev"]["cs"], e["dev"]["vi"]]):
+                R.materialize(ref, d / f"{i:02d}.jsonl")
     # 7. tách dev bench theo cụm người nói (như docstring tools/make_dev_split.py)
     md = ["data/raw/vimedcss_full/dev_vimedcss.jsonl", "data/e3_v1/dev_cs_vss.jsonl", "data/e3_v1/train_curated.jsonl"]
     if want("make_dev_split") and exists(BENCH, CATALOG, *md):

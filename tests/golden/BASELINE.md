@@ -14,3 +14,12 @@ Golden (`tests/golden/capture.py --layout old`): 90 file, 1 phút 37 giây; ch�
 Hành vi sẵn có được giữ nguyên trong mốc (không phải lỗi do refactor):
 - `validate.py` trên bench nháp + train / dev của E3 v1b thoát mã 1 với 3 734 LỖI, phần lớn là "RÒ RỈ: thuật ngữ
   reserved_b3 có trong train" (ViMedCSS train chứa thuật ngữ B3). `ft/run_e3_v1b.sh` chạy validate với `|| true`.
+
+## Sau refactor (nhánh refactor/pipelines, 16/11/2026)
+
+- `bash tests/run_tests.sh`: 8/8 ĐẠT (boundaries, selftest, span_metrics, dev_tools, converters, tts, hard_mining,
+  test_model_pipeline).
+- Golden (`--layout new` so với mốc chụp từ `1570a42` cùng đường dẫn output): **97/97 file giống, 0 lỗi**. Bao gồm cả các
+  bước mới thay heredoc (`build_dev_cs`, `split_groups`), `mix_plan --mix <experiment YAML>` và đầu vào E3 lấy từ release
+  (`inputs/`). Khác biệt hợp lệ đã khai báo trong `compare.py`: dòng "Cấu hình" của `mix_plan.md`; audio của pool
+  confusable được chuẩn hoá đường dẫn (`…/raw/confusable/../../dl/…` -> `…/dl/…`, cùng file).

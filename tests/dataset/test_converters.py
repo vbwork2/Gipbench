@@ -631,9 +631,12 @@ def main():
     for k in ("greedy khác beam: 1", "hyp rỗng: 1", "độ dài ngoài 1–20 s: 1", "từ/giây ngoài 1–6: 1", "logprob_mean < -1: 1"):
         assert k in out_d, (k, out_d)
     # --- Phase 0d T5: cấu hình trộn: vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real
-    mix = {r["group"]: r for r in csv.DictReader((l for l in open(G / "configs/model/train_mix.tsv", encoding="utf-8")
-                                                   if not l.startswith("#")), delimiter="\t")}
-    assert mix["cs_pseudo"]["datasets"].split(",") == ["vss_cs"] and "vss_cs" not in mix["cs_real"]["datasets"]
+    from gipbench.model.recipe.mix_plan import load_mix
+    mix = {g["group"]: g for g in load_mix(G / "configs/model/experiments/e3_v2.yaml")}
+    old_mix = {g["group"]: g for g in load_mix(G / "docs/history/train_mix.tsv")}
+    assert {k: (g["weight"], g["env"], g["datasets"]) for k, g in mix.items()} == \
+        {k: (g["weight"], g["env"], g["datasets"]) for k, g in old_mix.items()}, "e3_v2.yaml phải khớp train_mix.tsv cuối"
+    assert mix["cs_pseudo"]["datasets"] == ["vss_cs"] and "vss_cs" not in mix["cs_real"]["datasets"]
     assert "audio thật, nhãn giả" in mix["cs_pseudo"]["note"]
     assert {k: float(v["weight"]) for k, v in mix.items()} == {"cs_real": 0.20, "cs_pseudo": 0.10, "synth": 0.20,
                                                                "replay_human": 0.25, "distill": 0.20, "confusable": 0.05}

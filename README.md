@@ -1,11 +1,39 @@
-# gipbench — bench code-switching Việt–Anh cho Gipformer 1.5
+# gipbench: bench code-switching Việt–Anh cho Gipformer 1.5
 
-Bộ công cụ để kiểm tra dữ liệu, làm EDA, chấm điểm và chọn phương án fine-tune. Hướng dẫn từng bước nằm ở tab **Runbook** trong doc dự án.
+Ba pipeline độc lập, nói chuyện với nhau chỉ qua file có hợp đồng. Đổi hướng ở một pipeline (engine TTS, cách FT, model
+ngoài, metric) không phải sửa hai pipeline còn lại. Kiến trúc: `docs/ARCHITECTURE.md`. Lệnh: `docs/RUNBOOK.md`.
 
 ```
-pip install -r requirements.txt
-bash tests/selftest.sh            # chạy thử toàn bộ trên dữ liệu giả lập (~10 s)
+data/dl ─► [ DATASET ] ─► data/releases/{bench,catalog,pool,dev}/   (bất biến, sha256)
+                              │ pool, dev, catalog        │ bench, catalog
+                              ▼                           ▼
+                         [ MODEL ] ─► artifact (onnx + model_card.json) ─► configs/bench/systems/<system>.yaml
+                                                                                  │
+                         [ BENCH ] ◄──────────────────────────────────────────────┘ (hoặc hyps.jsonl của model ngoài)
+                              └─► results/<bench>/<system>/ ─► leaderboard
 ```
+
+| Thư mục | Nội dung |
+| --- | --- |
+| `src/gipbench/core/` | Dùng chung: chuẩn hoá text, căn chỉnh, metric (`scoring`), chống rò rỉ, gắn tag, release, đường dẫn |
+| `src/gipbench/infer/` | Engine ASR -> `hyps.jsonl`: sherpa-onnx (`decode`), faster-whisper / Qwen3-ASR (`asr_hyps`), cache |
+| `src/gipbench/dataset/` | `ingest` (converter), `label` (duyệt, wordlist, domain), `pseudolabel` (vss_cs, đồng thuận, distill), `synth` (TTS), `derive` (confusable), `release` (bench, dev, đăng ký release, validate), `report` (EDA dữ liệu) |
+| `src/gipbench/model/` | `recipe` (experiment YAML, curate, tách nhóm, mix_plan), `features` (Lhotse), `train` (icefall + watchdog), `select` (chọn checkpoint, WiSE-FT), `export`, `systems` (hotwords, tokenizer), `run.py` |
+| `src/gipbench/bench/` | `run.py` (system -> decode -> chấm), `score`, `leaderboard`, `report` (EDA bench, bảng) |
+| `configs/` | `paths.example.yaml`; `dataset/` (quy ước gắn tag, TTS, `releases.yaml`); `model/experiments/`; `bench/` (`systems/`, `rules.yaml`) |
+| `tests/` | `run_tests.sh` (mọi test, CPU), `test_boundaries.py` (luật import), `golden/` (so output với code trước refactor) |
+| `docs/` | `ARCHITECTURE.md`, `CONTRACTS.md` (định dạng file), `RUNBOOK.md` (lệnh), `DECISIONS.md`, `STATUS.md`, `history/` |
+
+## Cài đặt
+
+```bash
+pip install -e .                       # venv tạo bằng uv không có pip: ghi đường dẫn src/ vào <venv>/lib/python3.11/site-packages/gipbench_src.pth
+cp configs/paths.example.yaml configs/paths.yaml   # sửa đường dẫn exp / icefall / venv của máy này (không có file thì dùng mặc định)
+bash tests/run_tests.sh                # mọi test trên dữ liệu giả, ~2 phút CPU
+```
+
+Ba venv trong WSL: `~/.venvs/gipbench` (CPU: dataset, bench, decode), `~/.venvs/gipbench-ft` (torch, k2, lhotse, icefall:
+`scripts/setup_ft_env.sh`), `~/.venvs/gipbench-asr` (faster-whisper, Qwen3-ASR: `requirements-asr.txt`).
 
 **Graphify (tùy chọn):** Dùng `$graphify` trong Codex để hỏi về quan hệ giữa các
 file và hàm. Để cập nhật và truy vấn đồ thị mã nguồn từ PowerShell tại thư mục gốc:
@@ -27,40 +55,6 @@ uv tool install graphifyy==0.9.111
 Kết quả nằm trong `graphify-out/`. Lệnh `update .` tạo đồ thị lần đầu và cập nhật
 mã nguồn cục bộ ở các lần sau, không cần API key.
 
-**Nguồn dữ liệu** (quyết định sau Phase 0b, 15/11/2026):
-
-- B1 = G-Group (vi-asr-tech/edu/finance/pubadmin-test) + dữ liệu tự thu.
-- Nguồn CS thật cho train = ViMedCSS train + `vss_cs` (VietSuperSpeech, lọc đồng thuận) + dữ liệu tự có.
-- SEA Code-Switching (`gijs/sea_speech`): **tùy chọn, không dùng**. `conv_sea.py` còn giữ để dùng sau nếu cần.
-
-| File | Việc |
-| --- | --- |
-| `SCHEMA.md` | Định dạng manifest JSONL, catalog thuật ngữ, file hyp |
-| `configs/dataset/labeling/catalog.example.tsv` | Mẫu catalog (term, category, variants, phonetic, reserved_b3) |
-| `validate.py` | Kiểm tra manifest + chống rò rỉ bench ↔ train (thoát mã 1 nếu có lỗi) |
-| `eda.py` | Report HTML + `eda_summary.json` + `eda_summary.md` (bảng dán vào báo cáo) |
-| `decode.py` | Giải mã bằng sherpa-onnx (Gipformer hoặc model FT đã export), có hotwords, đo RTF |
-| `score.py` | WER, CS-WER strict/lenient, N-WER, term recall/precision, CI bootstrap theo người nói, cắt lát |
-| `leaderboard.py` | So cặp với baseline, áp luật chọn, xuất `.md/.csv/.html` |
-| `src/gipbench/dataset/ingest/ggroup.py` | G-Group vi-asr-*-test → ứng viên B1 + B5 |
-| `src/gipbench/dataset/ingest/vimedcss.py` | ViMedCSS → B3 (hard), bench ngoài (test), train, dev, catalog y tế |
-| `src/gipbench/dataset/ingest/sea.py` | SEA Code-Switching en-vi → train + ứng viên B1. **Tùy chọn, không dùng** (không có trong lệnh mặc định) |
-| `src/gipbench/dataset/ingest/local.py` | VIVOS, Common Voice, VietSuperSpeech từ thư mục đã tải → B5 + train replay |
-| `src/gipbench/dataset/release/build_bench.py` | Ghép bench từ ứng viên + phiếu duyệt, gộp catalog |
-| `tests/dataset/test_converters.py` | Kiểm thử converter bằng dataset giả đúng schema |
-| `src/gipbench/model/features/to_lhotse.py` | Manifest → Lhotse, lọc rò rỉ, speed perturb, mô phỏng thoại 8 kHz |
-| `src/gipbench/model/features/compute_fbank.py` | Fbank 80 chiều như recipe icefall |
-| `src/gipbench/model/train/wrap_ckpt.py` | Bọc `model.pt` của Gipformer thành `{"model": …}` cho `finetune.py` |
-| `src/gipbench/model/train/patch_finetune.py` | Tạo `zipformer/finetune_cs.py` đọc `--train-cuts`/`--valid-cuts` của bạn |
-| `src/gipbench/model/select/interpolate_ckpt.py` | Trộn trọng số model gốc và model FT (WiSE-FT) để giữ chất lượng tổng quát |
-| `docs/history/run_e3.sh` | Mẫu chạy trọn E3: dữ liệu → FT → export ONNX → chấm → leaderboard |
-| `src/gipbench/model/systems/tokenizer_check.py` | Kiểm tra BPE của Gipformer với từ tiếng Anh (xanh/vàng/đỏ) |
-| `docs/research/` | Tài liệu: kế hoạch + papers, Spec, Kiến trúc, Runbook (xuất từ doc) |
-| `docs/history/PROMPT_OPUS_IMPLEMENT.md` | Prompt giao việc implement cho Opus |
-| `tests/fixtures/make_toy_data.py`, `tests/selftest.sh` | Dữ liệu giả lập + tự kiểm tra |
-
-Đã kiểm thử: toàn bộ trên dữ liệu giả lập (Python 3.11 & 3.13); `decode.py` trên một model Zipformer sherpa-onnx thật
-(int8/fp32, greedy/beam, hotwords); `ft/*` trên lhotse 1.33 và icefall commit f8c8578 (12/11/2026).
-Converter: đã chạy trên dataset giả dựng theo schema đọc từ trang dataset (14/11/2026), CHƯA chạy trên dữ liệu thật —
-chạy `--limit 20` trước để bắt lệch schema.
-Chưa chạy: huấn luyện thật (cần GPU + k2) và model Gipformer thật (không tải được từ môi trường build).
+**Nguồn dữ liệu** (quyết định sau Phase 0b, 15/11/2026): B1 = G-Group (vi-asr-tech/edu/finance/pubadmin-test) + dữ liệu
+tự thu. CS thật cho train = ViMedCSS train + `vss_cs` (VietSuperSpeech, lọc đồng thuận) + dữ liệu tự có. SEA
+Code-Switching: tùy chọn, không dùng (`gipbench.dataset.ingest.sea` còn giữ).

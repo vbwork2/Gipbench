@@ -132,10 +132,25 @@ def main():
     ap.add_argument("--max-b5-domain-delta", type=float, default=0.5,
                     help="loại nếu WER của BẤT KỲ domain nào trong B5 tăng quá ngưỡng này (domain >= --min-domain-tokens)")
     ap.add_argument("--min-domain-tokens", type=int, default=500)
+    ap.add_argument("--systems", nargs="*", default=None,
+                    help="chỉ xếp các system này (tên thư mục trong --results); mặc định: mọi thư mục có utt_scores.jsonl")
+    ap.add_argument("--rules", default=None,
+                    help="YAML ngưỡng luật chọn (configs/bench/rules.yaml): đặt mặc định cho các tham số cùng tên; "
+                         "tham số truyền trên dòng lệnh vẫn thắng")
+    pre, _ = ap.parse_known_args()
+    if pre.rules:
+        import yaml
+        ap.set_defaults(**{k.replace("-", "_"): v for k, v in
+                           (yaml.safe_load(Path(pre.rules).read_text(encoding="utf-8")) or {}).items()})
     args = ap.parse_args()
 
     root = Path(args.results)
     systems = sorted(d.name for d in root.iterdir() if (d / "utt_scores.jsonl").exists())
+    if args.systems is not None:
+        missing = [s for s in args.systems if s not in systems]
+        if missing:
+            sys.exit(f"Thiếu kết quả đã chấm của {missing} trong {root}")
+        systems = sorted(args.systems)
     if args.baseline not in systems:
         sys.exit(f"Không thấy baseline {args.baseline} trong {root}")
     data = {s: load(root / s) for s in systems}

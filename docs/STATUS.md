@@ -1,4 +1,10 @@
-# STATUS — cập nhật 15/11/2026, 23:00 (giờ VN): ưu tiên E0/E1 trên bench NHÁP
+# STATUS
+
+> **16/11/2026: refactor 3 pipeline** (nhánh `refactor/pipelines`, `docs/DECISIONS.md` §13). Các lệnh và đường dẫn
+> script trong phần dưới là TRƯỚC refactor (`tools/…`, `ft/…`, `converters/…`, `validate.py`…). Lệnh hiện tại:
+> `docs/RUNBOOK.md`. Dữ liệu (`data/`, `results/`) không bị di chuyển. Đã thêm `data/releases/` (10 release, chỉ chép manifest).
+
+## Cập nhật 15/11/2026, 23:00 (giờ VN): ưu tiên E0/E1 trên bench NHÁP
 
 ## 0. Job ASR (vss_cs) và lệnh resume
 

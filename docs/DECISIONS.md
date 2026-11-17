@@ -104,3 +104,25 @@ Ngày 14/11/2026. Các quyết định này thay cho phần tương ứng trong 
 - A2: bench nháp `v0-draft` (`--accept trusted-text` cho các thuật ngữ đã chốt, cộng B3 ViMedCSS hard, cộng B5).
 - A3: E0 + E1 (`--hotwords-score` 1.0 / 1.5 / 2.0, `--hotwords-exclude-b3`) decode trên CPU, score, leaderboard. Ghi rõ "bench nháp"; RTF đo trên CPU khi máy bận, không dùng để so.
 - A4: FT thử nhỏ trên GPU (~200 step, ~2 h dữ liệu), CHỈ sau khi job ASR xong: wrap_ckpt → to_lhotse → fbank → finetune_cs → export int8 → decode → score. Báo VRAM, step/s, ước tính GPU-h cho FT thật trên GPU 16–24 GB.
+
+## 13. Refactor 3 pipeline (16/11/2026, nhánh `refactor/pipelines`)
+
+Đường dẫn file trong các mục 6–12 ở trên là đường dẫn TRƯỚC refactor. Bảng chuyển file: `docs/history/REFACTOR_PLAN.md` §5;
+bản đồ hiện tại: `README.md`, `docs/ARCHITECTURE.md`.
+
+- Tách thành `gipbench.{core, infer, dataset, model, bench}` (package `src/gipbench/`, chạy bằng `python -m`). Luật import
+  giữa các tầng được kiểm tự động (`tests/test_boundaries.py`). Code dùng chung đưa xuống `core`: `core.scoring`
+  (metric, chung cho chọn checkpoint và chấm bench), `core.tagging` (auto_tag), `core.agreement_rules`, `core.sampling`.
+- Ba pipeline nói chuyện qua 4 hợp đồng (`docs/CONTRACTS.md` §4–7): data release bất biến (sha256), experiment YAML (thay
+  `ft/run_e3_*.sh`), model artifact + `model_card.json`, system YAML (thay việc gọi `decode.py` bằng tay).
+- `configs/train_mix.tsv` -> các experiment YAML: `e3_v1` / `e3_v1b` dùng trọng số lúc chạy (cs_real 0.35, synth 0.05;
+  commit `5171980`); `e3_v2` (NHÁP, chưa chạy) dùng trọng số cuối của tsv (cs_real 0.20, synth 0.20). Bản tsv cuối:
+  `docs/history/train_mix.tsv`.
+- Đợt release đầu đăng ký đúng các file mà E3 v1 / v1b và bench nháp đã dùng (`configs/dataset/releases.yaml`). Các biến
+  thể khác trong `data/raw/vss_full/`, `ggroup_l20`, `vimedcss` / `vimedcss_hard` chưa đăng ký: người dùng chốt bản nào
+  được phát hành.
+- Không đổi hành vi: golden test (`tests/golden/`) cho 97/97 file output giống code trước refactor. Hai khác biệt hợp lệ:
+  dòng "Cấu hình: `<file>`" của `mix_plan.md`; trường audio của pool confusable được chuẩn hoá đường dẫn (cùng file).
+- Chưa đổi (cần người dùng chốt): bỏ `--agreement-hyps` khỏi curate (lọc đồng thuận thuộc dataset); dựng catalog không
+  chứa span của bench; đổi tên `data/raw` -> `data/interim`, `data/dl` -> `data/sources`; giữ hay xoá `ingest/sea.py`;
+  giữ `reports/dataset/eda_current/*.csv` trong git hay không.

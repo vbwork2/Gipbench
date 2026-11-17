@@ -69,7 +69,7 @@ def collect_lineage(result):
         'data/e3_v1/train_curated.jsonl.report.md',
         'data/e3_v1/dev_cs.jsonl', 'data/e3_v1b/train_curated.jsonl',
         'src/gipbench/model/recipe/curate.py', 'src/gipbench/model/features/to_lhotse.py', 'src/gipbench/model/features/mix_cuts.py',
-        'src/gipbench/dataset/release/build_bench.py', 'configs/model/train_mix.tsv',
+        'src/gipbench/dataset/release/build_bench.py', 'configs/model/experiments/e3_v1.yaml',
         'src/gipbench/dataset/report/inventory.py', 'src/gipbench/dataset/report/lineage.py',
         'configs/dataset/labeling/confusables.tsv', 'configs/dataset/labeling/term_decisions.tsv',
         'data/bench_v0_draft/catalog_v0_draft.tsv',

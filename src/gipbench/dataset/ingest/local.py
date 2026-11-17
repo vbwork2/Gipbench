@@ -12,7 +12,7 @@ Audio KHÔNG được copy: manifest trỏ thẳng vào file gốc.
 B5 chỉ nhận câu không có từ nào bị nghi là tiếng Anh. VietSuperSpeech là pseudo-label (Zipformer-30M): mặc định
 train_vss / dev_vss (replay, chưng cất) chỉ giữ câu không có từ Anh (bỏ lọc bằng --keep-english).
 Câu có từ Anh của phần train VSS được ghi riêng ra vss_cs_candidates.jsonl:
-  dataset = vss_cs, train_only = true; CHỈ dùng cho train, không bao giờ vào bench. Trong configs/model/train_mix.tsv,
+  dataset = vss_cs, train_only = true; CHỈ dùng cho train, không bao giờ vào bench. Trong experiment YAML (configs/model/experiments/*.yaml, mục pools),
   vss_cs thuộc nhóm riêng cs_pseudo (audio thật, nhãn giả), không thuộc cs_real.
   Câu rò rỉ với bench (--bench, mặc định chỉ xét split B1 B2 B3: speaker, source, text trùng; thuật ngữ reserved_b3
   trong --catalog) bị loại. Câu có từ Anh của phần dev bị bỏ (cùng video với dev_vss).

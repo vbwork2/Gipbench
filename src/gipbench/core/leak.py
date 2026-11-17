@@ -10,9 +10,10 @@ from typing import Dict, Iterable, Optional, Sequence, Set
 
 from gipbench.core.textnorm import Catalog, basic_tokens, plain_text
 
-from gipbench.core.paths import REPO as _ROOT
-# text chuẩn hoá của các bộ chỉ được dùng để test (src/gipbench/dataset/ingest/consensus.py ghi ra)
-DEFAULT_BLOCK_FILES = [_ROOT / "data" / "raw" / "consensus" / "leak_block.txt"]
+from gipbench.core import paths as _paths
+# text chuẩn hoá của các bộ chỉ được dùng để test (gipbench.dataset.ingest.consensus ghi ra). Vị trí: khoá
+# leak_block_files của configs/paths.yaml (mặc định data/raw/consensus/leak_block.txt)
+DEFAULT_BLOCK_FILES = _paths.paths("leak_block_files")
 TEST_ONLY_LICENSE = "test_only"
 # source / dataset của bộ test_only: không bao giờ được có trong train / dev, kể cả khi dòng mất trường license
 TEST_ONLY_SOURCES = {"consensus"}
@@ -61,7 +62,7 @@ def load_block_texts(paths: Optional[Sequence] = None, cat: Optional[Catalog] = 
 def add_block_arg(ap):
     ap.add_argument("--block-text", nargs="*", default=None,
                     help="danh sách chặn: text đã chuẩn hoá của bộ chỉ được test (mặc định "
-                         + " ".join(str(p.relative_to(_ROOT)) for p in DEFAULT_BLOCK_FILES) + "; truyền rỗng để tắt)")
+                         + " ".join(str(p.relative_to(_paths.REPO)) if p.is_relative_to(_paths.REPO) else str(p) for p in DEFAULT_BLOCK_FILES) + "; truyền rỗng để tắt)")
 
 
 class LeakGuard:
