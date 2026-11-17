@@ -323,19 +323,37 @@ def main(argv=None):
         rows, dropped, seen = [], [], set()
         # parquet: từng shard một (tải -> tách -> xoá) để không cần chỗ cho cả bộ; tsv + tar: tải cùng lúc
         batches = [[f] for f in spec["files"]] if spec["reader"] == "parquet" else [spec["files"]]
-        for b in batches:
+        for bi, b in enumerate(batches):
             if args.limit and len(rows) >= args.limit:
                 break
+            # chạy tiếp được: shard đã tách xong (cùng sha256 nguồn) được nạp lại, không tải lại
+            part = d / f".part{bi:03d}.{b[0][1][:12]}.jsonl"
+            if part.exists() and not args.limit:
+                done = json.loads(part.read_text(encoding="utf-8"))
+                for row in done["rows"]:
+                    if row["id"] in seen:
+                        raise SystemExit(f"{key}: id {row['id']} trùng giữa các shard, cần upstream_id có tên shard")
+                    seen.add(row["id"])
+                rows += done["rows"]
+                dropped += done["dropped"]
+                print(f"  {key}: shard {bi + 1}/{len(batches)} đã có ({len(done['rows'])} câu), bỏ qua tải", flush=True)
+                continue
             files = download(key, src, args.min_free_gb, only=b)
+            brows, bdrop = [], []
             for row, why in materialize(key, files, d / "audio", limit=args.limit):
                 if not why and row["id"] in seen:  # trùng giữa hai shard: file audio vừa ghi đè bản trước
                     raise SystemExit(f"{key}: id {row['id']} trùng giữa các shard, cần upstream_id có tên shard")
                 if why:
-                    dropped.append({"id": row["id"], "upstream_id": row.get("upstream_id"), "reason": why})
+                    bdrop.append({"id": row["id"], "upstream_id": row.get("upstream_id"), "reason": why})
                     continue
                 seen.add(row["id"])
                 row["audio"] = os.path.relpath(row.pop("_path"), d).replace(os.sep, "/")
-                rows.append(row)
+                brows.append(row)
+            rows += brows
+            dropped += bdrop
+            if not args.limit:
+                part.write_text(json.dumps({"rows": brows, "dropped": bdrop}, ensure_ascii=False), encoding="utf-8")
+            print(f"  {key}: shard {bi + 1}/{len(batches)} xong ({len(brows)} câu)", flush=True)
             if not args.keep_source and spec["reader"] == "parquet":
                 for f in files:
                     Path(f).unlink(missing_ok=True)
