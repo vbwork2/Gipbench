@@ -49,6 +49,14 @@ def share_rows(rows):
     return sorted(out, key=lambda x: x["id"])
 
 
+def strip_text(rows):
+    """Bộ không cho phân phối lại lời thoại (text_redistributable = false, vd PhoAudiobook, GigaSpeech2): bỏ các trường
+    lời thoại khỏi bản share; người nhận chạy fetch (đã đồng ý điều khoản trên HF) để lấy lại đúng giá trị từ nguồn."""
+    from gipbench.dataset.ingest.evalsets import TEXT_FIELDS
+    return [{k: v for k, v in r.items() if not (r.get("text_redistributable") is False and k in TEXT_FIELDS)}
+            for r in rows]
+
+
 def clean_meta(m):
     """run_meta.json cho bản share: bỏ đường dẫn máy (manifest, file model), giữ cấu hình giải mã + sha256."""
     if isinstance(m, dict):
@@ -93,7 +101,7 @@ def main(argv=None):
         rows = share_rows(read_jsonl(str(mp)))
         name = b.replace("_draft", "")
         with open(dst / "manifests" / f"{name}.jsonl", "w", encoding="utf-8") as f:
-            for r in rows:
+            for r in strip_text(rows):
                 f.write(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n")
         shutil.copyfile(P.REPO / "configs" / "bench" / "benchmarks" / f"{b}.yaml", dst / "manifests" / f"{name}.benchmark.yaml")
         if bm.get("catalog_from_bench"):

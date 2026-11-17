@@ -98,7 +98,40 @@ SPECS: Dict[str, Dict] = {
             "6f073c4792ae4dc2fc94021be51e5ab5592499a1a241754bdbedb88d8f808062"])],
         "id": "segment_id", "text": "segment_text", "speaker": "original_video_link",
         "meta": {"topic": "topic", "cs_terms_list": "cs_terms_list"}, "domain": "medical"},
+    # --- bộ gated (cần token HF đã đồng ý điều khoản trên trang dataset) ---
+    "phoaudiobook": {
+        # điều khoản: chỉ nghiên cứu / giáo dục, KHÔNG phân phối lại bất kỳ phần nào -> bản share không chứa lời thoại
+        "repo": "thivux/phoaudiobook", "revision": "f19f2410a0497c32f3dc8d9a054d1a14a255b9ee",
+        "license": "PhoAudiobook terms (gated): chỉ nghiên cứu / giáo dục, không phân phối lại, trích dẫn ACL 2025",
+        "split": "test", "reader": "parquet", "expected": 383, "redistribute_text": False,
+        "files": [("data/test-00000-of-00001.parquet", "b28749011ca53bb46cf7bfa50f272773feccbfb57fcf9313ea209f65a34b56f6")],
+        "id": None, "id_with_shard": True, "text": "text", "speaker": "speaker", "domain": "audiobook"},
+    "bud500": {
+        "repo": "linhtran92/viet_bud500", "revision": "4b30571f395781fddc3a4946fb378648f8572714", "license": "CC-BY-NC-SA-4.0",
+        "split": "test", "reader": "parquet", "expected": None,
+        "files": [("data/test-00000-of-00002-531c1d81edb57297.parquet", "a204d93628d280141aea359cb37c94eef8eec7268722e6c2e22d373f47f3bcfe"),
+                  ("data/test-00001-of-00002-1b2cd3ea16a2c5b1.parquet", "e5eb289a84ef548dd53f8117f4afdc9c74a2e5a78a1d16b9957ba926d7eec56b")],
+        "id": None, "id_with_shard": True, "text": "transcription", "speaker": None},
+    "gigaspeech2_vi": {
+        # audio YouTube, SpeechColab không sở hữu bản quyền; chỉ nghiên cứu phi thương mại -> bản share không chứa lời thoại
+        "repo": "speechcolab/gigaspeech2", "revision": "8dc0d0e502b7e6d5649a13cd4b677cf10c0b21e3",
+        "license": "GigaSpeech2 terms (gated; metadata Apache-2.0, audio YouTube): nghiên cứu / giáo dục phi thương mại",
+        "split": "test", "reader": "tsv_tar", "expected": 4422, "redistribute_text": False,
+        "files": [("data/vi/test.tsv", "287de4473efe384ebecd123d8d1fae7d3a8550bc8e06af4a5879a61ed540aa95"),
+                  ("data/vi/test.tar.gz", "c1963f95ef8351366ec942c20328300cfb06a3ce750c0ae42db3f67d38f0354b")],
+        "domain": "youtube"},
+    "speech_massive_test_vi": {
+        "repo": "FBK-MT/Speech-MASSIVE-test", "revision": "2e6d34fb35e3ac7021980fb018e7894b151a5c8e",
+        "license": "CC-BY-NC-SA-4.0", "split": "test", "reader": "parquet", "expected": None,
+        "files": [("vi-VN/test-00000-of-00003.parquet", "6063850c3f138ddb93759a8b3cfe9973f4ac441511aced0aa908c44585f2abc5"),
+                  ("vi-VN/test-00001-of-00003.parquet", "2c73016b2aa3ce6f3e1fbea228624645a31e37321e21e4bf1e4a69adef09a1a7"),
+                  ("vi-VN/test-00002-of-00003.parquet", "d0bea81e8a787e92b8e0dafae2dfd86067635f3e620d51ad85e3617c37d1a12b")],
+        "id": "path", "text": "utt", "speaker": "speaker_id",
+        "meta": {"gender": "speaker_sex", "age": "speaker_age", "scenario": "scenario_str", "massive_id": "id",
+                 "is_validated": "is_validated", "residence": "speaker_country_of_residence"}, "domain": "voice_assistant"},
 }
+# Trường lời thoại bị bỏ khỏi bản share khi bộ không cho phân phối lại (fetch lấy lại từ nguồn, cùng giá trị)
+TEXT_FIELDS = ("text_tagged", "text_orig", "text_norm_upstream")
 
 
 def sha256_file(p) -> str:
@@ -177,7 +210,31 @@ def read_cv17(spec: Dict, files: List[str], limit: int = 0):
                     return
 
 
-READERS = {"parquet": read_parquet, "fleurs": read_fleurs, "cv17": read_cv17}
+def read_tsv_tar(spec: Dict, files: List[str], limit: int = 0):
+    """GigaSpeech2: tsv không header `<id>\\t<text>`; tar.gz có file audio tên <id>.<ext> (tìm theo stem)."""
+    tsv, tgz = files
+    rows = {}
+    with open(tsv, encoding="utf-8", newline="") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line:
+                k, _, t = line.partition("\t")
+                rows[k] = {"text": t.strip(), "speaker": None, "session": None}
+    n = 0
+    with tarfile.open(tgz, "r:gz") as tf:
+        for m in tf:
+            if not m.isfile():
+                continue
+            stem, ext = Path(m.name).stem, Path(m.name).suffix
+            if stem in rows:
+                with tf.extractfile(m) as fh:
+                    yield stem, rows[stem], fh.read(), ext or ".wav"
+                n += 1
+                if limit and n >= limit:
+                    return
+
+
+READERS = {"parquet": read_parquet, "fleurs": read_fleurs, "cv17": read_cv17, "tsv_tar": read_tsv_tar}
 
 
 # ------------------------------------------------------------------ ghi audio
@@ -225,6 +282,8 @@ def materialize(key: str, files: List[str], audio_dir: Path, id_prefix: str = "e
                "domain": spec.get("domain") or "general", "license": spec["license"],
                "annotation_status": "upstream_human", "audio_derivation": deriv, "duration": dur,
                "_path": str(p), "audio_sha256": sha256_file(p)}
+        if spec.get("redistribute_text") is False:
+            row["text_redistributable"] = False  # package bỏ lời thoại; fetch lấy lại từ nguồn
         row.update({k: v for k, v in meta.items() if v not in (None, "")})
         yield row, (None if row["text_tagged"] else "text rỗng")
 

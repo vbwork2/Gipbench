@@ -129,35 +129,6 @@ datasets:
     session_key: speaker
     local: {raw: raw/consensus}
     pretraining_overlap: {gipformer15: unknown, viegem: unknown}
-  # --- chưa có trên máy: ghi để không bị "thay thế âm thầm" ---
-  gigaspeech2_vi:
-    hf_id: speechcolab/gigaspeech2
-    revision: 8dc0d0e502b7e6d5649a13cd4b677cf10c0b21e3
-    license: "Apache-2.0 (metadata HF; audio YouTube có điều khoản riêng)"
-    access: "gated (auto-accept, cần token HF đã đồng ý)"
-    upstream_splits: unknown
-    eval_split: test
-    content: YouTube tự nhiên
-    annotation: human (dev/test)
-    official_scorer: none_published
-    speaker_key: unknown
-    session_key: null
-    local: null
-    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
-  bud500:
-    hf_id: linhtran92/viet_bud500
-    revision: 4b30571f395781fddc3a4946fb378648f8572714
-    license: CC-BY-NC-SA-4.0
-    access: "gated (auto-accept)"
-    upstream_splits: unknown
-    eval_split: test
-    content: nhiều domain, clip cắt sát
-    annotation: unknown
-    official_scorer: none_published
-    speaker_key: unknown
-    session_key: null
-    local: null
-    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
   # --- track E0 (nhập bằng gipbench.dataset.ingest.evalsets, kiểm 17/11/2026) ---
   fleurs_vi:
     hf_id: google/fleurs
@@ -257,3 +228,59 @@ datasets:
     session_key: source
     local: {raw: dl/evalsets/vimedcss_test}
     pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  phoaudiobook:
+    hf_id: thivux/phoaudiobook
+    revision: f19f2410a0497c32f3dc8d9a054d1a14a255b9ee
+    license: "PhoAudiobook terms (gated): chỉ nghiên cứu / giáo dục, KHÔNG phân phối lại (bản share không chứa lời thoại)"
+    access: "gated (auto-accept, cần token HF đã đồng ý)"
+    upstream_splits: {validation: 141, test: 383}
+    eval_split: test
+    content: sách nói (ACL 2025, làm cho TTS zero-shot)
+    annotation: unknown
+    official_scorer: none_published
+    speaker_key: speaker
+    session_key: null
+    local: {raw: dl/evalsets/phoaudiobook}
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  bud500:
+    hf_id: linhtran92/viet_bud500
+    revision: 4b30571f395781fddc3a4946fb378648f8572714
+    license: CC-BY-NC-SA-4.0
+    access: "gated (auto-accept, cần token HF đã đồng ý)"
+    upstream_splits: unknown
+    eval_split: test
+    content: nhiều domain, clip cắt sát
+    annotation: unknown
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/evalsets/bud500}
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  gigaspeech2_vi:
+    hf_id: speechcolab/gigaspeech2
+    revision: 8dc0d0e502b7e6d5649a13cd4b677cf10c0b21e3
+    license: "GigaSpeech2 terms (gated; metadata Apache-2.0, audio YouTube): nghiên cứu phi thương mại (bản share không chứa lời thoại)"
+    access: "gated (auto-accept, cần token HF đã đồng ý)"
+    upstream_splits: {test: 4422}
+    eval_split: test
+    content: YouTube tự nhiên
+    annotation: human (dev/test theo bài báo GigaSpeech 2)
+    official_scorer: none_published
+    speaker_key: null
+    session_key: null
+    local: {raw: dl/evalsets/gigaspeech2_vi}
+    pretraining_overlap: {gipformer15: unknown, viegem: known_possible}
+  speech_massive_test_vi:
+    hf_id: FBK-MT/Speech-MASSIVE-test
+    revision: 2e6d34fb35e3ac7021980fb018e7894b151a5c8e
+    license: CC-BY-NC-SA-4.0
+    access: "gated (auto-accept, cần token HF đã đồng ý)"
+    upstream_splits: unknown
+    eval_split: test
+    content: câu lệnh trợ lý ảo (MASSIVE) do người Việt đọc, 48 kHz
+    annotation: human (câu dịch có kiểm định)
+    official_scorer: none_published
+    speaker_key: speaker_id
+    session_key: null
+    local: {raw: dl/evalsets/speech_massive_test_vi}
+    pretraining_overlap: {gipformer15: unknown, viegem: not_listed}

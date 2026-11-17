@@ -157,7 +157,8 @@ def cs_ggroup(data: Path, limit: int):
                "_duration": r.get("duration")}
 
 
-EXTERNAL_SETS = ["fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "vimedcss_test"]
+EXTERNAL_SETS = ["fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "speech_massive_test_vi",
+                 "vimedcss_test", "phoaudiobook", "bud500", "gigaspeech2_vi"]
 
 
 def external(data: Path, limit: int):

@@ -114,6 +114,28 @@ def main():
         check("fetch evalset: file nguồn khác bản khoá -> dừng", False)
     except SystemExit as e:
         check("fetch evalset: file nguồn khác bản khoá -> dừng", e.code not in (0, None))
+    # bộ không cho phân phối lại lời thoại: package bỏ text, fetch lấy lại từ nguồn, manifest_sha256 trùng bản khoá
+    from gipbench.dataset.release.build_general import manifest_sha256
+    from gipbench.dataset.release.package import share_rows, strip_text
+    EV.SPECS["fake_nd"] = dict(EV.SPECS["fake_pq"], redistribute_text=False)
+    F.SOURCES["fake_nd"] = dict(F.SOURCES["fake_pq"])
+    nd = []
+    for f in (p0, p1):
+        nd += [r for r, why in EV.materialize("fake_nd", [str(f)], d / "nd" / "audio") if not why]
+    check("bộ không cho phân phối lại: dòng mang text_redistributable = false",
+          all(r.get("text_redistributable") is False for r in nd))
+    full = share_rows([dict(r, audio="x") for r in nd])
+    shared = strip_text(full)
+    check("package bỏ lời thoại khỏi bản share", all("text_tagged" not in r for r in shared))
+    man3 = d / "m3.jsonl"
+    man3.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in shared), encoding="utf-8")
+    try:
+        F.main(["--manifest", str(man3), "--out", str(d / "recv3"), "--local-source", f"fake_nd={p0}", f"fake_nd={p1}"])
+    except SystemExit:
+        pass
+    got3 = [json.loads(l) for l in open(d / "recv3" / "manifest.jsonl", encoding="utf-8")]
+    check("fetch lấy lại lời thoại từ nguồn", [r.get("text_tagged") for r in got3] == [r["text_tagged"] for r in full])
+    check("manifest sau fetch trùng manifest_sha256 bản khoá", manifest_sha256(got3) == manifest_sha256(full))
     check("mọi bộ E0 thật đều có nguồn trong fetch.SOURCES",
           all(k in F.SOURCES for k in ("fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "vimedcss_test")))
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")

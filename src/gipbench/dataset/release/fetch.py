@@ -145,13 +145,17 @@ def fetch_tar(files, rows, out_dir: Path):
 
 def fetch_evalset(key, files, rows, out_dir: Path):
     """Bộ E0: tách đúng các upstream_id cần bằng cùng code với lúc nhập (giữ byte hoặc resample 16 kHz)."""
-    from gipbench.dataset.ingest.evalsets import materialize
+    from gipbench.dataset.ingest.evalsets import TEXT_FIELDS, materialize
     by_up = {str(r["upstream_id"]): r for r in rows}
     got = {}
     for row, why in materialize(key, files, out_dir, want=set(by_up)):
         if why or "_path" not in row:
             continue
         r = by_up[row["upstream_id"]]
+        if r.get("text_redistributable") is False:  # bản share không có lời thoại: lấy lại đúng giá trị từ nguồn
+            for k in TEXT_FIELDS:
+                if k in row and k not in r:
+                    r[k] = row[k]
         src = Path(row["_path"])
         dst = out_dir / f"{r['id']}{src.suffix}"
         if src != dst:
