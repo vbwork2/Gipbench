@@ -9,4 +9,5 @@ __pycache__/
 *.pyc
 .venv/
 /graphify-out/
-.agents
+.agentsconfigs/paths.yaml
+artifacts/

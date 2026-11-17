@@ -1,0 +1,9 @@
+# Luật chọn của leaderboard (python -m gipbench.bench.leaderboard --rules configs/bench/rules.yaml).
+# Giá trị = mặc định của gipbench.bench.leaderboard (Spec mục chọn phương án). Đổi luật: sửa file này, không cần decode lại.
+main_metric: term_acc_macro     # metric chính B1+B2: term_acc_macro | span_acc | cs_wer
+b5_margin: 0.5                  # loại nếu cận trên CI95 ghép cặp của delta WER B5 > ngưỡng (kiểm định không kém hơn)
+nwer_margin: 0.5                # như trên cho delta N-WER (B1-B4)
+max_rtf_ratio: 1.2              # RTF tối đa so với baseline
+max_b5_domain_delta: 0.5        # loại nếu WER của bất kỳ domain nào trong B5 tăng quá ngưỡng (domain >= min_domain_tokens)
+min_domain_tokens: 500
+iters: 1000                     # số vòng bootstrap

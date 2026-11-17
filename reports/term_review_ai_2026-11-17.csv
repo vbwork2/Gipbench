@@ -1,0 +1,10 @@
+id,split,audio,duration,text_tagged,text_tagged_orig,confidence,flags,decision,text_tagged_fixed,viet_levels,reading_note,region,gender,note
+gg_tech_113442,B1,audio/tech/gg_tech_113442.mp3,3.436,đó là bộ kỹ năng <en>cloud hub</en> chấm ai,,heuristic,heuristic_span suspect:ai,fix,đó là bộ kỹ năng <en>cloud hub</en> chấm <en>ai</en>,,,unk,u,
+gg_tech_113745,B1,audio/tech/gg_tech_113745.mp3,3.276,ê là chữ <en>electronic</en> đó dùng chữ ai là chữ <en>iot</en>,,heuristic,heuristic_span suspect:ai,ok,,,,unk,u,
+gg_tech_114479,B1,audio/tech/gg_tech_114479.mp3,2.456,ai vào cái <en>shop</en> á <en>add</en> một cái <en>admin</en>,,heuristic,heuristic_span suspect:ai,ok,,,,unk,u,
+gg_tech_114522,B1,audio/tech/gg_tech_114522.mp3,4.568,quý vị là có ai quan tâm đến cái việc tối ưu về <en>data transfer cost</en> thì,,heuristic,heuristic_span suspect:ai,ok,,,,unk,u,
+gg_tech_114730,B1,audio/tech/gg_tech_114730.mp3,2.616,đó và mình có một cái <en>form</en> chứ không ai để là <en>list</en> cả,,catalog,suspect:ai,ok,,,,unk,u,
+gg_edu_113875,B1,audio/edu/gg_edu_113875.mp3,5.1,cái khóa về <en>ai specialist</en> còn cái khóa về ai về <en>python developer</en>,,heuristic,heuristic_span suspect:ai,fix,cái khóa về <en>ai specialist</en> còn cái khóa về <en>ai</en> về <en>python developer</en>,,,unk,u,
+gg_edu_115102,B1,audio/edu/gg_edu_115102.mp3,5.388,<en>foundation foundation</en> học kỳ tiếp theo á bạn sẽ được đào tạo những kiến thức ai,,heuristic,heuristic_span suspect:ai,fix,<en>foundation foundation</en> học kỳ tiếp theo á bạn sẽ được đào tạo những kiến thức <en>ai</en>,,,unk,u,
+gg_edu_115919,B1,audio/edu/gg_edu_115919.mp3,3.02,nếu bạn học ai song song với <en>software engineering</en>,,heuristic,heuristic_span suspect:ai,fix,nếu bạn học <en>ai</en> song song với <en>software engineering</en>,,,unk,u,
+gg_edu_116300,B1,audio/edu/gg_edu_116300.mp3,3.296,hai mươi lăm khi ai bước vào giai đoạn tự huấn luyện <en>self learning ai</en>,,catalog,suspect:ai,fix,hai mươi lăm khi <en>ai</en> bước vào giai đoạn tự huấn luyện <en>self learning ai</en>,,,unk,u,

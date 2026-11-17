@@ -1,0 +1,30 @@
+# Bench NHÁP cũ (B1–B5), giữ để so số lịch sử. Chấm bằng legacy_v0 cho khớp results/v0_draft/*/summary.json.
+benchmark_id: v0
+version: v0-draft
+track: C0+R0
+purpose: Bench nháp code-switching (B1–B4) + tiếng Việt (B5, kiểm suy giảm). Không phải bench cuối.
+evidence_level: draft
+status: active
+manifest: ${data_root}/bench_v0_draft/bench_v0_draft.jsonl
+manifest_sha256: null
+catalog: ${data_root}/bench_v0_draft/catalog_v0_draft.tsv
+catalog_from_bench: true       # catalog chứa 1 618 span lấy từ chính bench: hotwords từ đây = oracle_bias
+profile: legacy_v0
+also_report_profiles: [gipbench_strict_v1]
+primary_metric: cs_wer
+group_by: [split, dataset, domain]
+aggregate: none
+split_groups: {main_B1+B2: [B1, B2], B3: [B3], B5: [B5], cs_B1-B4: [B1, B2, B3, B4]}
+boot_unit: boot_unit_legacy    # speaker_cluster nếu có, không thì speaker (= core.scoring)
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm, context_bias, oracle_bias]
+contains_private: true         # consensus (B2 + 1 081 câu B5) là test_only, không phân phối
+sources:
+  - {dataset: ggroup_tech, split: test, slice: B1}
+  - {dataset: ggroup_edu, split: test, slice: B1}
+  - {dataset: ggroup_finance, split: test, slice: B1}
+  - {dataset: ggroup_pubadmin, split: test, slice: B1+B5}
+  - {dataset: consensus_private, split: test_only, slice: B2+B5}
+  - {dataset: vimedcss, split: hard, slice: B3}
+  - {dataset: vivos, split: test, slice: B5}

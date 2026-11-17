@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gipbench"
+version = "0.2.0"
+description = "Bench code-switching Việt–Anh cho Gipformer 1.5: pipeline dataset / model / bench"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pyyaml"]
+
+[project.optional-dependencies]
+# bản đầy đủ của từng môi trường: requirements.txt (CPU), requirements-asr.txt (ASR), scripts/setup_ft_env.sh (FT)
+audio = ["soundfile", "soxr"]
+model = ["lhotse", "torch"]
+asr = ["faster-whisper"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"gipbench.dataset.label" = ["review_bench.html"]

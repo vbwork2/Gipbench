@@ -1,0 +1,14 @@
+# Cấu hình trộn dữ liệu train (Spec mục 10). Tỉ trọng = phần của batch, tổng = 1.00; ghi đè bằng biến môi trường
+# khi chạy: MIX_CS_REAL, MIX_CS_PSEUDO, MIX_SYNTH, MIX_REPLAY_HUMAN, MIX_DISTILL, MIX_CONFUSABLE.
+# Điểm khởi đầu chưa kiểm chứng, chỉnh trên dev. Kiểm kế hoạch trộn (tổng tỉ trọng, trần domain 35% trên
+# cs_real + cs_pseudo, phân bố domain dự kiến): python -m gipbench.model.recipe.mix_plan --manifest ...
+# Cột datasets: giá trị trường `dataset` của manifest (tiền tố trước ':'), ngăn bằng dấu phẩy.
+# vss_cs (câu có từ Anh của VietSuperSpeech, nhãn giả Zipformer-30M, đã lọc đồng thuận + WER tiếng Việt) thuộc nhóm
+# riêng cs_pseudo: audio thật, nhãn giả. KHÔNG thuộc cs_real.
+group	weight	env	datasets	note
+cs_real	0.20	MIX_CS_REAL	ViMedCSS	CS thật, nhãn người: ViMedCSS train, dữ liệu tự có. Hạ từ 0.35 (16/11): pool chỉ ~7.5 h nên 0.35 lặp mỗi cut quá nhiều lần và kéo model về y khoa. SEA: tùy chọn, không dùng
+cs_pseudo	0.10	MIX_CS_PSEUDO	vss_cs	audio thật, nhãn giả: vss_cs (VietSuperSpeech, đã lọc đồng thuận + WER tiếng Việt)
+synth	0.20	MIX_SYNTH	tts	CS tổng hợp (TTS đã qua src/gipbench/dataset/synth/verify.py). Nâng từ 0.05 (16/11): nguồn duy nhất phủ thuật ngữ tech / edu / finance. Quét MIX_SYNTH=0 / 0.20 / 0.35 để so; phần tiếng Việt (replay + distill + confusable) giữ 0.50
+replay_human	0.25	MIX_REPLAY_HUMAN	vivos,commonvoice	Replay tiếng Việt nhãn người (+ call center nếu có)
+distill	0.20	MIX_DISTILL	distill	Replay tự chưng cất (src/gipbench/dataset/pseudolabel/distill.py)
+confusable	0.05	MIX_CONFUSABLE	confusable	Câu tiếng Việt gần âm thuật ngữ (src/gipbench/dataset/derive/confusables.py)

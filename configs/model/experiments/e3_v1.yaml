@@ -1,0 +1,63 @@
+# E3 v1 (16/11/2026): FT Gipformer 1.5 trên RTX 3050 4 GB, dữ liệu curate + mix, freeze, chọn checkpoint / WiSE-FT trên dev.
+# Thay cho ft/run_e3_v1.sh (docs/history/). Chạy:
+#   python -m gipbench.model.run configs/model/experiments/e3_v1.yaml --stages 0-6 [--dry-run] [--set train.lr=0.001]
+# Stage: 0 prepare (chép pool / dev từ release, audio tuyệt đối; báo rò rỉ) · 1 curate · 2 tách nhóm + to_lhotse ·
+#        3 mix_cuts · 4 finetune (watchdog) · 5 ứng viên: export int8 + decode dev · 6 chọn checkpoint + WiSE-FT ->
+#        artifact (onnx + model_card.json) + system yaml cho bench (configs/bench/systems/<system>.yaml)
+# Bench KHÔNG nằm trong file này: chạy python -m gipbench.bench.run --system configs/bench/systems/e3_v1.yaml
+name: e3_v1
+description: "FT E3 v1: trần domain 35% trên giờ CS, holdout finance"
+base_model: models/gip15            # model.pt, bpe.model, tokens.txt
+catalog: catalog/v0-draft            # trần per-term, chuẩn hoá text, chọn checkpoint (term_acc_macro)
+leak_guard: bench/v0-draft           # CHỈ dùng để chặn rò rỉ (to_lhotse --bench, báo cáo stage 0)
+dev:
+  cs: dev/dev_cs@e3_v1
+  vi: dev/dev_vi@e3_v1
+
+# group -> trọng số trong batch (tổng = 1.00), biến môi trường ghi đè (giữ tương thích MIX_*), giá trị `dataset` (tiền tố
+# trước ':') thuộc nhóm, và các pool release làm đầu vào. Trọng số = configs/train_mix.tsv lúc chạy (commit 5171980).
+pools:
+  cs_real:      {weight: 0.35, env: MIX_CS_REAL, datasets: [ViMedCSS], refs: [pool/vimedcss_train@full],
+                 note: "CS thật, nhãn người: ViMedCSS train"}
+  cs_pseudo:    {weight: 0.10, env: MIX_CS_PSEUDO, datasets: [vss_cs], refs: [pool/vss_cs@e3_v1],
+                 note: "audio thật, nhãn giả: vss_cs"}
+  synth:        {weight: 0.05, env: MIX_SYNTH, datasets: [tts], refs: [], note: "CS tổng hợp (TTS): chưa có dữ liệu"}
+  replay_human: {weight: 0.25, env: MIX_REPLAY_HUMAN, datasets: [vivos, commonvoice],
+                 refs: [pool/vivos_train@e3_v1, pool/cv_train@v1], note: "Replay tiếng Việt nhãn người"}
+  distill:      {weight: 0.20, env: MIX_DISTILL, datasets: [distill], refs: [pool/distill@e3_v1],
+                 note: "Replay tự chưng cất"}
+  confusable:   {weight: 0.05, env: MIX_CONFUSABLE, datasets: [confusable], refs: [pool/confusable_train@e3_v1],
+                 note: "Câu tiếng Việt gần âm thuật ngữ"}
+
+curate:                              # tham số gipbench.model.recipe.curate (mặc định của tool cho mục không ghi)
+  holdout_domain: [finance]
+  max_domain_share: 0.35
+  cap_exempt: [other]
+
+features: {speed_perturb: true, phone_sim: 0.3}
+mix: {epochs: 6, epoch_hours: 160}
+
+train:
+  lr: 0.002
+  max_duration: 150
+  freeze: "encoder_embed.,encoder.encoders.0.,encoder.encoders.1."
+  model_args: "--use-transducer 1 --use-ctc 0"
+  drop_ctc: true
+  workers: 2
+  buckets: 10
+  keep_last_k: 40
+  segments_per_epoch: 4               # checkpoint mỗi 1/4 epoch ảo (RAM tiến trình chính tăng dần -> chạy theo đoạn)
+  watchdog: {disk_path: /mnt/d, min_free_disk_gb: 3, min_ram_mb: 1024, ram_grace_s: 180, hang_s: 600, poll_s: 60}
+
+select: {max_vi_delta: 0.3, wise_alphas: [0.3, 0.5, 0.7, 1.0]}
+decode_dev: {threads: 16, batch: 32}
+
+output:
+  exp_dir: ${exp_root}/e3_v1        # checkpoint + ứng viên onnx (C: vì D: thiếu chỗ)
+  work_dir: data/e3_v1               # manifest trung gian, lhotse, log
+  dev_results: results/e3_v1_dev
+  artifact: ${exp_root}/artifacts/e3_v1
+
+systems:                              # system yaml sinh ra ở cuối stage 6
+  - {system: e3_v1}
+  - {system: e7_v1, hotwords: {catalog: catalog/v0-draft, exclude_b3: true, score: 1.5}}

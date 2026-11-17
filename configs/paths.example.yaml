@@ -1,0 +1,11 @@
+# Đường dẫn của máy này. Chép thành configs/paths.yaml (gitignore) rồi sửa. Không có file thì dùng các giá trị dưới
+# (= vị trí trước refactor). Biến môi trường thắng file: GIPBENCH_DATA, GIPBENCH_RESULTS, GIPBENCH_EXP, ICEFALL,
+# GIPBENCH_PY, GIPBENCH_FT_PY, GIPBENCH_ASR_PY. Đường dẫn tương đối tính từ gốc repo. Đọc bởi gipbench.core.paths.
+data_root: data
+results_root: results
+exp_root: /mnt/c/Users/goose/gipbench_exp        # checkpoint + artifact (C: vì D: thiếu chỗ, 16/11/2026)
+icefall: ~/icefall
+python_cpu: ~/.venvs/gipbench/bin/python
+python_ft: ~/.venvs/gipbench-ft/bin/python
+python_asr: ~/.venvs/gipbench-asr/bin/python
+leak_block_files: [data/raw/consensus/leak_block.txt]   # text của bộ chỉ được test (consensus), chặn khỏi train / dev

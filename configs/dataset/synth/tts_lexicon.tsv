@@ -1,0 +1,229 @@
+# BẢN NHÁP do máy soạn (chưa ai nghe lại): cách đọc dưới đây là phỏng đoán của người soạn, CẦN NGƯỜI BẢN NGỮ DUYỆT trước khi dùng thật. Dòng sai làm hại: audio đọc A nhưng nhãn học B.
+# Cột: term = chính tả Anh (chữ thường, khớp catalog) · reading = cách đọc viết bằng âm tiết tiếng Việt (đưa thẳng cho TTS) ·
+#   viet_level = strong (Việt hoá mạnh, "mít tinh") / mid (trung gian) / native (gần bản ngữ Anh; viết tắt đọc tên chữ cái Anh) ·
+#   kind = word / acronym_en (viết tắt đọc kiểu Anh: ây pi ai) / acronym_vi (đọc chữ cái kiểu Việt: a pê i) / brand · note = ghi chú tự do.
+# Một thuật ngữ có nhiều dòng (mỗi dòng một cách đọc). Dùng bởi src/gipbench/dataset/synth/make_text.py (tạo tts_text, en_meta.viet_level) và
+# src/gipbench/dataset/synth/verify.py (chấp nhận hyp ASR ra phiên âm). Thêm thuật ngữ mới: thêm dòng, giữ term viết thường.
+term	reading	viet_level	kind	note
+meeting	mít tinh	strong	word	Việt hoá mạnh, phổ biến ở miền Bắc
+meeting	mi ting	mid	word
+meeting	mi đinh	native	word	gần giọng Mỹ
+deadline	đét lai	strong	word
+deadline	đét lain	mid	word
+deadline	đéc lai nờ	native	word
+team	tim	strong	word	trùng âm "tim" tiếng Việt
+team	thim	mid	word
+feedback	phít bách	strong	word
+feedback	phít bẹc	mid	word
+feedback	phít bác	native	word
+marketing	ma két tinh	strong	word
+marketing	ma kê ting	mid	word
+marketing	mác kơ đinh	native	word
+email	i meo	strong	word
+email	i mêu	mid	word
+website	quép sai	strong	word
+website	oép sai	native	word
+server	sơ vơ	strong	word
+server	sớ vờ	mid	word
+deploy	đi ploi	strong	word
+deploy	đì ploi	mid	word
+bug	bấc	strong	word
+bug	bớc	mid	word
+code	cốt	strong	word
+code	cô đờ	mid	word
+app	áp	strong	word
+app	ép	native	word
+wifi	oai phai	strong	word
+wifi	quai phai	mid	word
+online	on lai	strong	word
+online	on lain	mid	word
+offline	óp lai	strong	word
+offline	óp lain	mid	word
+livestream	lai sờ trim	strong	word
+livestream	lai sờ chim	mid	word
+update	úp đết	strong	word
+update	áp đết	mid	word
+download	đao lốt	strong	word
+download	đao lô	mid	word
+upload	úp lốt	strong	word
+upload	úp lô	mid	word
+password	pát uốt	strong	word
+password	pát quốt	mid	word
+login	lốc in	strong	word
+login	lóc gin	mid	word
+link	lin	strong	word
+link	linh	mid	word
+click	cờ lích	strong	word
+click	cờ lick	mid	word
+share	se	strong	word
+share	xe	mid	word
+comment	com men	strong	word
+comment	cô men	mid	word
+group	gờ rúp	strong	word
+group	grúp	mid	word
+chat	chát	strong	word
+chat	chét	mid	word
+inbox	in bóc	strong	word
+inbox	in bóx	mid	word
+hashtag	hách tách	strong	word
+hashtag	hát tác	mid	word
+startup	sờ tát úp	strong	word
+startup	sờ ta úp	mid	word
+freelance	phri lan	strong	word
+freelance	phri len	mid	word
+workshop	uốc sóp	strong	word
+workshop	quốc sóp	mid	word
+workshop	uốc sốp	native	word
+brainstorm	brên sờ tom	strong	word
+brainstorm	brên sờ tóm	mid	word
+review	ri viu	strong	word
+review	ri vi diu	mid	word
+report	ri po	strong	word
+report	ri pót	mid	word
+booking	bu king	strong	word
+booking	búc king	mid	word
+voucher	vao chơ	strong	word
+voucher	vau chơ	mid	word
+combo	com bô	strong	word
+combo	côm bâu	native	word
+sale	seo	strong	word
+sale	xây	mid	word
+flash sale	phờ lách seo	strong	word
+flash sale	phờ lét xây	mid	word
+skincare	sờ kin ke	strong	word
+skincare	skin ke	mid	word
+shipper	síp pơ	strong	word
+shipper	xíp pơ	mid	word
+order	o đơ	strong	word
+order	ó đờ	mid	word
+check in	chếch in	strong	word
+check in	chéc in	mid	word
+crypto	críp tô	strong	word
+crypto	cờ ríp tô	mid	word
+bitcoin	bít coi	strong	word
+bitcoin	bít cô in	mid	word
+blockchain	bờ lóc chên	strong	word
+blockchain	bờ lóc chin	mid	word
+trading	tre đinh	strong	word
+trading	trây đinh	mid	word
+scholarship	sờ ca la síp	strong	word
+scholarship	sờ cô lơ síp	mid	word
+master	mát tơ	strong	word
+master	ma sờ tờ	mid	word
+bachelor	bát chờ lơ	strong	word
+bachelor	bát chơ lơ	mid	word
+homestay	hôm sờ tay	strong	word
+homestay	hom sờ tây	mid	word
+toefl	tô phồ	strong	word
+toefl	tô phô	mid	word
+ielts	ai eo	strong	word	đọc liền như một từ
+ielts	ai ớt	mid	word
+ielts	ai i eo ti ét	native	acronym_en	đọc từng chữ cái Anh
+ctrl	con trôn	strong	word	phím Ctrl
+ctrl	xi ti a eo	native	acronym_en
+api	ây pi ai	native	acronym_en
+api	ê pi ai	mid	acronym_en
+api	a pê i	strong	acronym_vi
+kpi	kây pi ai	native	acronym_en
+kpi	ca pê i	strong	acronym_vi
+ceo	xi i âu	native	acronym_en
+ceo	xê e o	strong	acronym_vi
+cto	xi ti âu	native	acronym_en
+cto	xê tê o	strong	acronym_vi
+cfo	xi ép âu	native	acronym_en
+cfo	xê ép o	strong	acronym_vi
+hr	ếch a	native	acronym_en
+hr	hát e rờ	strong	acronym_vi
+it	ai ti	native	acronym_en
+it	i tê	strong	acronym_vi
+ai	ây ai	native	acronym_en
+ai	a i	strong	acronym_vi
+ui	diu ai	native	acronym_en
+ui	u i	strong	acronym_vi
+ux	diu ếch	native	acronym_en
+ux	u ích	strong	acronym_vi
+cpu	xi pi diu	native	acronym_en
+cpu	xê pê u	strong	acronym_vi
+gpu	gi pi diu	native	acronym_en
+gpu	giê pê u	strong	acronym_vi
+ssd	ét ét đi	native	acronym_en
+ssd	ét ét đê	strong	acronym_vi
+usb	diu ét bi	native	acronym_en
+usb	u ét bê	strong	acronym_vi
+pdf	pi đi ép	native	acronym_en
+pdf	pê đê ép	strong	acronym_vi
+sql	ét kiu eo	native	acronym_en
+sql	ét quy e lờ	strong	acronym_vi
+hdmi	ếch đi em ai	native	acronym_en
+hdmi	hát đê em i	strong	acronym_vi
+vpn	vi pi en	native	acronym_en
+vpn	vê pê en	strong	acronym_vi
+seo	ét i âu	native	acronym_en
+seo	ét e o	strong	acronym_vi
+crm	xi a em	native	acronym_en
+crm	xê e rờ em	strong	acronym_vi
+erp	i a pi	native	acronym_en
+erp	e rờ pê	strong	acronym_vi
+roi	a âu ai	native	acronym_en
+roi	e rờ o i	strong	acronym_vi
+okr	âu kây a	native	acronym_en
+okr	o ca e rờ	strong	acronym_vi
+mba	em bi ây	native	acronym_en
+mba	em bê a	strong	acronym_vi
+gdp	gi đi pi	native	acronym_en
+gdp	giê đê pê	strong	acronym_vi
+atm	ây ti em	native	acronym_en
+atm	a tê em	strong	acronym_vi
+cv	xi vi	native	acronym_en
+cv	xê vê	strong	acronym_vi
+pr	pi a	native	acronym_en
+pr	pê e rờ	strong	acronym_vi
+ip	ai pi	native	acronym_en
+ip	i pê	strong	acronym_vi
+vip	víp	strong	word	đọc như một từ
+vip	vi ai pi	native	acronym_en
+ok	ô kê	strong	word
+ok	âu kây	native	acronym_en
+facebook	phây búc	strong	brand
+facebook	phây bút	mid	brand
+facebook	phây buc	native	brand
+youtube	diu túp	strong	brand
+youtube	du túp	mid	brand
+tiktok	tích tóc	strong	brand
+tiktok	tíc tóc	mid	brand
+shopee	sốp pi	strong	brand
+shopee	sốp phi	mid	brand
+zalo	da lô	strong	brand
+zalo	gia lô	mid	brand
+google	gu gồ	strong	brand
+google	gúc gồ	mid	brand
+iphone	ai phôn	strong	brand
+iphone	i phôn	mid	brand
+samsung	sam sung	strong	brand
+samsung	sam xung	mid	brand
+grab	grép	strong	brand
+grab	gráp	mid	brand
+lazada	la da đa	strong	brand
+lazada	lá da đa	mid	brand
+tiki	ti ki	strong	brand
+tiki	tí ki	mid	brand
+momo	mô mô	strong	brand
+momo	mo mo	mid	brand
+vinfast	vin phát	strong	brand
+vinfast	vin phắt	mid	brand
+vietcombank	việt com banh	strong	brand
+vietcombank	việt com bank	mid	brand
+microsoft	mai cờ rô sóp	strong	brand
+microsoft	mai crô sốp	native	brand
+apple	áp pồ	strong	brand
+apple	ép pồ	native	brand
+netflix	nét phích	strong	brand
+netflix	nét phờ lích	mid	brand
+zoom	dum	strong	brand
+zoom	zum	mid	brand
+messenger	mét sen giơ	strong	brand
+messenger	mét xen giơ	mid	brand
+instagram	in sờ ta gram	strong	brand
+instagram	ins ta gram	mid	brand
+telegram	te lê gram	strong	brand
+telegram	te le gram	mid	brand

@@ -1,0 +1,15 @@
+# FT thử A4 + hotwords 1.5. Tham số = config trong results/v0_draft/a4_trial_hw1.5/decode_summary.json (lần chạy gốc).
+# Chạy: python -m gipbench.bench.run --bench bench/v0-draft --system configs/bench/systems/a4_trial_hw1.5.yaml
+system: a4_trial_hw1.5
+model: exp/a4_trial/onnx
+decode:
+  decoding_method: modified_beam_search
+  beam: 4
+  quantize: int8
+  threads: 16
+  batch: 32
+  blank_penalty: 0.0
+  case: upper
+  hotwords_catalog: catalog/v0-draft      # release; cùng nội dung data/bench_v0_draft/catalog_v0_draft.tsv
+  hotwords_exclude_b3: true
+  hotwords_score: 1.5

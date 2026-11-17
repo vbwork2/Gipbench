@@ -1,0 +1,23 @@
+# Quyết định tay cho configs/dataset/labeling/vi_abbrev.txt (Phase 0d). src/gipbench/dataset/label/wordlists.py đọc file này SAU các nguồn tự động:
+#   add      thêm mục (kể cả mục bị luật google-10000 loại, vd tp); vẫn bị loại nếu trùng term EN trong catalog
+#   exclude  bỏ mục (ghi lại thành dòng '#-' kèm lý do)
+# UPCOM: không thêm (chỉ HOSE + HNX, --boards HSX HNX).
+abbr	action	group	full	source
+vn	add	viết tắt (quy ước dự án)	Việt Nam	quy ước dự án, đọc kiểu Việt
+ubnd	add	viết tắt (quy ước dự án)	Ủy ban nhân dân	quy ước dự án, đọc kiểu Việt
+bhxh	add	viết tắt (quy ước dự án)	Bảo hiểm xã hội	quy ước dự án, đọc kiểu Việt
+bhyt	add	viết tắt (quy ước dự án)	Bảo hiểm y tế	quy ước dự án, đọc kiểu Việt
+cccd	add	viết tắt (quy ước dự án)	Căn cước công dân	quy ước dự án, đọc kiểu Việt
+cmnd	add	viết tắt (quy ước dự án)	Chứng minh nhân dân	quy ước dự án, đọc kiểu Việt
+thpt	add	viết tắt (quy ước dự án)	Trung học phổ thông	quy ước dự án, đọc kiểu Việt
+thcs	add	viết tắt (quy ước dự án)	Trung học cơ sở	quy ước dự án, đọc kiểu Việt
+csgt	add	viết tắt (quy ước dự án)	Cảnh sát giao thông	quy ước dự án, đọc kiểu Việt
+tphcm	add	viết tắt (quy ước dự án)	Thành phố Hồ Chí Minh	quy ước dự án, đọc kiểu Việt
+hcm	add	viết tắt (quy ước dự án)	Hồ Chí Minh	quy ước dự án, đọc kiểu Việt
+tp	add	viết tắt (quy ước dự án)	thành phố	quy ước dự án, đọc kiểu Việt; bật lại (trước bị loại vì trùng google-10000)
+cdn	exclude	mã chứng khoán		bỏ theo quyết định dự án: trong vi-asr-tech là CDN đọc kiểu Anh
+sjc	add	viết tắt (quy ước dự án)	Công ty Vàng bạc Đá quý Sài Gòn	quyết định 15/11 (§12.3): đọc kiểu Việt
+tv	add	viết tắt (quy ước dự án)	ti vi	quyết định 15/11 (§12.3): đọc kiểu Việt
+vtv	add	viết tắt (quy ước dự án)	Đài Truyền hình Việt Nam	quyết định 15/11 (§12.3): đọc kiểu Việt
+htv	add	viết tắt (quy ước dự án)	Đài Truyền hình TP.HCM	quyết định 15/11 (§12.3): đọc kiểu Việt
+sctv	add	viết tắt (quy ước dự án)	Truyền hình cáp Saigontourist	quyết định 15/11 (§12.3): đọc kiểu Việt

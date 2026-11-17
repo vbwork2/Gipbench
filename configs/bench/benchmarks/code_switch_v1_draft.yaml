@@ -1,0 +1,23 @@
+# C0 Code-switching công khai: ViMedCSS hard (y khoa) với nhãn <en> theo Spec. B1/B2 nằm ở v0_draft (legacy).
+benchmark_id: code_switch
+version: v1-draft
+track: C0
+purpose: >-
+  Đo từ tiếng Anh trong câu tiếng Việt (CS-WER strict, term recall, span accuracy) trên ViMedCSS split hard.
+  VieGem-ASR đã train trên ViMedCSS train (cùng bộ) nên đây KHÔNG phải zero-shot với VieGem.
+evidence_level: draft
+status: active
+manifest: ${data_root}/benchmarks/code_switch_v1_draft/manifest.jsonl
+manifest_sha256: null
+catalog: ${data_root}/raw/vimedcss_hard/catalog_vimedcss.tsv   # catalog ViMedCSS gốc (không lấy span từ bench)
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0, gipbench_lenient_diagnostic_v1]
+primary_metric: cs_wer
+group_by: [dataset, topic]
+aggregate: none
+boot_unit: speaker             # = video YouTube
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm, context_bias]
+sources:
+  - {dataset: vimedcss, split: hard, slice: medical_cs}

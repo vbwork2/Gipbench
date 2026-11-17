@@ -2,17 +2,17 @@
 
 Vì sao: 78% span tiếng Anh của B1 là thuật ngữ không xuất hiện lần nào trong train, nên fine-tune thuần không cải thiện được chúng.
 TTS phủ được thuật ngữ, nhưng chỉ có ích khi làm đúng: đúng nhãn, đúng cách đọc, nhiều giọng, có nhóm đối chứng, có kiểm vòng lại.
-Toàn bộ chạy được offline, không cần engine thật để thử (backend `mock`). Bảng cách đọc `configs/tts_lexicon.tsv` và mẫu câu
-`configs/tts_templates.tsv` là **bản NHÁP do máy soạn, cần người bản ngữ duyệt** trước khi dùng thật.
+Toàn bộ chạy được offline, không cần engine thật để thử (backend `mock`). Bảng cách đọc `configs/dataset/synth/tts_lexicon.tsv` và mẫu câu
+`configs/dataset/synth/tts_templates.tsv` là **bản NHÁP do máy soạn, cần người bản ngữ duyệt** trước khi dùng thật.
 
 ## Sơ đồ
 
 ```
-catalog + lexicon + mẫu (+ câu viết sẵn)      tools/tts_make_text.py   ->  tts_script.jsonl, tts_holdout_terms.txt, report
-tts_script.jsonl + voices.tsv                 tools/tts_synth.py       ->  train_tts_raw.jsonl + audio/*.wav (16 kHz mono)
-train_tts_raw.jsonl                           tools/asr_hyps.py        ->  hyps.jsonl của ASR mạnh (bạn chạy, trên GPU / CPU)
-raw + hyps + catalog + lexicon                tools/tts_verify.py      ->  train_tts.jsonl (đã lọc) + report
-train_tts.jsonl                               ft/curate_train.py (--max-synthetic-share) -> ft/to_lhotse.py -> ft/mix_cuts.py (nhóm synth)
+catalog + lexicon + mẫu (+ câu viết sẵn)      src/gipbench/dataset/synth/make_text.py   ->  tts_script.jsonl, tts_holdout_terms.txt, report
+tts_script.jsonl + voices.tsv                 src/gipbench/dataset/synth/synth.py       ->  train_tts_raw.jsonl + audio/*.wav (16 kHz mono)
+train_tts_raw.jsonl                           src/gipbench/infer/asr_hyps.py        ->  hyps.jsonl của ASR mạnh (bạn chạy, trên GPU / CPU)
+raw + hyps + catalog + lexicon                src/gipbench/dataset/synth/verify.py      ->  train_tts.jsonl (đã lọc) + report
+train_tts.jsonl                               src/gipbench/model/recipe/curate.py (--max-synthetic-share) -> src/gipbench/model/features/to_lhotse.py -> src/gipbench/model/features/mix_cuts.py (nhóm synth)
 ```
 
 Mỗi câu có hai văn bản: `text_tagged` (nhãn: chính tả Anh trong `<en>…</en>`, số viết dạng đọc, cùng quy ước bench) và `tts_text`
@@ -26,22 +26,22 @@ thuật ngữ (mặc định 30%, hash ổn định) là **đối chứng**: kh�
 export PYTHONIOENCODING=utf-8
 B=data/bench_v0_draft; O=data/tts
 # 1. kịch bản (--require-lexicon: chỉ thuật ngữ đã có cách đọc được duyệt; --sentences cau_viet_san.jsonl: câu người / LLM viết)
-python tools/tts_make_text.py --catalog $B/catalog_v0_draft.tsv --bench $B/bench_v0_draft.jsonl --out-dir $O/script \
+python -m gipbench.dataset.synth.make_text --catalog $B/catalog_v0_draft.tsv --bench $B/bench_v0_draft.jsonl --out-dir $O/script \
     --contexts-per-term 5 --readings-per-term 2 --holdout-frac 0.3 --seed 0 --include-lexicon-terms
 # 2. tổng hợp (thử đường ống: --backend mock; engine thật: xem mục dưới). voices.tsv: voice, backend_voice, ref_audio, gender, region
-python tools/tts_synth.py --script $O/script/tts_script.jsonl --voices data/tts/voices.tsv --backend command \
+python -m gipbench.dataset.synth.synth --script $O/script/tts_script.jsonl --voices data/tts/voices.tsv --backend command \
     --command "mytts --in {text_file} --voice {voice} --out {out}" --bench $B/bench_v0_draft.jsonl --out-dir $O/raw \
     --min-voices-per-term 3 --max-voice-share 0.25
 # 3. hyp của ASR mạnh trên audio TTS (venv requirements-asr.txt)
-python tools/asr_hyps.py --engine faster-whisper --model large-v3 --manifest $O/raw/train_tts_raw.jsonl \
+python -m gipbench.infer.asr_hyps --engine faster-whisper --model large-v3 --manifest $O/raw/train_tts_raw.jsonl \
     --out results/fw_large_v3/tts/hyps.jsonl
 # 4. lọc (nhiều hệ: lặp --hyps và đặt --min-agree)
-python tools/tts_verify.py --manifest $O/raw/train_tts_raw.jsonl --hyps fw=results/fw_large_v3/tts/hyps.jsonl \
-    --catalog $B/catalog_v0_draft.tsv --lexicon configs/tts_lexicon.tsv --out $O/train_tts.jsonl
+python -m gipbench.dataset.synth.verify --manifest $O/raw/train_tts_raw.jsonl --hyps fw=results/fw_large_v3/tts/hyps.jsonl \
+    --catalog $B/catalog_v0_draft.tsv --lexicon configs/dataset/synth/tts_lexicon.tsv --out $O/train_tts.jsonl
 # 5. vào chuỗi E3: curate chặn trần synthetic, rồi to_lhotse (chặn rò rỉ) và mix nhóm `synth` (datasets = tts)
-python ft/curate_train.py --manifest <các manifest train khác> $O/train_tts.jsonl --catalog $B/catalog_v0_draft.tsv \
+python -m gipbench.model.recipe.curate --manifest <các manifest train khác> $O/train_tts.jsonl --catalog $B/catalog_v0_draft.tsv \
     --max-synthetic-share 0.2 --out data/train_curated.jsonl
-python tools/test_tts.py   # kiểm cả chuỗi bằng backend mock (không cần engine, ASR, mạng)
+python tests/dataset/test_tts.py   # kiểm cả chuỗi bằng backend mock (không cần engine, ASR, mạng)
 ```
 `tts_synth` chạy tiếp được (bỏ qua câu đã có wav hợp lệ), lỗi từng câu ghi vào `synth_errors.jsonl` mà không dừng mẻ, dừng khi
 `--abort-after-fails` lỗi liên tiếp. Resample bằng Python thuần mất ~0.5 s/câu; cài `numpy` + `soxr` (đã có trong requirements.txt)
@@ -64,11 +64,11 @@ thì nhanh hơn nhiều.
 
 Hai chốt độc lập:
 
-1. Trần theo GIỜ có sẵn: `ft/curate_train.py --max-synthetic-share S` (mặc định 0.2) cắt dòng `synthetic: true` còn <= S tổng giờ CS.
+1. Trần theo GIỜ có sẵn: `src/gipbench/model/recipe/curate.py --max-synthetic-share S` (mặc định 0.2) cắt dòng `synthetic: true` còn <= S tổng giờ CS.
    Muốn thử 50% phải nâng `--max-synthetic-share 0.5` và có đủ giờ TTS.
-2. Tỉ trọng BATCH: nhóm `synth` của `configs/train_mix.tsv` (cột datasets = `tts`), ghi đè bằng `MIX_SYNTH`. TTS chiếm
+2. Tỉ trọng BATCH: nhóm `synth` trong `pools` của experiment YAML (`configs/model/experiments/*.yaml`, datasets = `tts`), ghi đè bằng `MIX_SYNTH`. TTS chiếm
    `x = s / (0.45 + s)` lượng CS (0.45 = cs_real 0.35 + cs_pseudo 0.10) nên `s = 0.45x / (1 - x)`; tổng các nhóm phải = 1.00 nên phải
-   hạ các nhóm không-CS tương ứng (kiểm bằng `python tools/mix_plan.py`). Ví dụ (giữ tỉ lệ replay_human : distill : confusable = 5 : 4 : 1):
+   hạ các nhóm không-CS tương ứng (kiểm bằng `python -m gipbench.model.recipe.mix_plan`). Ví dụ (giữ tỉ lệ replay_human : distill : confusable = 5 : 4 : 1):
 
 | x (TTS / CS) | MIX_SYNTH | MIX_REPLAY_HUMAN | MIX_DISTILL | MIX_CONFUSABLE |
 | --- | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ mô tả). Mỗi span bench được gắn `train_freq_real` / `train_freq_synth
 
 So E3 (không TTS) với E3 + TTS theo từng mức ở bảng trên; kết luận "TTS có giúp" chỉ khi `synth_only` hoặc `unseen` tăng mà
 `real_*`, B2, B5 không giảm. Đọc `tts_verify` report trước khi train: thuật ngữ bị loại nhiều với cùng một cách đọc nghĩa là dòng đó
-trong lexicon nhiều khả năng SAI (sửa `configs/tts_lexicon.tsv`, chạy lại từ bước 1).
+trong lexicon nhiều khả năng SAI (sửa `configs/dataset/synth/tts_lexicon.tsv`, chạy lại từ bước 1).
 
 ## Giới hạn đã biết
 

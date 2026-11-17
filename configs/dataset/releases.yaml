@@ -1,0 +1,97 @@
+# Công thức các data release (hợp đồng dataset -> model / bench). Đăng ký / dựng:
+#   python -m gipbench.dataset.release.register --all          # mọi release chưa có
+#   python -m gipbench.dataset.release.register pool/vss_cs@e3_v1
+# Release là bất biến: muốn đổi nội dung thì thêm mục mới với version mới, không sửa mục cũ đã phát hành.
+# Mỗi mục: manifest (hoặc catalog) = file nguồn đã dựng bởi các bước của pipeline dataset (ghi ở `built_by`); release
+# chép manifest, đổi audio thành đường dẫn tương đối, ghi sha256 + thống kê vào release.json.
+# Đợt đầu (16/11/2026) đăng ký đúng các file mà E3 v1 / v1b và bench nháp v0-draft đã dùng.
+
+releases:
+  catalog/v0-draft:
+    catalog: data/bench_v0_draft/catalog_v0_draft.tsv
+    built_by: gipbench.dataset.release.build_bench --catalog-out (catalog ViMedCSS + span B1/B2 của chính bench)
+    flags: {from_bench: true}
+    notes: "Có span lấy từ chính bench: hotwords từ catalog này là cận trên lạc quan (STATUS mục 0b)."
+
+  bench/v0-draft:
+    manifest: data/bench_v0_draft/bench_v0_draft.jsonl
+    catalog: catalog/v0-draft
+    built_by: gipbench.dataset.release.build_bench --accept all --version v0-draft (log data/bench_v0_draft/build.log)
+    flags: {draft: true, catalog_from_bench: true}
+    notes: "Bench NHÁP, chưa duyệt. B1 G-Group, B2 consensus agreed, B3 ViMedCSS hard, B5 G-Group + VIVOS test + consensus product."
+
+  pool/vimedcss_train@full:
+    manifest: data/raw/vimedcss_full/train_vimedcss.jsonl
+    catalog: catalog/v0-draft
+    built_by: gipbench.dataset.ingest.vimedcss --streaming (log data/raw/vimedcss_full/conv.log)
+    flags: {label_source: human}
+    notes: "ViMedCSS train đầy đủ, 11 832 câu / 22.95 h. CS thật, nhãn người, domain medical."
+
+  pool/vss_cs@e3_v1:
+    manifest: data/e3_v1/train_vss_cs.jsonl
+    catalog: catalog/v0-draft
+    built_by: gipbench.dataset.release.prep_e3_v1 (từ data/raw/vss_full/vss_cs_clean_dom.jsonl, tách dev theo video)
+    flags: {train_only: true, label_source: "pseudo:Zipformer-30M-RNNT-6000h"}
+    notes: "vss_cs: audio thật VietSuperSpeech, nhãn giả, đã lọc đồng thuận fw large-v3 + qwen3-asr và WER tiếng Việt <= 0.15."
+
+  pool/vivos_train@e3_v1:
+    manifest: data/e3_v1/train_vivos.jsonl
+    built_by: gipbench.dataset.release.prep_e3_v1 (VIVOS train trừ 4 người nói của dev_vi)
+    flags: {label_source: human}
+
+  pool/cv_train@v1:
+    manifest: data/raw/cv/train_cv.jsonl
+    built_by: gipbench.dataset.ingest.local commonvoice
+    flags: {label_source: human}
+
+  pool/distill@e3_v1:
+    manifest: data/e3_v1/distill.jsonl
+    built_by: gipbench.dataset.pseudolabel.distill (VSS không có từ Anh, greedy = beam của Gipformer 1.5)
+    flags: {label_source: "distill:gip15"}
+
+  pool/confusable_train@e3_v1:
+    manifest: data/e3_v1/train_confusable.jsonl
+    built_by: gipbench.dataset.derive.confusables, rồi prep_e3_v1 bỏ người nói của dev_vi
+    flags: {label_source: "pseudo:Zipformer-30M-RNNT-6000h"}
+
+  dev/dev_cs@e3_v1:
+    manifest: data/e3_v1/dev_cs.jsonl
+    catalog: catalog/v0-draft
+    built_by: gipbench.dataset.release.build_dev_cs (600 câu ViMedCSS validation + vss_cs held-out, bỏ câu < 0.5 s)
+    notes: "Dev cũ: trùng người nói (video) với train, 87% y khoa (xem docstring make_dev_split)."
+
+  dev/dev_vi@e3_v1:
+    manifest: data/e3_v1/dev_vi.jsonl
+    built_by: gipbench.dataset.release.prep_e3_v1 (VIVOS train, 4 người nói held-out, 0.96 h)
+
+  # --- bench v1 (ASR tổng quát, 17/11/2026): cùng manifest với configs/bench/benchmarks/*_v1.yaml (đã khoá sha256) ---
+  catalog/vimedcss-v1.0:
+    catalog: data/raw/vimedcss_hard/catalog_vimedcss.tsv
+    built_by: gipbench.dataset.ingest.vimedcss (split hard; thuật ngữ theo cs_terms_list của dataset)
+    flags: {from_bench: false}
+    notes: "Catalog chấm C0 (= catalog_sha256 a21c590e của code_switch_v1)."
+
+  bench/general-v1.0:
+    manifest: data/benchmarks/general_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which general --name general_v1 --bench-version general-v1.0
+    flags: {locked: true, manifest_sha256: e908c75a3f23c949b2ae0f2b82d6ec98e75eca1204f07dd44a50139e352c3dcb}
+    notes: "G0: VIVOS, Common Voice 27, G-Group x4 test (4 400 câu). Chấm bằng bench.evaluate --benchmark general_v1."
+
+  bench/code-switch-v1.0:
+    manifest: data/benchmarks/code_switch_v1/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.build_general --which code_switch --name code_switch_v1 --bench-version code-switch-v1.0
+    flags: {locked: true, manifest_sha256: 744d4773d4a0f01161f7ff5694b8a8e3466f93efaff91ebb74750e70388dc06a}
+    notes: "C0: ViMedCSS hard (658 câu)."
+
+  bench/cs-ggroup-v1.0:
+    manifest: data/benchmarks/cs_ggroup_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which cs_ggroup --name cs_ggroup_v1 --bench-version cs-ggroup-v1.0
+    flags: {locked: true, manifest_sha256: e3c3cc1b91027fefc529dbfe2bb23d1b52b0948899d17af0b1cbcb9edac496af}
+    notes: "C1: câu G-Group test có từ Anh (1 260 câu), cùng audio với G0."
+
+  bench/external-v1.0:
+    manifest: data/benchmarks/external_v1/manifest.jsonl
+    built_by: gipbench.dataset.release.build_general --which external --name external_v1 --bench-version external-v1.0
+    flags: {locked: true, manifest_sha256: f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd}
+    notes: "E0: 11 bộ test công khai (32 203 câu); 7 bộ khoá bằng metadata (chưa có audio cho tới khi tải)."

@@ -1,0 +1,30 @@
+# G0 General: tiếng Việt phổ thông (đọc + tự nhiên), mỗi bộ báo riêng, kèm trung bình đều theo bộ (macro).
+# Dựng bằng: python -m gipbench.dataset.release.build_general --out ${data_root}/benchmarks/general_v1_draft
+benchmark_id: general
+version: v1-draft
+track: G0
+purpose: >-
+  Đo nhận dạng tiếng Việt phổ thông trên split test CHÍNH THỨC của các bộ công khai có sẵn trên máy, giữ nguyên
+  toàn bộ câu (không lọc câu có từ Anh), báo theo từng bộ. Không phải tập độc lập với pretraining của model
+  (xem pretraining_overlap trong datasets.yaml).
+evidence_level: draft          # nhãn của bên phát hành, gipbench chưa duyệt lại
+status: active
+manifest: ${data_root}/benchmarks/general_v1_draft/manifest.jsonl
+manifest_sha256: null          # draft: chưa khoá; evaluate tự tính và ghi vào summary
+catalog: null
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0]
+primary_metric: wer
+group_by: [dataset, domain, region, gender]
+aggregate: macro_by_dataset    # trung bình đều WER của các bộ; luôn kèm số từng bộ
+boot_unit: speaker             # G-Group không có id người nói: speaker = id câu (bootstrap theo câu)
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm]
+sources:
+  - {dataset: vivos, split: test, slice: read}
+  - {dataset: commonvoice_vi_27, split: test, slice: read_crowd}
+  - {dataset: ggroup_tech, split: test, slice: spontaneous}
+  - {dataset: ggroup_edu, split: test, slice: spontaneous}
+  - {dataset: ggroup_finance, split: test, slice: spontaneous}
+  - {dataset: ggroup_pubadmin, split: test, slice: spontaneous}
