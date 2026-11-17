@@ -234,7 +234,7 @@ def main(argv=None):
         status[d] = "ok"
         got.update(g)
         print(f"{d}: {len(g)} / {len(by[d])} file", flush=True)
-    problems, warn, kept = Counter(), [], []
+    problems, warn, kept, no_sha = Counter(), [], [], 0
     for r in rows:
         if r["dataset"] not in todo or r["dataset"] not in status or status[r["dataset"]] != "ok":
             continue
@@ -242,7 +242,9 @@ def main(argv=None):
         if p is None:
             problems["thiếu file"] += 1
             continue
-        if sha256_file(p) != r.get("audio_sha256"):
+        if not r.get("audio_sha256"):  # dòng metadata-only: toàn vẹn đã kiểm bằng sha256 file nguồn lúc tải
+            no_sha += 1
+        elif sha256_file(p) != r["audio_sha256"]:
             if is_derived(r) and abs(duration(p) - float(r.get("duration") or 0)) <= 0.011:
                 warn.append(r["id"])
             else:
@@ -265,7 +267,8 @@ def main(argv=None):
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     rep = {"manifest": args.manifest, "datasets": status,
            "rows_requested": sum(len(by[d]) for d in todo if status.get(d) == "ok"), "rows_ok": len(kept),
-           "problems": dict(problems), "derived_sha_mismatch_duration_ok": len(warn), "derived_examples": warn[:5]}
+           "problems": dict(problems), "derived_sha_mismatch_duration_ok": len(warn), "derived_examples": warn[:5],
+           "rows_checked_by_source_sha_only": no_sha}
     (out / "fetch_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(rep, ensure_ascii=False, indent=1))
     if warn:

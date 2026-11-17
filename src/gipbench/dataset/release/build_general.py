@@ -157,6 +157,7 @@ def cs_ggroup(data: Path, limit: int):
                "_duration": r.get("duration")}
 
 
+MODE: dict = {}  # bộ E0 -> "audio" | "metadata_only"
 EXTERNAL_SETS = ["fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "speech_massive_test_vi",
                  "vimedcss_test", "phoaudiobook", "bud500", "gigaspeech2_vi"]
 
@@ -166,16 +167,20 @@ def external(data: Path, limit: int):
     from gipbench.dataset.ingest.evalsets import SPECS
     for key in EXTERNAL_SETS:
         base = data / "dl" / "evalsets" / key
-        if not (base / "rows.jsonl").exists():
-            print(f"  (bỏ qua {key}: chưa nhập, chạy gipbench.dataset.ingest.evalsets --sets {key})")
+        # rows.jsonl = đã tách audio (có audio_sha256, duration đo được); rows_meta.jsonl = chỉ metadata (--metadata-only)
+        src = base / "rows.jsonl" if (base / "rows.jsonl").exists() else base / "rows_meta.jsonl"
+        if not src.exists():
+            print(f"  (bỏ qua {key}: chưa nhập, chạy gipbench.dataset.ingest.evalsets --sets {key} [--metadata-only])")
             continue
+        MODE[key] = "audio" if src.name == "rows.jsonl" else "metadata_only"
         EXPECTED[key] = SPECS[key].get("expected")
         LICENSE[key] = SPECS[key]["license"]
-        for n, r in enumerate(read_jsonl(str(base / "rows.jsonl"))):
+        for n, r in enumerate(read_jsonl(str(src))):
             if limit and n >= limit:
                 break
-            row = {k: v for k, v in r.items() if k not in ("audio", "audio_sha256", "duration")}
-            row.update({"_abs": base / r["audio"], "_duration": r["duration"], "slice": key})
+            row = {k: v for k, v in r.items() if k not in ("audio", "audio_sha256", "duration") and not k.startswith("_")}
+            row.update({"_abs": (base / r["audio"]) if r.get("audio") else None, "_duration": r.get("duration"),
+                        "slice": key})
             if key == "vimedcss_test":
                 terms = [t.strip() for t in str(r.get("cs_terms_list") or "").split(";") if t.strip()]
                 # chỉ thêm tag <en> quanh đúng thuật ngữ của dataset (không đổi chữ, không đổi WER); text_orig = bản gốc
@@ -217,13 +222,21 @@ def main():
     split = {"general": "G0", "code_switch": "C0", "cs_ggroup": "C1", "external": "E0"}[args.which]
     rows, dropped = [], []
     for r in gen:
-        p = Path(r.pop("_abs"))
+        a = r.pop("_abs")
         d = r.pop("_duration", None)
-        if not p.exists():
-            dropped.append({"id": r["id"], "reason": "không có file audio"})
-            continue
         if not r.get("text_tagged"):
             dropped.append({"id": r["id"], "reason": "text rỗng"})
+            continue
+        if a is None:  # dòng metadata-only (E0): không có audio cục bộ; fetch kiểm bằng sha256 file nguồn
+            r.update({"split": split, "track": split, "license": LICENSE.get(r["dataset"]),
+                      "annotation_status": "upstream_human", "bench_version": args.bench_version or name.replace("_", "-")})
+            if d:
+                r["duration"] = d
+            rows.append(r)
+            continue
+        p = Path(a)
+        if not p.exists():
+            dropped.append({"id": r["id"], "reason": "không có file audio"})
             continue
         r.update({"audio": os.path.relpath(p, out).replace(os.sep, "/"), "audio_sha256": sha256_file(p),
                   # cách fetch tái dựng audio; nằm trong manifest để bản share có cùng manifest_sha256
@@ -245,9 +258,9 @@ def main():
         commit = None
     meta = {"name": name, "builder": "gipbench.dataset.release.build_general", "args": vars(args), "git_commit": commit,
             "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "rows": len(rows),
-            "hours": round(sum(r["duration"] for r in rows) / 3600, 4),
+            "hours": round(sum(r.get("duration") or 0 for r in rows) / 3600, 4),
             "by_dataset": {k: {"rows": v, "expected": None if args.which == "cs_ggroup" else EXPECTED.get(k),
-                               "hours": round(sum(r["duration"] for r in rows if r["dataset"] == k) / 3600, 4),
+                               "hours": round(sum(r.get("duration") or 0 for r in rows if r["dataset"] == k) / 3600, 4), "mode": MODE.get(k, "audio"),
                                "speakers": len({r["speaker"] for r in rows if r["dataset"] == k})}
                            for k, v in sorted(by.items())},
             "dropped": dropped, "manifest_sha256": manifest_sha256(rows)}
@@ -255,7 +268,7 @@ def main():
     print(f"{name}: {len(rows)} câu, {meta['hours']:.2f} h, loại {len(dropped)} -> {out}/manifest.jsonl")
     for k, v in meta["by_dataset"].items():
         flag = "" if args.limit or args.which == "cs_ggroup" or v["expected"] in (None, v["rows"]) else f"  <-- KHÁC số công bố {v['expected']}"
-        print(f"  {k:20s} {v['rows']:5d} câu {v['hours']:.2f} h, {v['speakers']} speaker{flag}")
+        print(f"  {k:22s} {v['rows']:5d} câu {v['hours']:.2f} h, {v['speakers']} speaker, {v['mode']}{flag}")
     print(f"manifest_sha256 {meta['manifest_sha256']}")
 
 

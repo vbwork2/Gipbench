@@ -20,6 +20,10 @@ Manifest: `${data_root}/benchmarks/general_v1_draft/manifest.jsonl` (4 400 câu,
 `781fe7a0…`), `${data_root}/benchmarks/code_switch_v1_draft/manifest.jsonl` (658 câu, 1.29 h, `0d722d25…`). Không câu nào
 bị loại; số câu khớp split công bố. `data/` nằm ngoài git; dựng lại bằng `gipbench.dataset.release.build_general`.
 
+**v1.1 (17/11/2026)**: thêm E0 `external_v1` (11 bộ, 32 203 câu, `f074d27f…`), nhập bằng
+`gipbench.dataset.ingest.evalsets`; 7 bộ khoá bằng metadata (`--metadata-only`, không tải audio lúc khoá). Chi tiết và
+giới hạn: `docs/datasheet_bench_v1.md`.
+
 **Bản khoá v1.0 (17/11/2026)**: `general_v1` (`e908c75a…`), `code_switch_v1` (`744d4773…`, catalog `a21c590e…`),
 `cs_ggroup_v1` (`e3c3cc1b…`) ở `${data_root}/benchmarks/<tên>/manifest.jsonl`; cùng câu / nhãn với bản draft, khác
 `bench_version` và có thêm `audio_derivation`. Dựng: `build_general --which <which> --name <which>_v1 --bench-version

@@ -41,7 +41,7 @@ def share_rows(rows):
             raise SystemExit(f"{r['id']}: license {r.get('license')} không được share")
         if r["dataset"] not in SOURCES:
             raise SystemExit(f"{r['id']}: bộ {r['dataset']} không có nguồn tải trong fetch.SOURCES")
-        if not r.get("upstream_id") or not r.get("audio_sha256"):
+        if not r.get("upstream_id") or not (r.get("audio_sha256") or r.get("audio_derivation") == "pinned_source_extract"):
             raise SystemExit(f"{r['id']}: thiếu upstream_id / audio_sha256")
         s = {k: v for k, v in r.items() if k != "audio" and not k.startswith("_")}
         s.setdefault("audio_derivation", "soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED else "upstream_bytes")

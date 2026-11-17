@@ -1,12 +1,13 @@
-# Datasheet: gipbench bench v1.0 (khoá 17/11/2026)
+# Datasheet: gipbench bench v1.1 (khoá 17/11/2026)
 
-Bench đánh giá nhận dạng tiếng nói (ASR) tiếng Việt, gồm ba track: **G0** tiếng Việt phổ thông, **C0** câu tiếng Việt
-có xen từ tiếng Anh (code-switching) trong video y khoa, và **C1** code-switching trong lời nói tự nhiên nhiều domain
-(G-Group). Gói share **không chứa audio**; audio được tải lại từ nguồn gốc bằng
+Bench đánh giá nhận dạng tiếng nói (ASR) tiếng Việt, gồm bốn track: **G0** tiếng Việt phổ thông, **C0** câu tiếng Việt
+có xen từ tiếng Anh (code-switching) trong video y khoa, **C1** code-switching trong lời nói tự nhiên nhiều domain
+(G-Group), và **E0** 11 bộ test công khai khác (gồm các bộ model card VieGem-ASR báo số: FLEURS, Common Voice 17,
+PhoAudiobook, LSVSC, Bud500, GigaSpeech2, ViMD, ViMedCSS test; thêm VietMed và Speech-MASSIVE). Gói share **không chứa audio**; audio được tải lại từ nguồn gốc bằng
 `python -m gipbench.dataset.release.fetch` (revision cố định, kiểm sha256). Bố cục theo gợi ý "Datasheets for Datasets"
 (Gebru và cs.).
 
-> **Trạng thái: đã khoá (`locked`, v1.0).** Tập câu, nhãn và chuẩn hoá cố định theo `manifest_sha256` (mục 9); đổi bất kỳ
+> **Trạng thái: đã khoá (`locked`; G0 / C0 / C1 từ v1.0, E0 thêm ở v1.1).** Tập câu, nhãn và chuẩn hoá cố định theo `manifest_sha256` (mục 9); đổi bất kỳ
 > thứ gì = phiên bản mới. "Khoá" nghĩa là **cố định**, không phải "gipbench đã nghe lại mọi câu": lời thoại vẫn là nhãn của
 > bên phát hành từng bộ (gipbench chưa duyệt lại); tag `<en>` của C0 và C1 là nhãn phái sinh (mục 4).
 
@@ -28,10 +29,26 @@ có xen từ tiếng Anh (code-switching) trong video y khoa, và **C1** code-sw
 | G0 | `ggroup_pubadmin` | g-group-ai-lab/vi-asr-pubadmin-test (`40aabb0`) | test | 515 | 0.47 | không có id | CC-BY-NC-4.0 |
 | C0 | `vimedcss` | tensorxt/ViMedCSS (`b6959a1`) | hard | 658 | 1.29 | 404 video | CC-BY-4.0 |
 | C1 | `ggroup_tech` / `edu` / `finance` / `pubadmin` | như G0 | test, câu có từ Anh | 465 / 346 / 294 / 155 | 0.46 / 0.39 / 0.30 / 0.16 | không có id | CC-BY-NC-4.0 |
+| E0 | `fleurs_vi` | google/fleurs vi_vn (`70bb2e8`) | test | 857 | 3.00 | không có id | CC-BY-4.0 |
+| E0 | `cv17_vi` | fsicoli/common_voice_17_0 (`8262c16`, mirror CV 17.0) | test | 1 274 | 1.35 | 146 | CC0-1.0 |
+| E0 | `vietmed` | leduckhai/VietMed (`f302146`) | test | 3 437 | 6.02 | 27 | MIT (theo HF) |
+| E0 | `phoaudiobook` | thivux/phoaudiobook (`f19f241`, gated) | test | 383 | 1.24 | 40 | điều khoản riêng, không phân phối lại |
+| E0 | `lsvsc` | doof-ferb/LSVSC (`269de06`) | test | 5 683 | – | không có id | CC-BY-4.0 |
+| E0 | `bud500` | linhtran92/viet_bud500 (`4b30571`, gated) | test | 7 500 | – | không có id | CC-BY-NC-SA-4.0 |
+| E0 | `gigaspeech2_vi` | speechcolab/gigaspeech2 vi (`8dc0d0e`, gated) | test | 4 422 | – | không có id | điều khoản riêng, không phân phối lại |
+| E0 | `vimd` | nguyendv02/ViMD_Dataset (`3a5b301`) | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 |
+| E0 | `vimedcss_test` | tensorxt/ViMedCSS (`b6959a1`) | test | 1 614 | – | 995 video | CC-BY-4.0 |
+| E0 | `speech_massive_vi` | FBK-MT/Speech-MASSIVE vi-VN (`ff792fe`) | validation | 2 033 | – | 28 | CC-BY-NC-SA-4.0 |
+| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (`2e6d34f`, gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 |
 
 Tổng G0: 4 400 câu / 4.47 h; C0: 658 câu / 1.29 h; C1: 1 260 câu / 1.31 h. G0 và C0 lấy **toàn bộ** split công bố,
 không lọc câu nào; số câu khớp số công bố của từng bộ. C1 là **tập con** của phần G-Group trong G0 (cùng audio, 1 260 /
 1 260 sha256 có trong G0): mọi câu G-Group test có ít nhất một từ được gắn `<en>` theo quyết định thuật ngữ (mục 4).
+
+E0: 32 203 câu, lấy **toàn bộ** split công bố của 11 bộ, không lọc câu nào (ViMD: 2 026 câu = tổng số dòng 14 shard
+parquet; API thống kê của HF báo 1 550 là sai). Lời thoại = nhãn gốc; riêng ViMedCSS test có thêm tag `<en>` quanh
+đúng các thuật ngữ trong `cs_terms_list` của dataset (không đổi chữ, `text_orig` = bản gốc). Giờ "–": bộ được khoá
+**chỉ bằng metadata** (mục 4), chưa đo thời lượng.
 
 Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_tagged` (lời thoại; C0 có tag `<en>`),
 `text_tagged_orig` (C0: tag gốc của ViMedCSS), `text_orig` (C1: lời thoại gốc G-Group, không tag), `tag_review` (C1),
@@ -67,6 +84,15 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
   chữ tiếng Việt, bỏ dấu câu, thống nhất vị trí dấu thanh (hoà = hòa), i/y có dấu (kỹ = kĩ), viết tắt có chấm (A.I. = ai),
   email / tên miền, dấu nháy, chính tả Anh-Anh / Anh-Mỹ. Định nghĩa đầy đủ: `docs/evaluation_metrics_v1.md`.
 
+- **E0, bộ khoá bằng metadata** (`audio_derivation: pinned_source_extract`: LSVSC, Bud500, GigaSpeech2, ViMD,
+  ViMedCSS test, Speech-MASSIVE dev / test): lúc khoá, id + lời thoại + meta được đọc thẳng từ file nguồn ở revision cố
+  định mà không tải audio (mạng chậm). Không có `audio_sha256` / `duration` từng câu; toàn vẹn audio dựa vào sha256 của
+  file nguồn (fetch kiểm trước khi tách) và cách tách cố định (giữ byte, hoặc resample soxr HQ 16 kHz mono khi gốc > 16
+  kHz / stereo). Đã đối chiếu trên PhoAudiobook: dòng metadata trùng dòng nhập đầy đủ ở 383 / 383 câu.
+- **Lời thoại không được phân phối lại** (PhoAudiobook, GigaSpeech2: `text_redistributable: false`): gói share bỏ lời
+  thoại của hai bộ này; người nhận đồng ý điều khoản trên Hugging Face rồi `fetch` lấy lại cả audio lẫn lời thoại từ
+  nguồn; manifest sau fetch trùng `manifest_sha256` bản khoá.
+
 ## 5. Cách dùng được khuyến nghị
 
 - Báo WER **theo từng bộ**, kèm CI 95%. Con số gộp duy nhất được phép là trung bình đều theo bộ (macro), luôn kèm số
@@ -96,10 +122,15 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 5. Lời thoại chưa được gipbench duyệt lại; tag `<en>` của gipbench là tự động + quy ước, đang được duyệt.
 6. Phân bố domain lệch: G0 nghiêng về giọng đọc (VIVOS + CV = 2.5 / 4.47 h); C0 chỉ có y khoa.
 7. **C1 trùng audio với G0** (tập con G-Group): không cộng gộp C1 với G0 như hai bằng chứng độc lập.
+   Tương tự **CV17 (E0) dùng lại 1 024 / 1 274 clip của CV27 test (G0)**: chỉ có để so với số model card VieGem.
 8. **C1 chấm không catalog** (strict, không quy đổi biến thể chính tả của từ Anh). Mọi lệch chữ của từ Anh đều tính lỗi.
 9. **Kết quả phụ thuộc cách ghép batch.** Với cùng audio, Gipformer (sherpa-onnx) và VieGem (bf16, batch 8) cho hyps
    hơi khác khi câu được ghép batch khác: VieGem trên C1 trùng hyps G0 ở 1 177 / 1 260 câu, WER lệch 0.03 điểm,
    CS-WER 0.24 điểm. Config Gipformer của bench chạy batch 1 (trùng 1 260 / 1 260); báo kèm `run_meta.json`.
+10. **E0 trùng nguồn train của VieGem** ở FLEURS, CV17, PhoAudiobook, LSVSC, Bud500, GigaSpeech2, ViMD, ViMedCSS
+    (model card VieGem liệt kê các bộ này trong dữ liệu train, "đã lọc theo câu test"). VietMed và Speech-MASSIVE không có
+    trong danh sách đó. Mức trùng của Gipformer: unknown (không công bố dữ liệu train).
+11. **E0 chưa có kết quả tham chiếu** (chưa chạy model nào trên E0 ở v1.1).
 
 ## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 
@@ -120,7 +151,9 @@ VieGem − Gipformer trên C1: CS-WER +12.13 [9.24, 14.91], WER +9.73 [8.82, 10.
 
 - `bench_version` trong mỗi dòng; `release.json` và `SHA256SUMS` trong gói. Đổi bất kỳ câu / nhãn / chuẩn hoá nào =
   phiên bản mới; bản đã phát hành không bị sửa.
-- v1.0 = G0 + C0 + C1 như trên. Bộ riêng tư (consensus) **không** share, chỉ chấm hộ.
+- v1.0 = G0 + C0 + C1 như trên; v1.1 = v1.0 + E0 (`external_v1`, 32 203 câu, `manifest_sha256`
+  `f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd`). Bộ riêng tư (consensus) **không** share,
+  chỉ chấm hộ.
 
   | Benchmark | Track | Câu | manifest_sha256 |
   | --- | --- | --- | --- |

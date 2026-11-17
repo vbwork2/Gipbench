@@ -1,0 +1,38 @@
+# Bản khoá v1.0 của external_v1_draft. 7 bộ chỉ có metadata lúc khoá (không audio_sha256 / duration): fetch kiểm bằng sha256 file nguồn.
+# E0 External: các bộ test công khai mà model card / bài báo khác đã báo số (vd bảng của model card VieGem-ASR), để so
+# với số đã công bố và mở rộng phạm vi ngoài G0 / C0 / C1.
+# Dựng bằng: evalsets --sets <bộ> [--metadata-only], rồi build_general --which external --name external_v1 --bench-version external-v1.0
+benchmark_id: external
+version: v1.0
+track: E0
+purpose: >-
+  Đo trên split test chính thức của các bộ công khai khác (FLEURS vi, Common Voice 17 vi, VietMed, LSVSC, ViMD,
+  Speech-MASSIVE vi dev + test, ViMedCSS test, PhoAudiobook, Bud500, GigaSpeech2 vi), lời thoại gốc của bên phát hành, báo theo từng bộ. Nhiều bộ trùng nguồn với
+  dữ liệu train của VieGem (pretraining_overlap); VietMed và Speech-MASSIVE không có trong danh sách train của VieGem.
+  Số so với model card chỉ xấp xỉ: mỗi bên chuẩn hoá text khác nhau.
+evidence_level: locked         # khoá 17/11/2026; lời thoại = nhãn của bên phát hành (datasheet mục E0)
+status: active
+manifest: ${data_root}/benchmarks/external_v1/manifest.jsonl
+manifest_sha256: f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd
+catalog: null
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0]
+primary_metric: wer
+group_by: [dataset, domain, gender]
+aggregate: macro_by_dataset
+boot_unit: speaker             # bộ không có id người nói (LSVSC, FLEURS): speaker = id câu
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm]
+sources:
+  - {dataset: fleurs_vi, split: test, slice: read_wiki}
+  - {dataset: cv17_vi, split: test, slice: read_crowd}
+  - {dataset: vietmed, split: test, slice: medical_conversation}
+  - {dataset: lsvsc, split: test, slice: mixed}
+  - {dataset: vimd, split: test, slice: dialect}
+  - {dataset: speech_massive_vi, split: validation, slice: voice_assistant}
+  - {dataset: speech_massive_test_vi, split: test, slice: voice_assistant}
+  - {dataset: vimedcss_test, split: test, slice: medical_cs}
+  - {dataset: phoaudiobook, split: test, slice: audiobook}
+  - {dataset: bud500, split: test, slice: mixed_tight}
+  - {dataset: gigaspeech2_vi, split: test, slice: youtube}

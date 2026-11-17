@@ -60,7 +60,7 @@ SPECS: Dict[str, Dict] = {
         "meta": {"gender": "gender", "dialect": "dialect", "topic": "topic", "emotion": "emotion", "age": "age"}},
     "vimd": {
         "repo": "nguyendv02/ViMD_Dataset", "revision": "3a5b30157034e7eadd5c75fae1a820c6f9383398",
-        "license": "CC-BY-NC-ND-4.0", "split": "test", "reader": "parquet", "expected": 1550,
+        "license": "CC-BY-NC-ND-4.0", "split": "test", "reader": "parquet", "expected": 2026,  # tổng num_rows 14 shard
         "files": [(f"data/test-{i:05d}-of-00014.parquet", s) for i, s in enumerate([
             "e3df51b347bb4909b01083d7e134206553deae1afb4f1430ff69340ea69d6369",
             "0520fb3d6666e1804ad5d65529bc21c93628b3cc928bcc82276d72b8b8458d6c",
@@ -108,7 +108,7 @@ SPECS: Dict[str, Dict] = {
         "id": None, "id_with_shard": True, "text": "text", "speaker": "speaker", "domain": "audiobook"},
     "bud500": {
         "repo": "linhtran92/viet_bud500", "revision": "4b30571f395781fddc3a4946fb378648f8572714", "license": "CC-BY-NC-SA-4.0",
-        "split": "test", "reader": "parquet", "expected": None,
+        "split": "test", "reader": "parquet", "expected": 7500,
         "files": [("data/test-00000-of-00002-531c1d81edb57297.parquet", "a204d93628d280141aea359cb37c94eef8eec7268722e6c2e22d373f47f3bcfe"),
                   ("data/test-00001-of-00002-1b2cd3ea16a2c5b1.parquet", "e5eb289a84ef548dd53f8117f4afdc9c74a2e5a78a1d16b9957ba926d7eec56b")],
         "id": None, "id_with_shard": True, "text": "transcription", "speaker": None},
@@ -122,7 +122,7 @@ SPECS: Dict[str, Dict] = {
         "domain": "youtube"},
     "speech_massive_test_vi": {
         "repo": "FBK-MT/Speech-MASSIVE-test", "revision": "2e6d34fb35e3ac7021980fb018e7894b151a5c8e",
-        "license": "CC-BY-NC-SA-4.0", "split": "test", "reader": "parquet", "expected": None,
+        "license": "CC-BY-NC-SA-4.0", "split": "test", "reader": "parquet", "expected": 2974,
         "files": [("vi-VN/test-00000-of-00003.parquet", "6063850c3f138ddb93759a8b3cfe9973f4ac441511aced0aa908c44585f2abc5"),
                   ("vi-VN/test-00001-of-00003.parquet", "2c73016b2aa3ce6f3e1fbea228624645a31e37321e21e4bf1e4a69adef09a1a7"),
                   ("vi-VN/test-00002-of-00003.parquet", "d0bea81e8a787e92b8e0dafae2dfd86067635f3e620d51ad85e3617c37d1a12b")],
@@ -276,16 +276,79 @@ def materialize(key: str, files: List[str], audio_dir: Path, id_prefix: str = "e
             yield {"id": rid, "upstream_id": up}, "không có audio"
             continue
         p, deriv, dur = write_audio(data, ext, audio_dir / rid)
-        row = {"id": rid, "dataset": key, "upstream_id": up, "upstream_split": spec["split"],
-               "text_tagged": meta.pop("text"), "speaker": meta.pop("speaker") or rid,
-               "source": meta.pop("session") or meta.get("sentence_id") or rid,
-               "domain": spec.get("domain") or "general", "license": spec["license"],
-               "annotation_status": "upstream_human", "audio_derivation": deriv, "duration": dur,
-               "_path": str(p), "audio_sha256": sha256_file(p)}
-        if spec.get("redistribute_text") is False:
-            row["text_redistributable"] = False  # package bỏ lời thoại; fetch lấy lại từ nguồn
-        row.update({k: v for k, v in meta.items() if v not in (None, "")})
+        row = base_row(key, rid, up, meta)
+        row.update({"audio_derivation": deriv, "duration": dur, "_path": str(p), "audio_sha256": sha256_file(p)})
         yield row, (None if row["text_tagged"] else "text rỗng")
+
+
+def base_row(key: str, rid: str, up: str, meta: Dict) -> Dict:
+    """Phần dòng manifest KHÔNG phụ thuộc audio (dùng chung cho nhập đầy đủ và --metadata-only)."""
+    spec = SPECS[key]
+    meta = dict(meta)
+    row = {"id": rid, "dataset": key, "upstream_id": up, "upstream_split": spec["split"],
+           "text_tagged": meta.pop("text"), "speaker": meta.pop("speaker") or rid,
+           "source": meta.pop("session") or meta.get("sentence_id") or rid,
+           "domain": spec.get("domain") or "general", "license": spec["license"],
+           "annotation_status": "upstream_human"}
+    if spec.get("redistribute_text") is False:
+        row["text_redistributable"] = False  # package bỏ lời thoại; fetch lấy lại từ nguồn
+    row.update({k: v for k, v in meta.items() if v not in (None, "")})
+    return row
+
+
+METADATA_DERIVATION = "pinned_source_extract"  # audio tách từ file nguồn khoá sha256; không ghi sha256 từng file
+
+
+def read_metadata(key: str, id_prefix: str = "e0_") -> Iterator[Tuple[Dict, Optional[str]]]:
+    """--metadata-only: dòng manifest (id, lời thoại, meta) đọc từ nguồn ở revision khoá MÀ KHÔNG tải audio.
+    Parquet: đọc mọi cột trừ audio (+ audio.path) qua HfFileSystem; tsv + tar (GigaSpeech2): đọc tsv.
+    Không có audio_sha256 / duration đo được: fetch kiểm toàn vẹn bằng sha256 file nguồn."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import HfFileSystem, hf_hub_download
+    spec = SPECS[key]
+    seen = set()
+
+    def emit(up, meta):
+        rid = f"{id_prefix}{key}_{safe(up)}"
+        if rid in seen:
+            return {"id": rid, "upstream_id": up}, "id trùng"
+        seen.add(rid)
+        row = base_row(key, rid, up, meta)
+        row["audio_derivation"] = METADATA_DERIVATION
+        return row, (None if row["text_tagged"] else "text rỗng")
+
+    if spec["reader"] == "parquet":
+        fs = HfFileSystem()
+        for fn, _ in spec["files"]:
+            with fs.open(f"datasets/{spec['repo']}@{spec['revision']}/{fn}", "rb", block_size=256 << 10,
+                         cache_type="readahead") as f:
+                pf = pq.ParquetFile(f)
+                cols = [c for c in pf.schema_arrow.names if c != "audio"]
+                for rg in range(pf.num_row_groups):
+                    t = pf.read_row_group(rg, columns=cols + ["audio.path"]).to_pylist()
+                    for ri, r in enumerate(t):
+                        path = (r.get("audio") or {}).get("path") or ""
+                        up = _str(r.get(spec["id"])) if spec.get("id") else path
+                        if not up:
+                            up = f"{Path(fn).stem}:{rg}:{ri}"
+                        elif spec.get("id_with_shard"):
+                            up = f"{Path(fn).name.split('-of-')[0]}/{up}"
+                        meta = {"text": (r.get(spec["text"]) or "").strip(),
+                                "speaker": _str(r.get(spec["speaker"])) if spec.get("speaker") else None,
+                                "session": _str(r.get(spec["session"])) if spec.get("session") else None}
+                        meta.update({k: _str(r.get(c)) for k, c in (spec.get("meta") or {}).items()})
+                        yield emit(up, meta)
+    elif spec["reader"] == "tsv_tar":
+        tsv = hf_hub_download(spec["repo"], spec["files"][0][0], repo_type="dataset", revision=spec["revision"])
+        if sha256_file(tsv) != spec["files"][0][1]:
+            raise SystemExit(f"{key}: tsv khác bản khoá")
+        for line in open(tsv, encoding="utf-8"):
+            line = line.rstrip("\n")
+            if line:
+                k, _, t = line.partition("\t")
+                yield emit(k, {"text": t.strip(), "speaker": None, "session": None})
+    else:
+        raise SystemExit(f"{key}: --metadata-only chưa hỗ trợ reader {spec['reader']} (bộ nhỏ: nhập đầy đủ)")
 
 
 def download(key: str, src_dir: Path, min_free_gb: float = 3.0, only: Optional[List] = None) -> List[str]:
@@ -312,9 +375,30 @@ def main(argv=None):
     ap.add_argument("--keep-source", action="store_true", help="không xoá file nguồn sau khi tách")
     ap.add_argument("--limit", type=int, default=0, help="chỉ N dòng đầu mỗi bộ (thử nhanh)")
     ap.add_argument("--min-free-gb", type=float, default=3.0)
+    ap.add_argument("--metadata-only", action="store_true",
+                    help="chỉ đọc id + lời thoại + meta từ nguồn (không tải audio) -> <bộ>/rows_meta.jsonl")
     args = ap.parse_args(argv)
     from gipbench.core import paths as P
     root = Path(args.out or Path(P.path("data_root")) / "dl" / "evalsets")
+    if args.metadata_only:
+        for key in args.sets:
+            d = root / key
+            d.mkdir(parents=True, exist_ok=True)
+            rows, dropped = [], []
+            for row, why in read_metadata(key):
+                (dropped.append({"id": row["id"], "upstream_id": row["upstream_id"], "reason": why}) if why
+                 else rows.append(row))
+            with open(d / "rows_meta.jsonl", "w", encoding="utf-8", newline="\n") as f:
+                for r in rows:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            exp = SPECS[key].get("expected")
+            (d / "ingest_meta_metadata.json").write_text(json.dumps(
+                {"set": key, "mode": "metadata_only", "repo": SPECS[key]["repo"], "revision": SPECS[key]["revision"],
+                 "files": [{"file": fn, "sha256": s} for fn, s in SPECS[key]["files"]], "rows": len(rows),
+                 "expected": exp, "dropped": dropped}, ensure_ascii=False, indent=1), encoding="utf-8")
+            flag = "" if exp in (None, len(rows)) else f"  <-- KHÁC số công bố {exp}"
+            print(f"{key} (metadata): {len(rows)} câu, bỏ {len(dropped)}{flag}", flush=True)
+        return
     for key in args.sets:
         spec = SPECS[key]
         d = root / key

@@ -136,6 +136,24 @@ def main():
     got3 = [json.loads(l) for l in open(d / "recv3" / "manifest.jsonl", encoding="utf-8")]
     check("fetch lấy lại lời thoại từ nguồn", [r.get("text_tagged") for r in got3] == [r["text_tagged"] for r in full])
     check("manifest sau fetch trùng manifest_sha256 bản khoá", manifest_sha256(got3) == manifest_sha256(full))
+    # dòng metadata-only (không audio_sha256 / duration): fetch dựng audio, kiểm bằng sha256 file nguồn
+    meta_rows = [{k: v for k, v in r.items() if k not in ("audio_sha256", "duration", "_path")} for r in rows]
+    for r in meta_rows:
+        r["audio_derivation"] = EV.METADATA_DERIVATION
+    check("base_row giống nhau giữa nhập đầy đủ và metadata-only",
+          all(EV.base_row("fake_pq", r["id"], r["upstream_id"], {"text": r["text_tagged"], "speaker": None,
+                                                                 "session": None, "gender": r.get("gender")})
+              == {k: v for k, v in r.items() if k != "audio_derivation"} for r in meta_rows))
+    man4 = d / "m4.jsonl"
+    man4.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in share_rows(meta_rows)), encoding="utf-8")
+    try:
+        F.main(["--manifest", str(man4), "--out", str(d / "recv4"), "--local-source", f"fake_pq={p0}", f"fake_pq={p1}"])
+        rc4 = 0
+    except SystemExit as e:
+        rc4 = e.code
+    rep4 = json.loads((d / "recv4" / "fetch_report.json").read_text(encoding="utf-8"))
+    check("fetch dòng metadata-only: đủ câu, kiểm bằng sha256 file nguồn", rc4 == 0 and rep4["rows_ok"] == 3
+          and rep4["rows_checked_by_source_sha_only"] == 3, rep4)
     check("mọi bộ E0 thật đều có nguồn trong fetch.SOURCES",
           all(k in F.SOURCES for k in ("fleurs_vi", "cv17_vi", "vietmed", "lsvsc", "vimd", "speech_massive_vi", "vimedcss_test")))
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")

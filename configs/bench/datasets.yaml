@@ -191,7 +191,7 @@ datasets:
     revision: 3a5b30157034e7eadd5c75fae1a820c6f9383398
     license: CC-BY-NC-ND-4.0
     access: public
-    upstream_splits: {test: 1550}
+    upstream_splits: {test: 2026}   # tổng num_rows 14 shard parquet (API size của HF báo 1550: sai)
     eval_split: test
     content: phương ngữ 63 tỉnh (audio gốc 44.1 kHz stereo, resample 16 kHz)
     annotation: human
@@ -247,7 +247,7 @@ datasets:
     revision: 4b30571f395781fddc3a4946fb378648f8572714
     license: CC-BY-NC-SA-4.0
     access: "gated (auto-accept, cần token HF đã đồng ý)"
-    upstream_splits: unknown
+    upstream_splits: {test: 7500}
     eval_split: test
     content: nhiều domain, clip cắt sát
     annotation: unknown
@@ -275,7 +275,7 @@ datasets:
     revision: 2e6d34fb35e3ac7021980fb018e7894b151a5c8e
     license: CC-BY-NC-SA-4.0
     access: "gated (auto-accept, cần token HF đã đồng ý)"
-    upstream_splits: unknown
+    upstream_splits: {test: 2974}
     eval_split: test
     content: câu lệnh trợ lý ảo (MASSIVE) do người Việt đọc, 48 kHz
     annotation: human (câu dịch có kiểm định)
