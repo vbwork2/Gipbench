@@ -179,7 +179,8 @@ Luật cho **mọi** lần chạy:
   - [x] `scripts/colab/pack_ft_bundle.py` / `unpack_ft_bundle.py` (+ `tests/dataset/test_colab_bundle.py`): gói 6 pool (v2 + vss_cs / distill e3_v1) + `models/gip15` (model.pt, bpe, tokens) + manifest mọi bench / catalog = 18 848 file, 4.28 GB, 6 shard (000–005; 005 là lượt gói bổ sung) ở `D:/gipbench_ft_bundle`.
   - [ ] 👤 Cài Google Drive for desktop, đăng nhập b.vinh2005 → chép `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft`.
   - [x] `configs/paths.colab.yaml` + `scripts/colab/colab_ft.ipynb`: chung Python Colab, k2 khớp torch / CUDA, checkpoint trên Drive, watchdog `/content` (chừa 5 GiB); có test cấu hình / notebook.
-  - [ ] Người dùng commit + push nhánh để Colab clone được; thêm Secret `GH_TOKEN`.
+  - [x] Commit + push nhánh `fix/scorer-leak-audit` (18/11, `044e7fe`; notebook clone đúng nhánh này).
+  - [ ] 👤 Thêm Secret `GH_TOKEN` trong Colab (repo riêng tư).
   - [ ] Kiểm trên Colab thật: chưa cài thử torch / CUDA / k2, chưa đo tốc độ / dung lượng Drive, chưa chạy dry-run hay stage 0–6 trên Colab. Notebook dừng nếu chưa có `e4_x0.yaml`.
     Audit 17/11 (Claude): sửa notebook: kernel không import được gipbench sau `pip install -e` (thêm `src` vào sys.path),
     kiểm Drive theo cỡ checkpoint, in stderr git đã che token. **Dung lượng Drive**: `checkpoint-N.pt` ~1.1 GB (e3_v1),
