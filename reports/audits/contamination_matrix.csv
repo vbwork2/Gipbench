@@ -1,0 +1,28 @@
+train_or_dev_pool,benchmark,bench_subset,overlap_type,affected_test_rows,bench_rows,pct,detail,evidence_level,detected_by_current_leak_audit
+vimedcss_train@full,C0 code_switch_v1,vimedcss hard,source/video (same YouTube video),388,658,59.0,"248/404 videos; 0.78 h",VERIFIED (a2_leak.py),yes (speaker/source cùng định dạng youtube:ID)
+vimedcss_train@full,C0 code_switch_v1,vimedcss hard,text exact,1,658,0.2,,VERIFIED,yes
+e3_v1 train_curated (đã train),C0 code_switch_v1,vimedcss hard,source/video,259,658,39.4,E3 v1 thực sự train trên các video này,VERIFIED,yes nhưng stage 0 chỉ báo cáo
+e3_v1b train_curated,C0 code_switch_v1,vimedcss hard,source/video,293,658,44.5,,VERIFIED,yes nhưng chỉ báo cáo
+dev_cs@e3_v1,C0 code_switch_v1,vimedcss hard,source/video,71,658,10.8,48 video chung hard∩dev,VERIFIED,yes
+vimedcss_train@full,E0 external_v1,vimedcss_test,source/video,1514,1614,93.8,"898/995 videos; speaker E0 = URL youtube, train = yt_ID",VERIFIED,NO (lệch định dạng ID -> 0 phát hiện)
+vimedcss_train@full,E0 external_v1,vimedcss_test,text exact,44,1614,2.7,,VERIFIED,yes
+vimedcss_train@full,E0 external_v1,vimedcss_test,text near-dup (Jaccard>=0.8),23,1614,1.4,,VERIFIED,yes (review)
+e3_v1 train_curated,E0 external_v1,vimedcss_test,text exact / near-dup,15 / 8,1614,0.9 / 0.5,,VERIFIED,yes
+dev_cs@e3_v1,E0 external_v1,vimedcss_test,source/video,(273 video chung),1614,,"dev ViMedCSS: 546/599 dòng (91.2%) đến từ video train",VERIFIED,NO
+C0 hard (bench),E0 external_v1,vimedcss_test,source/video giữa hai bench,(113 video chung),1614,,hai track không độc lập,VERIFIED,n/a
+vivos_train@e3_v1,G0 general_v1,vivos test,text exact (câu đọc lặp),194,760,25.5,"188 câu >= 4 token; 0 speaker chung",VERIFIED,yes (critical) – thực chất là trùng từ vựng có chủ đích của bộ đọc
+dev_vi@e3_v1,G0 general_v1,vivos test,text exact,55,760,7.2,dev_vi = 4 người nói VIVOS train,VERIFIED,yes
+cv_train@v1 (CV27 train),G0 general_v1,commonvoice_vi_27 test,clip / speaker,0,1593,0.0,CV27 train = 1 người nói duy nhất (1 848 clip),VERIFIED,n/a
+cv_train@v1,G0 general_v1,commonvoice_vi_27 test,text exact,2,1593,0.1,,VERIFIED,yes
+G0 commonvoice_vi_27 (bench),E0 external_v1,cv17_vi,audio sha256 (cùng clip),1024,1274,80.4,"163 clip CV17-test nằm ở CV27 dev, 1 clip CV27 invalidated",VERIFIED,n/a (giữa hai bench)
+G0 ggroup_* (bench),C1 cs_ggroup_v1,all,audio sha256 (tập con),1260,1260,100.0,C1 ⊂ G0,VERIFIED,n/a
+vss_cs@e3_v1 / distill@e3_v1 (VietSuperSpeech),G0 / C1 ggroup_*,all,text exact / near-dup,0,2047,0.0,,VERIFIED,yes
+vss_cs@e3_v1 / distill@e3_v1,G0 / C1 ggroup_*,all,source/video / speaker,UNVERIFIED,2047,,"G-Group không có id người nói / video; VSS dùng tiêu đề video làm source",UNVERIFIED,NO (không thể kiểm)
+catalog/v0-draft (hotwords E1/E7; trần per-term curate E3),v0-draft B1+B2,all,benchmark-derived vocabulary,1618 span,4238,,catalog = ViMedCSS + 1 618 span của chính bench,VERIFIED (docs + releases.yaml),yes (transcribe chặn nếu khai báo)
+tts_lexicon.tsv (kế hoạch E3 v2),C1 cs_ggroup_v1,all,benchmark-derived vocabulary,65 thuật ngữ,107 thuật ngữ lexicon,60.7,make_text lấy thuật ngữ từ catalog_v0_draft,VERIFIED (chưa sinh audio TTS),NO (chưa có gate cho TTS)
+e3_v1 train_curated,C1 cs_ggroup_v1,all,term exposure (thuật ngữ <en> có trong text train),511 span / 223 thuật ngữ,2105 span / 1443 thuật ngữ,24.3 / 15.5,không phải leakage; là lát seen vs FT-unseen,VERIFIED,n/a
+e3_v1 train_curated,C0 code_switch_v1,all,term exposure,203 span / 85 thuật ngữ,987 span / 582 thuật ngữ,20.6 / 14.6,,VERIFIED,n/a
+VieGem pretraining (model card),E0 external_v1,"fleurs, cv17, phoaudiobook, lsvsc, bud500, gigaspeech2, vimd, vimedcss_test",pretraining source overlap (lọc theo câu),23759,32203,73.8,"chỉ VietMed (3 437) và Speech-MASSIVE (5 007) không có trong danh sách",DOCUMENTED (model card),n/a
+VieGem pretraining (model card),C0 code_switch_v1,vimedcss hard,pretraining source overlap (ViMedCSS train ~23 h),388 (theo video),658,59.0,,DOCUMENTED + VERIFIED video,n/a
+Gipformer pretraining,G0/C1,ggroup_*,cùng tổ chức phát hành (known_possible),UNKNOWN,2047,,không công bố dữ liệu train,UNKNOWN,n/a
+confusable_train@e3_v1,(trong train),vivos_train@e3_v1,duplicate audio trong train,590,590,100.0,cùng file VIVOS train ở 2 nhóm trộn,VERIFIED,n/a

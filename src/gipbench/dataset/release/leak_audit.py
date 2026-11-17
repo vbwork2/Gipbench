@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Báo cáo nhiễm bẩn: một manifest test so với các manifest train / dev, hotwords, text LM / TTS (core.decontam).
 
-  python -m gipbench.dataset.release.leak_audit --test data/benchmarks/general_v1_draft/manifest.jsonl \
-      --train data/e3_v1/group_*.jsonl --dev data/e3_v1/dev_*.jsonl [--hotwords hw.txt] [--reserved-terms terms.txt] \
-      [--text-files lm.txt tts.txt] [--no-audio-sha] [--out reports/leak/x] [--fail-on critical|review|never]
+  python -m gipbench.dataset.release.leak_audit --test bench_data/general_v1/manifest.jsonl \
+      --train my_ft/train*.jsonl --dev my_ft/dev*.jsonl [--hotwords hw.txt] [--reserved-terms terms.txt] \
+      [--text-files lm.txt tts.txt] [--no-audio-sha] [--out leak/x] [--fail-on critical|review|never]
 
 Kiểm: trùng id / speaker / source / session / sha256 audio / text sau chuẩn hoá (critical), text gần trùng
 (Jaccard 5-gram ký tự >= --near, cần người xem), thuật ngữ FT-unseen (--reserved-terms) trong train / dev / text LM / TTS /

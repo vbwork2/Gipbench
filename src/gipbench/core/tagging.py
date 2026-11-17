@@ -1,5 +1,5 @@
-"""Tự gắn tag <en> (bản nháp cho người duyệt) và nhận diện âm tiết tiếng Việt: dùng chung cho dataset (converter,
-consensus, TTS) và core (term_decisions). Chuyển từ converters/common.py, giữ nguyên logic.
+"""Tự gắn tag <en> (bản nháp cho người duyệt) và nhận diện âm tiết tiếng Việt: dùng chung cho dataset (converter)
+và core (term_decisions). Chuyển từ converters/common.py, giữ nguyên logic.
 
   C = khớp catalog hoặc danh sách thuật ngữ đi kèm dataset  -> tin cậy cao
   H = token không thể là âm tiết tiếng Việt (không dấu, sai cấu trúc âm tiết) -> cần duyệt
@@ -38,7 +38,7 @@ def is_vietnamese_token(tok: str) -> bool:
       - âm tiết tận cùng -p, -t, -c, -ch chỉ mang thanh sắc hoặc nặng, nên bản không dấu
         (chip, kit, mac, net, hot, tech, op) không phải tiếng Việt;
       - vần có bán nguyên âm cuối (ai, ao, oi, ...) không có phụ âm cuối; tiếng Việt viết -inh, không có -ing.
-    Giả định text gốc có dấu đầy đủ (G-Group, ViMedCSS, VIVOS, VietSuperSpeech đều vậy).
+    Giả định text gốc có dấu đầy đủ (G-Group, ViMedCSS, VIVOS đều vậy).
     """
     t = unicodedata.normalize("NFC", tok.lower())
     if _VI_MARK.search(t) or t.isdigit():

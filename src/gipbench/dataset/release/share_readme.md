@@ -13,19 +13,49 @@ Gói này **không chứa audio**. Bạn tự tải audio từ nguồn gốc b�
 
 E0 chỉ có kết quả của chính bạn: gói không kèm hyps của model gốc cho E0.
 
+## Các bộ trong gói
+
+C1 là tập con của G0 nên số câu không trùng là 37 261 (4 400 + 658 + 32 203). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng.
+
+| Track | Bộ | Nguồn | Split | Câu | Giờ | Người nói | License | Lời thoại trong gói | Train VieGem (model card) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G0 | `vivos` | AILAB-VNUHCM/vivos | test | 760 | 0.75 | 19 | CC-BY-NC-SA-4.0 | có | không nêu |
+| G0 | `commonvoice_vi_27` | Common Voice 27.0 (tải tay) | test | 1 593 | 1.75 | 221 | CC0-1.0 | có | không nêu |
+| G0 | `ggroup_tech` | g-group-ai-lab/vi-asr-tech-test | test | 508 | 0.49 | – | CC-BY-NC-4.0 | có | không nêu |
+| G0 | `ggroup_edu` | g-group-ai-lab/vi-asr-edu-test | test | 495 | 0.52 | – | CC-BY-NC-4.0 | có | không nêu |
+| G0 | `ggroup_finance` | g-group-ai-lab/vi-asr-finance-test | test | 529 | 0.50 | – | CC-BY-NC-4.0 | có | không nêu |
+| G0 | `ggroup_pubadmin` | g-group-ai-lab/vi-asr-pubadmin-test | test | 515 | 0.47 | – | CC-BY-NC-4.0 | có | không nêu |
+| C0 | `vimedcss` | tensorxt/ViMedCSS | hard | 658 | 1.29 | 404 video | CC-BY-4.0 | có | có (train) |
+| C1 | `ggroup_tech` / `edu` / `finance` / `pubadmin` | tập con của G0 (câu có từ Anh) | test | 465 / 346 / 294 / 155 | 0.46 / 0.39 / 0.30 / 0.16 | – | CC-BY-NC-4.0 | có | không nêu |
+| E0 | `fleurs_vi` | google/fleurs vi_vn | test | 857 | 3.00 | – | CC-BY-4.0 | có | có |
+| E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | có | có |
+| E0 | `vietmed` | leduckhai/VietMed | test | 3 437 | 6.02 | 27 | MIT | có | không |
+| E0 | `phoaudiobook` | thivux/phoaudiobook (gated) | test | 383 | 1.24 | 40 | điều khoản riêng | **không** | có |
+| E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | có | có |
+| E0 | `bud500` | linhtran92/viet_bud500 (gated) | test | 7 500 | – | – | CC-BY-NC-SA-4.0 | có | có |
+| E0 | `gigaspeech2_vi` | speechcolab/gigaspeech2 vi (gated) | test | 4 422 | – | – | điều khoản riêng | **không** | có |
+| E0 | `vimd` | nguyendv02/ViMD_Dataset | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 | có | có |
+| E0 | `vimedcss_test` | tensorxt/ViMedCSS | test | 1 614 | – | 995 video | CC-BY-4.0 | có | có |
+| E0 | `speech_massive_vi` | FBK-MT/Speech-MASSIVE vi-VN | validation | 2 033 | – | 28 | CC-BY-NC-SA-4.0 | có | không |
+| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 | có | không |
+
+Cột cuối lấy từ model card VieGem-ASR. Bộ ghi "có" nằm trong dữ liệu train của VieGem, nên không dùng để kết luận VieGem tổng quát hoá tốt; bộ "không nêu" chỉ nghĩa là model card không liệt kê, chưa phải bằng chứng bộ đó sạch. Mức trùng của Gipformer: chưa rõ (không công bố dữ liệu train).
+
 - Lời thoại là nhãn gốc của bên phát hành từng bộ, không sửa chữ.
-- Bản v1.0 đã **khoá** bằng `manifest_sha256` trong `manifests/*.benchmark.yaml`, nên ai cũng chấm trên đúng một bộ câu.
+- Cả bốn track (G0, C0, C1 từ v1.0; E0 thêm ở v1.1) đã **khoá** bằng `manifest_sha256` trong `manifests/*.benchmark.yaml`, nên ai cũng chấm trên đúng một bộ câu.
 - Phần lớn license là **phi thương mại** (CC-BY-NC / CC-BY-NC-SA). Chỉ dùng cho nghiên cứu hoặc đánh giá nội bộ, và trích dẫn từng bộ nguồn.
 
 ## 1. Cài đặt
 
-Repo là riêng tư: xin quyền truy cập từ người gửi gói này. Code bench đang ở nhánh `feat/general-asr` (chưa merge vào `main`).
+Gói này đã kèm code chấm điểm trong thư mục `code/` (tải audio `fetch`, kiểm trùng `leak_audit`, chấm `evaluate`, chạy model `transcribe`). Bạn **không cần repo**, chỉ cần cài `code/`:
 
 ```bash
-git clone -b feat/general-asr https://github.com/vbwork2/Gipbench.git && cd Gipbench
-pip install -e ".[audio]" huggingface_hub pyarrow pyyaml soundfile soxr
+G=<đường dẫn tới thư mục gói này>
+pip install -e "$G/code[audio]" huggingface_hub pyarrow soundfile soxr
 export HF_HUB_DISABLE_XET=1     # nếu tải từ Hugging Face bị treo
 ```
+
+Các lệnh bên dưới chạy từ một thư mục làm việc bất kỳ, và `bench_data/`, `my_system/`, `leak/` được tạo ngay tại đó. Python 3.10 trở lên.
 
 ## 2. Tải audio (chỉ cần một lần)
 
@@ -111,9 +141,9 @@ Giá trị của `inference_mode`:
 
 ### b) Dùng adapter có sẵn
 
-Có adapter cho Gipformer / sherpa-onnx transducer, VieGem-ASR, faster-whisper và Qwen3-ASR. `transcribe` tự ghi `run_meta.json` và chạy tiếp được khi bị ngắt.
+Có adapter cho Gipformer / sherpa-onnx transducer và VieGem-ASR. Model khác thì dùng cách a). `transcribe` tự ghi `run_meta.json` và chạy tiếp được khi bị ngắt.
 
-Copy một file trong `configs/bench/asr_models/` của repo, sửa đường dẫn trỏ tới model của bạn, rồi chạy:
+Copy một file trong `$G/code/configs/bench/asr_models/`, sửa đường dẫn trỏ tới model của bạn, rồi chạy:
 
 ```bash
 python -m gipbench.bench.transcribe --model my_model.yaml --benchmark $G/manifests/general_v1.benchmark.yaml \

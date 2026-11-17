@@ -132,7 +132,7 @@ class Writer:
 
     def rel(self, path: str) -> str:
         # os.path.abspath chỉ xử lý chuỗi; Path.resolve() stat từng thành phần, rất chậm trên /mnt/<ổ> của WSL
-        # (67k câu VietSuperSpeech: > 20 phút chỉ vì resolve)
+        # (bộ vài chục nghìn câu: > 20 phút chỉ vì resolve)
         p, base = os.path.abspath(str(path)), os.path.abspath(str(self.out))
         return os.path.relpath(p, base) if p == base or p.startswith(base + os.sep) else p
 
