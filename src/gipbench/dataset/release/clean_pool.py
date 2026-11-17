@@ -146,6 +146,16 @@ def verify(keep: List[Dict], refs) -> Dict[str, Dict]:
     return out
 
 
+def write_pool(out: Path, keep: List[Dict], drop: List[Dict]):
+    """Ghi pool sạch + câu bị bỏ. `audio` viết lại tương đối theo thư mục file ra (từ `_audio_path`): giữ nguyên chuỗi
+    tương đối của manifest nguồn thì lệch cấp khi file ra nằm ở độ sâu khác (lỗi 17/11 ở cả 3 pool v2)."""
+    from gipbench.dataset.release.make_dev_split import rel_audio
+    out_dir = str(Path(out).resolve().parent)
+    fix = lambda rs: [dict(r, audio=rel_audio(r, out_dir)) if r.get("audio") else r for r in rs]  # noqa: E731
+    write_jsonl(str(out), fix(keep))
+    write_jsonl(str(out) + ".dropped.jsonl", fix(drop))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     g = ap.add_mutually_exclusive_group(required=True)
@@ -165,8 +175,7 @@ def main():
                "verify": ver})
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    write_jsonl(str(out), keep)
-    write_jsonl(str(out) + ".dropped.jsonl", drop)
+    write_pool(out, keep, drop)
     Path(str(out) + ".report.json").write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
     md = [f"# clean_pool: `{st['input']}` -> `{out}`", "",
           f"So với: {', '.join(f'`{n}`' for n, _ in refs)}", "",

@@ -5,6 +5,8 @@
   python -m gipbench.dataset.ingest.local vivos --root data/dl/vivos --out data/raw/vivos
   # Common Voice vi (thư mục có test.tsv, train.tsv, clips/) -> B5 (test) + train
   python -m gipbench.dataset.ingest.local commonvoice --root data/dl/cv-corpus-vi --out data/raw/cv
+  # pool replay nhiều người nói (validated + other, trừ người nói test / dev, trần 30 câu / người nói) -> pool_cv.jsonl
+  python -m gipbench.dataset.ingest.local commonvoice_pool --root data/dl/cv-corpus-27.0-2026-09-11/vi --out data/raw/cv
   # VietSuperSpeech (thư mục có train.json / dev.json hoặc *.parquet, cột audio = đường dẫn tương đối) -> train replay
   python -m gipbench.dataset.ingest.local vietsuperspeech --root data/dl/VietSuperSpeech --out data/raw/vss       --bench data/raw/ggroup/b1_candidates.jsonl data/raw/vimedcss/b3_candidates.jsonl --catalog configs/catalog_v0.tsv
 
@@ -91,6 +93,59 @@ def commonvoice(args, w, cat, stats):
                      f"cv_{spk}", f"cv:{spk}", "read", f"commonvoice:{part}", cat, False, stats)
 
 
+def commonvoice_pool(args, w, cat, stats):
+    """Pool replay nhiều người nói từ Common Voice (TODO 2c, IP-06) -> pool_cv.jsonl.
+
+    validated.tsv trừ người nói test / dev chỉ còn đúng 1 người nói (người của train.tsv), nên lấy thêm phần chưa đủ phiếu
+    (--cv-parts, mặc định validated + other) với luật phiếu --cv-min-up / --cv-max-down. Loại MỌI client_id có trong
+    test.tsv / dev.tsv; --cv-max-per-speaker giới hạn số câu mỗi người nói (người nói train cũ có > 1 600 câu).
+    Nhãn = câu nhắc (prompt) người nói được yêu cầu đọc: label_source ghi rõ phần / số phiếu để lọc lại sau.
+    Duration lấy từ clip_durations.tsv (không mở mp3). Trùng với bench khoá (CV27 test trong G0, CV17 test trong E0;
+    người nói, clip, câu nhắc) lọc tiếp bằng dataset.release.clean_pool."""
+    import random
+    root = Path(args.root)
+    excl = set()
+    for part in ("test", "dev"):
+        with open(root / f"{part}.tsv", encoding="utf-8") as f:
+            excl |= {r["client_id"] for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)}
+    durs = {}
+    with open(root / "clip_durations.tsv", encoding="utf-8") as f:
+        for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+            durs[r["clip"]] = float(r["duration[ms]"]) / 1000
+    cand = []
+    for part in args.cv_parts:
+        with open(root / f"{part}.tsv", encoding="utf-8") as f:
+            for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+                up, down = int(r.get("up_votes") or 0), int(r.get("down_votes") or 0)
+                why = ("người nói test/dev" if r["client_id"] in excl else
+                       "phiếu" if part != "validated" and (up < args.cv_min_up or down > args.cv_max_down) else
+                       "không có duration" if r["path"] not in durs else "")
+                if why:
+                    stats[f"bỏ ({why})"] = stats.get(f"bỏ ({why})", 0) + 1
+                    continue
+                cand.append((part, up, down, r))
+    by_spk = {}
+    for c in cand:
+        by_spk.setdefault(c[3]["client_id"], []).append(c)
+    rnd = random.Random(args.seed)
+    for spk, cs in sorted(by_spk.items()):
+        if args.cv_max_per_speaker and len(cs) > args.cv_max_per_speaker:
+            stats["bỏ (trần người nói)"] = stats.get("bỏ (trần người nói)", 0) + len(cs) - args.cv_max_per_speaker
+            cs = rnd.sample(cs, args.cv_max_per_speaker)
+        for part, up, down, r in cs:
+            s16 = safe(spk)[:16]
+            before = len(w.rows.get("pool_cv", []))
+            emit(w, "pool_cv", "train", f"cv_{safe(Path(r['path']).stem)}", root / "clips" / r["path"], r["sentence"],
+                 f"cv_{s16}", f"cv:{s16}", "read", f"commonvoice:{part}", cat, False, stats, dur=durs[r["path"]])
+            if len(w.rows.get("pool_cv", [])) > before:
+                w.rows["pool_cv"][-1].update(
+                    upstream_id=Path(r["path"]).stem, label_source=f"human_prompt:cv27_{part}(up={up},down={down})")
+    rows = w.rows.get("pool_cv", [])
+    stats["pool_cv: câu"] = len(rows)
+    stats["pool_cv: người nói"] = len({r["speaker"] for r in rows})
+    stats["pool_cv: giờ"] = round(sum(r["duration"] for r in rows) / 3600, 3)
+
+
 def vietsuperspeech(args, w, cat, stats):
     root = Path(args.root)
     items = []
@@ -159,7 +214,12 @@ def vietsuperspeech(args, w, cat, stats):
 def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("dataset", choices=["vivos", "commonvoice", "vietsuperspeech"])
+    ap.add_argument("dataset", choices=["vivos", "commonvoice", "commonvoice_pool", "vietsuperspeech"])
+    ap.add_argument("--cv-parts", nargs="+", default=["validated", "other"], help="(commonvoice_pool) các file .tsv lấy câu")
+    ap.add_argument("--cv-min-up", type=int, default=0, help="(commonvoice_pool) phiếu up tối thiểu (ngoài validated)")
+    ap.add_argument("--cv-max-down", type=int, default=0, help="(commonvoice_pool) phiếu down tối đa (ngoài validated)")
+    ap.add_argument("--cv-max-per-speaker", type=int, default=30, help="(commonvoice_pool) 0 = không trần")
+    ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--root", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--catalog")
@@ -173,7 +233,8 @@ def main():
     args = ap.parse_args()
     w, stats = Writer(args.out, args.dataset), {}
     w.vi_words = load_vi_words(args.vi_words)
-    {"vivos": vivos, "commonvoice": commonvoice, "vietsuperspeech": vietsuperspeech}[args.dataset](args, w, Catalog.load(args.catalog), stats)
+    {"vivos": vivos, "commonvoice": commonvoice, "commonvoice_pool": commonvoice_pool,
+     "vietsuperspeech": vietsuperspeech}[args.dataset](args, w, Catalog.load(args.catalog), stats)
     w.terms.clear()
     w.close()
     for k, v in stats.items():

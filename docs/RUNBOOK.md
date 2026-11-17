@@ -55,6 +55,24 @@ Thí nghiệm mới = chép một file trong `configs/model/experiments/`, đổ
 shell. Stage 6 ghi artifact (`output.artifact`) và các system YAML cho bench (`configs/bench/systems/<system>.yaml`).
 Các file thuộc `docs/history/run_e3*.sh` chỉ để tham khảo, không chạy được với cấu trúc mới.
 
+### 2b. Fine-tune trên Colab: gói dữ liệu qua Google Drive
+
+Code lấy bằng `git clone` (token GitHub trong Colab Secrets); dữ liệu + model gốc đi qua Drive dưới dạng gói tar ~1 GB giữ
+nguyên đường dẫn tương đối theo gốc repo. Không có audio bench trong gói (chỉ manifest text cho cổng rò rỉ).
+
+```bash
+# máy local: đóng gói (chạy lại được, chỉ gói file mới / đổi), rồi chép thư mục gói vào thư mục Drive đồng bộ
+python scripts/colab/pack_ft_bundle.py --out D:/gipbench_ft_bundle [--refs dev/<dev_v2>@v1 catalog/train-v1]
+# Colab: sau khi mount Drive và clone repo vào /content/gipbench
+python scripts/colab/unpack_ft_bundle.py --bundle /content/drive/MyDrive/gipbench_ft --dest /content/gipbench
+```
+
+Mở `scripts/colab/colab_ft.ipynb` trên Colab GPU, đặt `BRANCH`, `EXPERIMENT` và Secret `GH_TOKEN`, rồi chạy từ trên xuống.
+Notebook chép `configs/paths.colab.yaml` thành `configs/paths.yaml`: data ở local, checkpoint / kết quả trên Drive;
+ba Python dùng chung môi trường Colab (biến môi trường trỏ tới đường dẫn tuyệt đối của `python3`).
+Cài k2 theo torch / CUDA hiện có; dry-run rồi cổng rò rỉ trước stage 1–6, watchdog dùng `/content` (chừa 5 GiB).
+Chưa kiểm trên Colab thật; `e4_x0.yaml` chưa có, cần hoàn thành TODO Phần 5 và bổ sung gói dev / catalog trước khi chạy.
+
 ## 3. Bench: system -> kết quả -> leaderboard
 
 ```bash

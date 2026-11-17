@@ -49,6 +49,11 @@ def register(ref, spec, config_path=CONFIG):
         return R.write_release(ref, catalog_src=src, source=src, parents=[src], **kw)
     src = REPO / spec["manifest"]
     rows = read_jsonl(str(src))
+    if R.parse(ref)[0] in ("pool", "dev"):  # bench có thể chỉ khoá metadata (audio tải sau); pool / dev thì phải đọc được
+        miss = [r["id"] for r in rows if r.get("_audio_path") and not os.path.exists(r["_audio_path"])]
+        if miss:
+            raise SystemExit(f"{ref}: {len(miss)} / {len(rows)} câu trỏ tới audio không tồn tại (vd {miss[:3]}): "
+                             "sửa đường dẫn trong manifest nguồn trước khi đăng ký")
     rel = R.write_release(ref, manifest_rows=rows, source=src, parents=[src], **kw)
     check_same(rows, rel)
     return rel

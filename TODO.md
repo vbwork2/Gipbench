@@ -16,6 +16,8 @@ Cách dùng: làm **từ trên xuống**. Thứ tự các phần là thứ tự 
 
 - **Mục tiêu "general" (đăng ký trước):** CS-WER C1 giảm (CI95 < 0) ở ≥ 2 domain ngoài y khoa **và** `vi_only_wer` G0 không tăng (cận trên CI ≤ +0.5); xác nhận cùng chiều trên Z0 khi có. C0 / E0-ViMedCSS không dùng để claim general. Các hướng cải tiến ngoài X0–X6: Phần 7.
 
+- **2c xong, 2d / 2e công cụ xong (17/11):** pool v2 sạch, cổng ĐẠT 0 critical; phiếu nghe 300 câu vss_cs chờ 👤; CS ở 4 domain mục tiêu chỉ còn 0.43 h, nên dev_v2 đang chờ nguồn mới (2e).
+
 **Kết luận:** chưa được FT tiếp. Còn thiếu (1) dev độc lập (Phần 3), (2) pool train không chứa video bench (2c; cổng đang chặn pool hiện tại), (3) `reserved_terms_v1` được chốt. Sau đó mới tới thí nghiệm X0.
 
 ---
@@ -55,16 +57,25 @@ Mục đích: số chấm ra phải đúng và không đảo dấu mà không ai
   - [x] `code_switch_v1_1` (draft): `train_video_overlap`, nhóm báo cáo theo trường này, `alt_label_fields: [text_tagged_orig]`. 388 / 248 trùng, **270 câu / 156 video chưa thấy**.
     - *Kết quả lát video chưa thấy:* WER VieGem − Gipformer **−0.03 [−1.26, +1.27]** (trên video đã thấy: −1.46); term recall VieGem 20.75 → **10.09**. Lợi thế WER / thuật ngữ của VieGem trên C0 là in-domain.
   - [x] `external_v1_1` (draft): `audio` + `audio_sha256` + `duration` cho 30 467 câu (5 951 sha cũ khớp lại), speaker ViMedCSS test `yt_<ID>` + `train_video_overlap` (1 514), `boot_unit: per_dataset` (FLEURS theo `sentence_id`), `require_audio_sha`.
-  - [ ] **Chờ ViMD tải xong** (1 736 câu, job evalsets PID 2354, ~5 h từ 15:00 17/11) → chạy lại `derive_v1_1 --which external` → điền `manifest_sha256`.
+  - [x] **ViMD tải xong** (17/11 21:31: 2 026 câu, 10.87 h, 1 344 người nói, khớp số công bố) → `derive_v1_1 --which external`: **32 203 / 32 203 câu có audio + sha256**, lời thoại lệch v1.0 = 0 → `manifest_sha256: 2960680ca6b8…` đã ghi vào `external_v1_1.yaml`. `check_frozen` ĐẠT cả khi giả lập `locked`.
+    - Ghi chú vận hành: chạy ViMD song song với Whisper bị OOM (máy còn ~0.4 GB RAM); song song với Gipformer CPU (~0.7 GB) thì ổn.
   - [ ] 👤 Duyệt khoá `code_switch_v1_1` / `external_v1_1` (đổi `evidence_level: locked`).
 - [x] Đính chính 308/201 → 388/248, 37 261 → 36 237 (datasheet mục 9, `dataset_registry.md`, `experiment_matrix.md`, `share_readme.md`).
 - Code thêm: `evaluate` có Δ so cặp theo mọi khoá `group_by`, `boot_unit: per_dataset`; `registry.check_frozen` từ chối khoá bench `require_audio_sha` còn thiếu sha.
 
-### 1d. Hệ tham chiếu cho so sánh công bằng (IP-10 · R17) · đang chạy nền từ 17/11 15:24
-- [ ] 👤 **VieGem + KenLM bị chặn**: cần `sudo apt install build-essential cmake` trong WSL (cần mật khẩu), rồi `uv pip install --python ~/.venvs/gipbench-viegem/bin/python kenlm`. `pypi-kenlm` không có wheel cho Python 3.11. File LM `models/viegem/lm/viegem_lm.bin` đã có. Sau đó chạy `viegem_lm` trên G0 / C0 / C1.
-- [ ] Whisper-large-v3 và Qwen3-ASR trên G0 / C1: đang chạy (hàng đợi `results/general_asr/logs_1d/queue.log`). Whisper cần `LD_LIBRARY_PATH` tới cuBLAS / cuDNN trong venv (RUNBOOK 3b).
-- [ ] E0 v1.1 (phần đã có audio, 30 467 câu) cho VieGem rồi Gipformer: trong cùng hàng đợi, sau Whisper / Qwen. Chạy lại với manifest đủ khi ViMD xong (resume theo id).
-- [ ] Khi hàng đợi xong: điền bảng kết quả vào datasheet mục 8 (hệ thứ ba + E0).
+### 1d. Hệ tham chiếu cho so sánh công bằng (IP-10 · R17) ✅ 18/11
+- [x] **VieGem + KenLM** (18/11): beam 32 và beam 32 + LM 4-gram (wheel `camel-kenlm==2026.2.7`, `results/phase4/kenlm_wheel`) trên G0 / C0 / C1, chấm `final` + Δ cặp với Gipformer và với VieGem greedy (`results/phase4/final/`), **đã điền datasheet mục 8d**.
+  - LM: G0 WER 22.27 → **20.72** (Δ −1.54 [−1.81, −1.27]), chèn từ Anh câu thuần Việt 3.03 → 0.82 /100 câu; nhưng C1 CS-WER 82.39 → **85.13** (Δ +2.74 [1.29, 4.31]), S+D +5.55, term recall 23.5 → 19.5. LM tiếng Việt đè từ Anh. Beam không LM ≈ greedy.
+  - VieGem + LM − Gipformer trên C1: CS-WER +14.87 [12.12, 17.53]. Hệ tham chiếu mạnh nhất cho CS vẫn là Whisper (mục 8).
+- [x] Whisper-large-v3 và Qwen3-ASR trên G0 / C1 (17/11 19:33; `results/general_asr/logs_1d/queue.log`), chấm `final` + Δ cặp với Gipformer, **đã điền datasheet mục 8**. Whisper cần `LD_LIBRARY_PATH` tới cuBLAS / cuDNN trong venv (RUNBOOK 3b).
+  - Whisper: G0 WER 27.55, C1 WER 35.51 / **CS-WER 53.91** (Δ với Gipformer **−16.35 [−20.10, −12.93]**, term recall 53.59 so với 39.57), nhưng câu thuần Việt G0 22.92 (Gipformer 9.79). → CS-WER ~54 đạt được mà không train trên G-Group: khoảng cách của Gipformer nằm ở năng lực tiếng Anh, không phải ở trần của audio / nhãn C1.
+  - Qwen3-0.6B: G0 28.49, C1 WER 37.00 / CS-WER 74.71; tự nhận ngôn ngữ nên nhận nhầm 152 câu G0 ra chữ Hán… (chưa thử ép `vi`).
+  - 17/11 18:45: **WSL mất GPU** (`cudaErrorUnknown`, rồi "no NVIDIA driver"; có lẽ máy ngủ). Whisper C1 dừng ở 965/1 260, Qwen3 lỗi, VieGem E0 rơi xuống CPU (264 câu CPU cất riêng ở `hyps.partial.cpu_aborted.jsonl`, không trộn vào kết quả). Đã `wsl --shutdown`, GPU trở lại, hàng đợi chạy tiếp (resume theo id). Giữ máy không ngủ khi chạy job dài.
+- [x] E0 v1.1 cho VieGem rồi Gipformer, trên manifest đủ 32 203 câu (18/11 02:13; Δ cặp `logs_1d/paired_e0.log`).
+  - [x] VieGem: WER **8.56** [8.00, 9.22], macro 8.56 / 11 bộ. ViMedCSS test CS-WER: video đã thấy khi train **32.68**, video chưa thấy (100 câu) **73.08**.
+  - [x] Gipformer: WER **7.33** [6.86, 7.92], macro 7.58. Δ VieGem − Gipformer **+1.23 [1.08, 1.40]**; Gipformer tốt hơn 9 / 11 bộ, LSVSC ngang, VieGem chỉ thắng ViMedCSS test (−3.51, trùng video train).
+  - Sửa `infer/adapters/sherpa_transducer.py`: audio rỗng → hyp "" (như VieGem) thay vì sherpa-onnx lỗi shape {0,80}. Gặp ở `e0_vimedcss_test_Med_CS-4072_1-13` (file 44 byte từ nguồn). 👤 Đề xuất bỏ câu này khi khoá E0 v1.1.
+- [x] Điền bảng kết quả vào datasheet: mục 8 (Whisper / Qwen3) + **mục 8c (E0)**, mục 7 ý 11.
 - Lưu ý: WSL RAM 6 GB, không chạy Gipformer và VieGem song song. Gipformer giữ batch 1 (batch làm đổi hyp).
 
 ---
@@ -95,21 +106,34 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
   - Khi 👤 xong: chạy lệnh ở RUNBOOK mục 1, bỏ comment mục `catalog/train-v1` trong `releases.yaml`, `register`.
   - Xong khi: `leak_audit --reserved-terms` = 0 trên mọi pool (đã có test; chạy thật khi có file chốt).
 
-### 2c. Dọn dữ liệu train (IP-06 · R14 R15 R16)
-- [ ] **Pool ViMedCSS không chứa video có trong bench khoá** (`pool/vimedcss_train@v2`, loại theo `core.decontam.source_key`): cổng 2a chặn pool hiện tại (388 câu C0, 1 514 câu E0). Đây là điều kiện để X3 chạy được.
-- [ ] Dedupe theo audio trong `curate.py` (590/590 câu confusable trùng audio với `vivos_train`).
-- [ ] `mix_cuts.py --max-views 8`: trần số lượt lặp mỗi audio gốc (hiện cs_real ~55 lượt / audio gốc).
-- [ ] Thay replay CV27 train (chỉ **1 người nói**) bằng `pool/cv_validated@v2` nhiều người nói, loại client_id có trong test/dev CV27 và CV17 test. Đo số người nói; nếu quá ít thì bỏ CV khỏi replay.
-- [ ] Release mới `pool/confusable_train@e3_v1b` với `label_source` đúng. Thêm `errata:`, không sửa mục cũ.
+### 2c. Dọn dữ liệu train (IP-06 · R14 R15 R16) ✅ 17/11, nhánh `fix/scorer-leak-audit`
+- [x] **Pool sạch với mọi bench khoá** bằng công cụ mới `dataset.release.clean_pool`: loại theo đúng các khoá critical của cổng (id, speaker / source thô, `source_key`, `clip_key`, sha audio, text), bỏ **cả video / người nói** khi trùng nguồn, rồi tự kiểm lại bằng `decontam.audit` (thoát 1 nếu còn critical).
+  - `pool/vimedcss_train@v2`: **3 945 câu / 7.64 h / 1 219 video** (từ 11 832 / 22.95 h; bỏ 1 045 video trùng C0 / E0 + 46 câu trùng text). CS còn 6.07 h, toàn y khoa.
+  - `pool/vivos_train@v2` (bỏ 2 câu trùng text G0 / E0), `pool/confusable_train@v2` (bỏ 4 câu).
+  - *Đã kiểm:* `leakgate.run_gate` với vimedcss@v2 + cv_other@v2 + vivos@v2 + confusable@v2 + vss_cs@e3_v1: **ĐẠT, 0 critical** (8 review: trùng chữ trong bộ đọc VIVOS, `identity_unknown` G-Group).
+- [x] Dedupe audio trong `curate.py` (bước 0b, mặc định bật; `--dedupe-priority`, `--no-dedupe-audio`; khoá sha256 → đường dẫn chuẩn hoá → mã clip). *Đã kiểm:* vivos@v2 + confusable@v2 → gộp **586 / 586** câu confusable.
+- [x] `mix_cuts.py --max-views N` (YAML `mix.max_views`): hạ trọng số nhóm vượt trần, chia phần dư, lặp tới ổn định; stats ghi `views_per_source_audio` (gộp speed perturb), `weight_requested`, `capped`, `warnings`.
+  - *Đã kiểm trên cut E3 v1:* không trần thì cs_real **54.8**, confusable 58.1, distill 29.9 lượt / audio gốc (khớp audit). Với trần 8, mọi nhóm chạm trần nên **epoch ảo giảm 160 → 47.6 h**: dữ liệu hiện có chỉ đủ ~1/3 ngân sách E3 (6 × 160 h) nếu giữ ≤ 8 lượt.
+- [x] Replay CV: `cv_validated` **không khả thi**. CV27 `validated` trừ người nói test / dev chỉ còn **đúng 1 người nói** (người của train cũ). Thay bằng `pool/cv_other@v2` (`ingest.local commonvoice_pool`: validated + other, `down_votes = 0`, trần 30 câu / người nói, bỏ 170 câu có câu nhắc trùng CV17 test): **859 câu / 1.04 h / 170 người nói**. Nhãn = câu nhắc, đa số chưa có phiếu xác nhận, nên dùng trọng số thấp; bỏ nếu X0 cho thấy hại.
+- [x] `pool/confusable_train@e3_v1b` (`label_source: human:vivos_train`) + mục `errata:` cuối `releases.yaml` (confusable@e3_v1, cv_train@v1, vimedcss_train@full → bản thay thế). Mục cũ không sửa.
+- ⚠️ **Sửa 17/11 21:50:** 3 pool v2 do `clean_pool` sinh ra (`vimedcss_train`, `vivos_train`, `confusable_train`) có **đường dẫn audio lệch một cấp**: `clean_pool` chép nguyên `audio` tương đối của release nguồn sang file ra ở độ sâu khác, nên **0 file đọc được**. Train sẽ vỡ ở stage 2; cổng rò rỉ vẫn ĐẠT vì không đọc audio. Đã sửa `clean_pool.write_pool` (ghi lại theo thư mục file ra, dùng `rel_audio`), chạy lại cùng tham số (id / text / số câu giống hệt, 0 audio thiếu), đăng ký lại 3 release (bản hỏng cất ở scratchpad). `register` giờ **từ chối pool / dev có audio không tồn tại**.
+- Test: `tests/dataset/test_train_pools.py` (20 ca, thêm ca đường dẫn audio). Còn lại: khi có dev_v2, chạy lại `clean_pool --exclude <dev_v2>` ra version mới.
 
-### 2d. Chất lượng nhãn giả (IP-10 · R11 R24)
-- [ ] Viết `dataset/pseudolabel/listen_sample.py`: lấy mẫu phân tầng 200–300 câu vss_cs, xuất CSV cho trang duyệt `term_review_page.py`.
-- [ ] 👤 Nghe và chấm mẫu đó.
-  - Xong khi: có tỉ lệ lỗi span kèm CI. **Bỏ vss_cs nếu lỗi span > 10%.**
+### 2d. Chất lượng nhãn giả (IP-10 · R11 R24) · công cụ + phiếu xong 17/11, chờ 👤 nghe
+- [x] `dataset/pseudolabel/listen_sample.py`, gồm `sample` và `score`. Phiếu theo định dạng `review_bench.html` (nghe từng câu: ok / fix / drop; `term_review_page` là duyệt theo thuật ngữ nên không hợp).
+  - Đã sinh `data/listen/vss_cs_v1/`: `listen_A.csv` **300 câu** = 240 câu giữ (12 ô × 20, đủ cả 12 ô) + 60 câu bị loại sát ranh giới (30 `vi_wer` 0.15–0.25, 30 còn span chưa xác nhận); `listen_B.csv` 60 câu chung cho người nghe thứ hai; audio local 249 câu chép vào `audio/` (102 MB), 51 câu đối chứng dùng URL HF (công khai, đã kiểm 200).
+  - Phiếu nghe mù: không có cột ô / giữ-loại / hyp; khoá ở `sample_key.csv` (đừng mở khi nghe).
+- [ ] 👤 Nghe `listen_A.csv` (mở `src/gipbench/dataset/label/review_bench.html`, chọn thư mục `audio/`, xuất CSV thành `listen_A_reviewed.csv`). Nếu có người thứ hai: `listen_B.csv`. Rồi chạy `python -m gipbench.dataset.pseudolabel.listen_sample score --dir data/listen/vss_cs_v1 [--review-b listen_B_reviewed.csv]`.
+  - Xong khi: `score.md` có tỉ lệ lỗi span kèm CI95 Wilson. **Bỏ vss_cs nếu cận dưới CI95 lỗi span > 10%** (luật audit E.3, tự in quyết định).
 
-### 2e. Độ phủ domain CS (R10)
-- [ ] Thống kê CS train theo domain (hiện: medical 1 567, tech 54, edu 29, pubadmin 4, finance 0).
-- [ ] 👤 Tìm nguồn **CS tự nhiên ngoài y khoa, có id người nói** (tech / edu / business / finance). Đây cũng là nguồn cho dev_v2 ở Phần 3.
+### 2e. Độ phủ domain CS (R10) · thống kê xong 17/11, chờ 👤 nguồn
+- [x] `dataset.report.cs_coverage` → [reports/data/cs_coverage.md](reports/data/cs_coverage.md). CS train **sau 2c**: medical 6.07 h (ViMedCSS@v2), vss_cs 5.76 h (80% `other` podcast). **4 domain mục tiêu cộng lại 0.43 h**: tech 0.20 h / 38 nguồn, edu 0.11 / 26, finance 0.10 / 22, pubadmin 0.02 / 4. Domain nào cũng thiếu ~1.8–2 h so với ngưỡng đề xuất 2 h / 30 nguồn.
+  - Nguồn nội bộ còn khai thác được: ứng viên VSS đã qua lọc rẻ (`vss_cs_pre_rebuild`, 12 351 câu, chưa lọc đồng thuận; domain suy từ text) có tech 1.28 h, finance 0.74, edu 0.71, pubadmin 0.08 (nhãn giả, cần lọc + nghe như 2d). Kho thô `vss_cs_candidates` còn gấp ~2.6 lần. Kể cả lấy hết, finance / edu / pubadmin vẫn < 2 h, và VSS không có id người nói (chỉ id video).
+- [ ] 👤 Tìm nguồn **CS tự nhiên ngoài y khoa, có id người nói**. Đây cũng là nguồn cho dev_v2 ở Phần 3. Ứng viên tìm nhanh 17/11, **chưa xác minh** license / id người nói / domain:
+  - **VietPrism** (arXiv 2609.30005): tự nhận là corpus CS Việt–Anh lớn, nhiều domain, có id người nói.
+  - **CanVEC** (LREC 2020): 10 h, 45 người song ngữ ở Canberra, hội thoại tự nhiên, "available for research" (giọng Việt kiều, khác phân phối trong nước).
+  - Corpus CS Việt–Anh có nhãn của bài KES 2026 (thẻ HF `rinhoooo/phowhisper-large-vien-cs-asr`): chưa rõ tên / domain.
+  - ⛔ Nếu không có nguồn nào đạt thì NO-GO Phần 3 → thu dữ liệu.
 
 ---
 
@@ -131,14 +155,14 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
 
 ## Phần 4 · CHECK PHƯƠNG PHÁP (chẩn đoán rẻ, không cần train)
 
-Làm song song với Phần 2–3 được.
+Làm song song với Phần 2–3 được. Xem [kết quả và giao thức Phần 4](reports/audits/phase4_methods.md).
 
-- [ ] `tokenizer_check` BPE Gipformer trên span C1: số token / thuật ngữ, % thuật ngữ ≥ 4 token. (Trả lời: có cần đụng tokenizer / backbone không. Audit: hiện **chưa có bằng chứng** cần đổi backbone.)
-- [ ] Decode các checkpoint ứng viên E3 (`results/e3_v1_dev/*`) trên 787 câu G-Group thuần Việt + C1. Xác nhận dev cũ đảo thứ hạng (chỉ chẩn đoán, **không** dùng để chọn).
-- [ ] So ma trận giải mã greedy / beam / LM cho cả hai model (gộp với 1d). Mục đích: tách phần lợi do giải mã khỏi phần lợi do train.
-- [ ] Ghi lại luật chọn checkpoint **trước** khi chạy (`select.rule`). Lần trước luật bị đổi sau khi chạy (R21).
-- [ ] Kiểm CTC loss ở fp32 / bf16 trên vài trăm step: còn phân kỳ không? Quyết định có giữ head CTC làm bộ điều chuẩn (Phần 7, L4) hay tiếp tục `--drop-ctc`.
-- [ ] Lát lỗi theo môi trường thu / kênh trên G0 (theo bộ: đọc / tự nhiên / điện thoại). Quyết định có bật augment kênh / nhiễu (Phần 7, D5; `model/run.py` đang `--enable-musan False`).
+- [x] `tokenizer_check` BPE Gipformer trên span C1: **6,32 token/thuật ngữ**, **75,74%** thuật ngữ duy nhất ≥ 4 token, 0/1.443 có `<unk>`. Giữ tokenizer và backbone cho các đối chứng đầu tiên.
+- [ ] Decode các checkpoint ứng viên E3 (`results/e3_v1_dev/*`) trên lát G-Group lịch sử 787 câu + C1. Với `ck4132`, CS-WER từ **−23,09** điểm trên dev cũ sang **+21,62** trên C1 và WER lát 787 câu **+11,14** điểm. Còn các ứng viên khác.
+- [ ] So ma trận giải mã greedy / beam / LM cho cả hai model (gộp với 1d). C1 Gipformer greedy **70,90** và beam 4 **70,25** CS-WER. VieGem greedy / beam / LM trên G0/C0/C1 xong 18/11 (datasheet 8d). Gipformer greedy G0 **15,33** (beam 4: 15,21), C0 WER / CS-WER **21,91 / 106,89** (beam 4: 21,92 / 107,12): beam gần như không đổi gì. Chỉ còn Gipformer + LM, chờ artifact tương thích với token ID.
+- [x] Đăng ký `select.rule: cs_wer` trên dev độc lập trước khi chạy, kèm ngưỡng giữ tiếng Việt và từng domain trong [giao thức Phần 4](reports/audits/phase4_methods.md#luật-chọn-checkpoint-đăng-ký-trước-cho-e4). Hiện thực các ngưỡng trong selector thuộc Phần 5.
+- [ ] Kiểm CTC loss ở fp32 / bf16. Lượt fp32 60 giây/lô kẹt sau 127 bước, loss/frame trung vị tăng từ 0,099 lên 1,368. Đang chạy lại 200 bước mỗi precision tại 40 giây/lô. X0 tiếp tục dùng `--drop-ctc` trong khi chờ kết quả L4.
+- [x] Chấm G0 theo bộ và môi trường thu. 4.400/4.400 câu có metadata `wideband`. WER Gipformer **4,51–7,47** trên hai bộ đọc và **22,37** trên G-Group tự nhiên. G0 thiếu lát điện thoại, giữ cấu hình augment hiện tại cho X0 và để phép thử kênh / nhiễu ở D5.
 
 ---
 
@@ -151,6 +175,17 @@ Luật cho **mọi** lần chạy:
 - Không domain nào trên `dev_v2_cs` xấu đi quá ngưỡng đăng ký trước trong `select.rule` (chống negative transfer, audit mục 7 #11: pubadmin +10.23 ở E3).
 - Test khoá chỉ chấm ở mốc đã khai báo trước, **một lần**.
 
+- [ ] **Chạy trên Colab** (17/11): dữ liệu + model gốc qua Drive b.vinh2005 (Drive for desktop), code bằng `git clone`. RUNBOOK mục 2b.
+  - [x] `scripts/colab/pack_ft_bundle.py` / `unpack_ft_bundle.py` (+ `tests/dataset/test_colab_bundle.py`): gói 6 pool (v2 + vss_cs / distill e3_v1) + `models/gip15` (model.pt, bpe, tokens) + manifest mọi bench / catalog = 18 848 file, 4.28 GB, 6 shard (000–005; 005 là lượt gói bổ sung) ở `D:/gipbench_ft_bundle`.
+  - [ ] 👤 Cài Google Drive for desktop, đăng nhập b.vinh2005 → chép `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft`.
+  - [x] `configs/paths.colab.yaml` + `scripts/colab/colab_ft.ipynb`: chung Python Colab, k2 khớp torch / CUDA, checkpoint trên Drive, watchdog `/content` (chừa 5 GiB); có test cấu hình / notebook.
+  - [ ] Người dùng commit + push nhánh để Colab clone được; thêm Secret `GH_TOKEN`.
+  - [ ] Kiểm trên Colab thật: chưa cài thử torch / CUDA / k2, chưa đo tốc độ / dung lượng Drive, chưa chạy dry-run hay stage 0–6 trên Colab. Notebook dừng nếu chưa có `e4_x0.yaml`.
+    Audit 17/11 (Claude): sửa notebook: kernel không import được gipbench sau `pip install -e` (thêm `src` vào sys.path),
+    kiểm Drive theo cỡ checkpoint, in stderr git đã che token. **Dung lượng Drive**: `checkpoint-N.pt` ~1.1 GB (e3_v1),
+    một lượt giữ `segments_per_epoch` (4) cái ≈ 4.4 GB + onnx; cộng gói 4.3 GB thì Drive 15 GB chỉ đủ ~2 experiment:
+    xoá checkpoint sau khi có artifact, hoặc nâng Drive trước khi quét e4_x0…x6 × 2 seed.
+  - [ ] Khi có dev_v2 / `catalog/train-v1` / pool lọc lại: `pack_ft_bundle.py --refs …` (chỉ gói phần mới) rồi chép lại.
 - [ ] Viết `configs/model/experiments/e4_x0.yaml` … `e4_x6.yaml` (`catalog/train-v1`, `leak_gate.mode: fail`, `dev_v2`, `seeds: [0,1]`, `mix.max_views: 8`).
   - Xong khi: `--stages 0-6 --dry-run` in lệnh; stage 0 thoát 0.
 - [ ] **X0** · FT chỉ replay tiếng Việt nhãn người, LR 3e-4, đóng băng embed + 2 stack. Câu hỏi: pipeline có tự gây hại không?
@@ -243,6 +278,6 @@ Thứ tự khuyến nghị:
 
 1. ~~Bước 0, 1a, 1b, 2a, 2b (công cụ)~~ ✅ 17/11.
 2. 👤 Duyệt [reserved_terms_v1.proposal.txt](configs/dataset/reserved_terms_v1.proposal.txt) (đổi `--fraction`, sửa tay) rồi đổi tên thành `reserved_terms_v1.txt`; mình dựng `catalog/train-v1` ngay sau đó.
-3. **2c** dọn dữ liệu train, trước hết `pool/vimedcss_train@v2` loại video có trong bench khoá (đang bị cổng chặn).
-4. **1d** (chạy nền): KenLM cần 👤 `sudo apt install build-essential cmake`; hàng đợi Whisper / Qwen3 / E0 đang chạy.
+3. ~~**2c** dọn dữ liệu train~~ ✅ 17/11. 👤 Nghe phiếu `data/listen/vss_cs_v1/listen_A.csv` (2d, ~300 câu × ~14 s).
+4. ~~**1d**~~ ✅ 18/11 (datasheet 8d). Phần 1 chỉ còn 👤 duyệt khoá `code_switch_v1_1` / `external_v1_1` (1c).
 5. 👤 Nguồn CS tự nhiên ngoài y khoa có id người nói (cho `dev_v2`, Phần 3).

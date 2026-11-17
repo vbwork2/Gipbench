@@ -216,7 +216,8 @@ def stage_mix(c):
         if p.exists() or (c.dry and g["refs"]):
             args += ["--group", f"{g['group']}={p}:{g['weight']}"]
     c.run([c.py_ft, "-m", "gipbench.model.features.mix_cuts", *args, "--epoch-hours", m["epoch_hours"],
-           "--epochs", m["epochs"], "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
+           "--epochs", m["epochs"], *(["--max-views", m["max_views"]] if m.get("max_views") else []),
+           "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
 
 
 # ------------------------------------------------------------------ stage 4

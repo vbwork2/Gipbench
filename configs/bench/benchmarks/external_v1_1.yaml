@@ -1,7 +1,7 @@
 # E0 v1.1 (17/11/2026, audit IP-07 / R12 / R20): cùng 32 203 câu, lời thoại, chuẩn hoá với external_v1 (v1.0 khoá, giữ nguyên).
 # Khác v1.0:
 #   * mọi câu có `audio` + `audio_sha256` + `duration` thật (v1.0: 26 252 câu chỉ khoá bằng metadata). 5 951 sha256 của
-#     v1.0 khớp lại sha256 lúc tải. require_audio_sha: khoá chỉ khi ĐỦ sha256 mọi câu (ViMD đang tải: 1 736 câu thiếu).
+#     v1.0 khớp lại sha256 lúc tải. require_audio_sha: khoá chỉ khi ĐỦ sha256 mọi câu (đủ 32 203 / 32 203 từ 17/11 21:31, sau khi ViMD tải xong).
 #   * ViMedCSS test: speaker = yt_<ID>, source = youtube:<ID> (cùng định dạng ViMedCSS train; giá trị gốc ở
 #     speaker_upstream) + train_video_overlap (1 514 / 1 614 câu từ video có trong ViMedCSS train).
 #   * bootstrap theo từng bộ: FLEURS lặp câu đọc (857 câu / 347 câu gốc) nên đơn vị là sentence_id.
@@ -15,10 +15,10 @@ purpose: >-
   báo theo từng bộ. Nhiều bộ trùng nguồn với dữ liệu train của VieGem (pretraining_overlap). ViMedCSS test: 93.8% câu
   đến từ video có trong ViMedCSS train, nên chỉ lát train_video_overlap:False (100 câu) đo tổng quát cho model đã train
   trên ViMedCSS train.
-evidence_level: draft          # chờ ViMD tải xong (require_audio_sha) và duyệt khoá
+evidence_level: draft          # audio đủ (missing_audio 0, lời thoại khớp v1.0 0 lệch); chờ duyệt khoá
 status: active
 manifest: ${data_root}/benchmarks/external_v1_1/manifest.jsonl
-manifest_sha256: null          # ghi khi khoá (manifest còn đổi khi ViMD tải xong)
+manifest_sha256: 2960680ca6b8476ec73b20f0c8c9295e617e7e0a3533a949afb1a2cae9c26be3   # derive_v1_1 17/11 21:31 (build_meta.json)
 require_audio_sha: true
 catalog: null
 profile: gipbench_strict_v1

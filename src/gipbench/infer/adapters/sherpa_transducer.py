@@ -8,6 +8,7 @@ Config (configs/bench/asr_models/*.yaml):
   model: {id, revision, dir}
   decode: {quantize: int8|fp32, decoding_method: modified_beam_search|greedy_search, beam: 4, threads: 16,
            blank_penalty: 0.0, case: upper}
+  Optional: decode.lm and decode.lm_scale for a compatible RNN LM with inference_mode: lm.
   context_vocab (tuỳ chọn, cần inference_mode context_bias / oracle_bias):
            {catalog: tsv, exclude_b3: true, score: 1.5, provenance: external|test_derived}  hoặc  {file: txt, ...}
 """
@@ -27,6 +28,13 @@ class SherpaTransducerAdapter(ASRAdapter):
                     "blank_penalty": float(d.get("blank_penalty", 0.0)), "case": d.get("case", "upper")}
         self.model_dir = Path(cfg["model"]["dir"])
         self.work_dir = Path(work_dir)
+        self.lm = Path(d["lm"]) if d.get("lm") else None
+        if (self.lm is not None) != (cfg["inference_mode"] == "lm"):
+            raise ValueError("decode.lm requires inference_mode: lm and vice versa")
+        if self.lm is not None:
+            if self.dec["decoding_method"] != "modified_beam_search":
+                raise ValueError("decode.lm requires modified_beam_search")
+            self.dec["lm_scale"] = float(d.get("lm_scale", 0.1))
         cv = cfg.get("context_vocab")
         self.hot = None
         if cv:
@@ -55,6 +63,12 @@ class SherpaTransducerAdapter(ASRAdapter):
                   tokens=str(md / "tokens.txt"), num_threads=self.dec["threads"], decoding_method=self.dec["decoding_method"],
                   max_active_paths=self.dec["beam"], blank_penalty=self.dec["blank_penalty"])
         self.info.extra["model_files"] = {k: {"path": kw[k], "sha256": file_sha256(kw[k])} for k in ("encoder", "decoder", "joiner")}
+        if self.lm is not None:
+            if not self.lm.is_file():
+                raise FileNotFoundError(f"RNN LM not found: {self.lm}")
+            kw.update(lm=str(self.lm), lm_scale=self.dec["lm_scale"])
+            self.info.extra["lm"] = {"path": str(self.lm), "sha256": file_sha256(self.lm)}
+            self.info.extra["tokens_sha256"] = file_sha256(md / "tokens.txt")
         if self.hot:
             if self.dec["decoding_method"] != "modified_beam_search":
                 raise ValueError("hotwords chỉ chạy với modified_beam_search")
@@ -74,8 +88,13 @@ class SherpaTransducerAdapter(ASRAdapter):
         streams = []
         for p in audio_paths:
             x, sr = load_audio(p, target_sr=None)
+            if len(x) == 0:  # file chỉ có header (vd 1 câu ViMedCSS test trong E0): sherpa-onnx lỗi shape {0,80}; ra "" như VieGem
+                streams.append(None)
+                continue
             s = self.rec.create_stream()
             s.accept_waveform(sr, x)
             streams.append(s)
-        self.rec.decode_streams(streams)
-        return [s.result.text for s in streams]
+        live = [s for s in streams if s is not None]
+        if live:
+            self.rec.decode_streams(live)
+        return [s.result.text if s is not None else "" for s in streams]

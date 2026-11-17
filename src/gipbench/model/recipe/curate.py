@@ -9,6 +9,11 @@ luật --holdout-domain và bước 0. Bước 0 luôn chạy trên MỌI câu:
   0. chặn dữ liệu chỉ được test: loại câu license / source / dataset test_only (lib.leak.is_test_only, KHÔNG tắt
      được) và câu có text (chuẩn hoá) trùng danh sách chặn --block-text (mặc định data/raw/consensus/leak_block.txt
      do src/gipbench/dataset/ingest/consensus.py ghi; truyền --block-text không kèm file để tắt riêng phần text)
+  0b. dedupe audio (mặc định BẬT; --no-dedupe-audio để tắt): hai câu cùng audio (audio_sha256 nếu có, không thì đường
+     dẫn audio tuyệt đối đã chuẩn hoá; thêm mã clip gốc CV / VIVOS) chỉ giữ một. Câu giữ lại thuộc dataset đứng trước
+     trong --dedupe-priority (khớp tiền tố trước ':' của dataset); dataset không có trong danh sách xếp sau, theo thứ tự
+     --manifest. Báo cáo số câu trùng theo cặp (dataset giữ <- dataset bỏ). Lý do (audit R14): 590/590 câu confusable
+     cũng có trong vivos_train, mỗi audio được thấy gấp đôi.
 Mỗi luật sau tắt được độc lập (0 / bỏ trống) và áp theo thứ tự:
   1. --holdout-domain D        loại MỌI câu thuộc domain D (domain CS hoàn toàn ngoài train)
   2. --agreement-hyps A B      câu CS có nhãn máy (label_source bắt đầu bằng pseudo/machine, hoặc dataset thuộc
@@ -25,6 +30,7 @@ Báo cáo <out>.report.md: giờ trước/sau theo domain, nguồn (dataset) và
 thuật ngữ bị cắt; thuật ngữ thiếu người nói.
 """
 import argparse
+import os
 import random
 import sys
 from collections import Counter, defaultdict
@@ -32,6 +38,7 @@ from pathlib import Path
 
 from gipbench.core import release as R
 from gipbench.core.agreement_rules import agree
+from gipbench.core.decontam import clip_key
 from gipbench.core.sampling import pick_diverse
 from gipbench.infer.cache import HashIndex, HypLookup
 from gipbench.core.leak import add_block_arg, is_test_only, load_block_texts, norm_text
@@ -63,6 +70,38 @@ def term_hits(r, cat):
         pos = next((i for i in range(len(toks) - n + 1) if tuple(toks[i:i + n]) == tuple(t)), 0)
         out.append((" ".join(t), toks[pos - 1] if pos > 0 else "<s>", toks[pos + n] if pos + n < len(toks) else "</s>"))
     return out
+
+
+def audio_keys(r):
+    """Các khoá định danh audio của một câu: sha256, đường dẫn chuẩn hoá, mã clip gốc (None nếu không có)."""
+    keys = []
+    if r.get("audio_sha256"):
+        keys.append("sha:" + r["audio_sha256"])
+    p = r.get("_audio_path") or r.get("audio")
+    if p:
+        keys.append("path:" + os.path.normcase(os.path.normpath(os.path.abspath(str(p)))))
+    ck = clip_key(r)
+    if ck:
+        keys.append(ck)
+    return keys
+
+
+def dedupe_audio(rows, priority=()):
+    """Giữ một câu cho mỗi audio. Thứ tự ưu tiên: dataset theo `priority`, rồi thứ tự xuất hiện.
+    Trả (rows giữ theo thứ tự cũ, Counter {(dataset giữ, dataset bỏ): số câu})."""
+    rank = {d: i for i, d in enumerate(priority)}
+    order = sorted(range(len(rows)), key=lambda i: (rank.get(dataset(rows[i]), len(rank)), i))
+    owner, drop, pairs = {}, set(), Counter()
+    for i in order:
+        ks = audio_keys(rows[i])
+        hit = next((owner[k] for k in ks if k in owner), None)
+        if hit is not None:
+            drop.add(i)
+            pairs[(dataset(rows[hit]), dataset(rows[i]))] += 1
+            continue
+        for k in ks:
+            owner[k] = i
+    return [r for i, r in enumerate(rows) if i not in drop], pairs
 
 
 def downsample(rows, key, cap_share, rnd, exempt=()):
@@ -147,6 +186,9 @@ def main():
     ap.add_argument("--cap-exempt", nargs="*", default=[],
                     help="domain không bị cắt bởi --max-domain-share (vd other = chưa biết domain, như src/gipbench/model/recipe/mix_plan.py)")
     ap.add_argument("--max-synthetic-share", type=float, default=0.5, help="0 = tắt")
+    ap.add_argument("--no-dedupe-audio", action="store_true", help="tắt bước 0b (dedupe audio)")
+    ap.add_argument("--dedupe-priority", nargs="*", default=[],
+                    help="dataset (tiền tố trước ':') ưu tiên giữ khi trùng audio, vd vivos commonvoice ViMedCSS")
     add_block_arg(ap)
     args = ap.parse_args()
     if args.catalog:  # --max-per-term đếm thuật ngữ theo catalog: catalog có span bench làm lệch chọn dữ liệu (audit R05)
@@ -186,6 +228,12 @@ def main():
     step("chặn dữ liệu test_only")
     notes.append(f"chặn dữ liệu test_only (danh sách chặn {len(block)} câu): "
                  + (", ".join(f"{k}: {v} câu" for k, v in why0.most_common()) if why0 else "không câu nào bị loại"))
+    if not args.no_dedupe_audio:
+        rows, pairs = dedupe_audio(rows, args.dedupe_priority)
+        step("dedupe audio")
+        notes.append("dedupe audio (giữ <- bỏ): " + (", ".join(f"{a} <- {b}: {n} câu" for (a, b), n in pairs.most_common())
+                                                      if pairs else "không có audio trùng")
+                     + (f"; ưu tiên {' > '.join(args.dedupe_priority)}" if args.dedupe_priority else "; ưu tiên theo thứ tự --manifest"))
     if args.holdout_domain:
         rows = [r for r in rows if (r.get("domain") or "other") not in set(args.holdout_domain)]
         step(f"--holdout-domain {' '.join(args.holdout_domain)}")

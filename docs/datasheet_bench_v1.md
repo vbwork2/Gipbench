@@ -137,25 +137,51 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 10. **E0 trùng nguồn train của VieGem** ở FLEURS, CV17, PhoAudiobook, LSVSC, Bud500, GigaSpeech2, ViMD, ViMedCSS
     (model card VieGem liệt kê các bộ này trong dữ liệu train, "đã lọc theo câu test"). VietMed và Speech-MASSIVE không có
     trong danh sách đó. Mức trùng của Gipformer: unknown (không công bố dữ liệu train).
-11. **E0 chưa có kết quả tham chiếu** (17/11/2026: đang chạy Gipformer + VieGem trên E0 v1.1, trừ ViMD đang tải audio).
+11. **E0: kết quả tham chiếu ở mục 8c** (18/11/2026, E0 v1.1 draft, đủ 32 203 câu). Một clip
+    `e0_vimedcss_test_Med_CS-4072_1-13` có file audio rỗng (44 byte, chỉ header WAV) ngay từ nguồn tải: cả hai hệ ra
+    chuỗi rỗng (tính toàn bộ là xoá). Đề xuất bỏ câu này khi khoá E0 v1.1 (chờ người dùng duyệt).
 12. **Bộ trùng nhau giữa các track**: C1 ⊂ G0 (1 260 câu cùng audio); CV17 test (E0) chứa 1 024 / 1 274 clip của CV27 test
     (G0), 143 / 146 người nói; C0 ∩ E0 `vimedcss_test` 113 video. Số câu **không trùng** của cả gói là **36 237**
     (= 4 400 + 658 + 32 203 − 1 024; đính chính: bản trước ghi 37 261, chưa trừ clip CV trùng).
 
 ## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 
-| Bộ | Gipformer 1.5 (68M, beam 4) | VieGem-ASR (359M, greedy) |
-| --- | --- | --- |
-| VIVOS | 4.51 | 6.68 |
-| Common Voice 27 | 7.47 | 9.50 |
-| G-Group tech / edu / finance / pubadmin | 27.70 / 23.52 / 23.11 / 15.28 | 36.46 / 33.70 / 34.60 / 29.02 |
-| ViMedCSS hard: WER / CS-WER | 21.92 / 107.12 | 21.05 / 84.54 |
-| C1 G-Group CS (1 260 câu): WER / CS-WER | 24.66 / 70.25 | 34.38 / 82.39 |
-| C1 term recall | 39.57 | 23.52 |
-| C1 CS-WER tech / edu / finance / pubadmin | 75.25 / 71.12 / 66.92 / 52.33 | 85.21 / 80.92 / 82.77 / 72.48 |
+| Bộ | Gipformer 1.5 (68M, beam 4) | VieGem-ASR (359M, greedy) | Whisper-large-v3 (1.55B, int8, beam 5, ép `vi`) | Qwen3-ASR-0.6B (bf16, tự nhận ngôn ngữ) |
+| --- | --- | --- | --- | --- |
+| G0 tổng (4 400 câu) | 15.21 | 22.27 | 27.55 | 28.49 |
+| VIVOS | 4.51 | 6.68 | 8.83 | 10.24 |
+| Common Voice 27 | 7.47 | 9.50 | 14.44 | 20.00 |
+| G-Group tech / edu / finance / pubadmin | 27.70 / 23.52 / 23.11 / 15.28 | 36.46 / 33.70 / 34.60 / 29.02 | 37.43 / 40.65 / 39.95 / 41.34 | 38.80 / 38.26 / 38.67 / 37.83 |
+| G0 câu thuần Việt: WER / từ Anh chèn /100 câu (3 036 câu) | 9.79 / 3.72 | 15.09 / 3.03 | 22.92 / 8.96 | 23.66 / 5.01 |
+| ViMedCSS hard: WER / CS-WER | 21.92 / 107.12 | 21.05 / 84.54 | chưa chạy | chưa chạy |
+| C1 G-Group CS (1 260 câu): WER / CS-WER | 24.66 / 70.25 | 34.38 / 82.39 | 35.51 / **53.91** | 37.00 / 74.71 |
+| C1 CS-WER S+D (bỏ chèn) | 56.37 | 71.56 | 41.36 | 53.19 |
+| C1 term recall | 39.57 | 23.52 | 53.59 | 41.05 |
+| C1 CS-WER tech / edu / finance / pubadmin | 75.25 / 71.12 / 66.92 / 52.33 | 85.21 / 80.92 / 82.77 / 72.48 | 55.80 / 47.07 / 62.77 / 43.41 | 77.21 / 64.63 / 86.00 / 65.12 |
 
 Đọc kèm mục 7: G-Group (G0, C1) trùng tổ chức với Gipformer; ViMedCSS trùng dữ liệu train với VieGem. Δ ghép cặp
 VieGem − Gipformer trên C1: CS-WER +12.13 [9.24, 14.91], WER +9.73 [8.82, 10.56].
+
+Whisper-large-v3 (17/11/2026) là hệ thứ ba, không cùng tổ chức / dữ liệu với G-Group hay ViMedCSS, nên không có thiên
+lệch trùng nguồn như hai hệ trên. Δ ghép cặp Whisper − Gipformer (bootstrap theo người nói):
+
+| Bench | Metric | Δ | CI95 |
+| --- | --- | --- | --- |
+| G0 | WER | +12.34 | [11.10, 13.58] |
+| C1 | WER | +10.86 | [9.21, 12.47] |
+| C1 | CS-WER | **−16.35** | [−20.10, −12.93] |
+| C1 | CS-WER S+D | −15.01 | [−17.74, −12.41] |
+| C1 tech / edu / finance / pubadmin | CS-WER | −19.44 / −24.05 / −4.15 / −8.91 | finance [−11.82, +2.85], pubadmin [−21.07, +3.69] chứa 0 |
+
+Qwen3-ASR-0.6B − Gipformer: G0 WER +13.28 [12.23, 14.40]; C1 WER +12.34 [11.08, 13.61], CS-WER +4.46 [0.74, 8.04],
+CS-WER S+D −3.19 [−5.90, −0.54] (edu / tech tốt hơn, finance / pubadmin kém hơn). Qwen3 tự nhận ngôn ngữ nên nhận nhầm:
+152 câu G0 và 18 câu C1 ra chữ Hán / Hàn / Thái / Kirin; số của nó là cận dưới cho họ model này (chưa thử ép `vi`).
+
+Cách đọc: Whisper nhận từ Anh trong câu Việt tốt hơn hẳn cả ba hệ còn lại (CS-WER thấp hơn Gipformer ~16 điểm, term recall
+53.59 so với 39.57), nhưng phần tiếng Việt kém hơn nhiều (WER câu thuần Việt 22.92 so với 9.79, chèn từ Anh gấp ~2.4
+lần). Lỗi G-Group của Whisper rải đều (WER trung vị theo câu 33%), cộng vài câu ảo giác kiểu YouTube ("Hãy subscribe
+cho kênh…"). Hệ quả cho FT: CS-WER ~54 là mức một model đa ngữ lớn đạt được mà không train trên G-Group, nên phần lớn
+khoảng cách 70 → 54 của Gipformer nằm ở năng lực tiếng Anh của model, không phải giới hạn của audio / nhãn C1.
 
 ### 8b. C0 tách theo video đã thấy khi train (code_switch v1.1, draft, cùng hyps với mục 8; 17/11/2026)
 
@@ -175,6 +201,61 @@ Cách đọc: lợi thế WER và term recall của VieGem trên C0 nằm ở vi
 hai model ngang nhau và term recall của VieGem giảm một nửa (20.75 → 10.09). Lợi thế CS-WER còn lại một phần do VieGem
 học đúng quy ước viết từ Anh của ViMedCSS (đổi bản tag làm CS-WER đổi ~6 điểm theo hai chiều; `docs/evaluation_metrics_v1.md`
 mục 2b), không chỉ do nhận dạng tốt hơn.
+
+### 8c. E0 (external v1.1, draft, 32 203 câu, `manifest_sha256` `2960680c…`; `--mode diagnostic`; 18/11/2026)
+
+Δ = VieGem − Gipformer, ghép cặp, CI95 bootstrap theo người nói (FLEURS: theo `sentence_id`). Δ > 0: Gipformer tốt hơn.
+
+| Bộ | Câu | Gipformer WER | VieGem WER | Δ WER | CI95 |
+| --- | --- | --- | --- | --- | --- |
+| **E0 tổng** | 32 203 | **7.33** | 8.56 | +1.23 | [1.08, 1.40] |
+| Bud500 | 7 500 | 2.55 | 3.10 | +0.55 | [0.37, 0.72] |
+| Common Voice 17 | 1 274 | 6.55 | 8.54 | +1.99 | [1.42, 2.65] |
+| FLEURS | 857 | 6.21 | 7.36 | +1.15 | [0.77, 1.54] |
+| GigaSpeech2 vi | 4 422 | 6.37 | 9.50 | +3.13 | [2.96, 3.29] |
+| LSVSC | 5 683 | 5.25 | 5.19 | −0.07 | [−0.19, +0.07] |
+| PhoAudiobook | 383 | 1.07 | 1.35 | +0.28 | [0.03, 0.52] |
+| Speech-MASSIVE test | 2 974 | 7.62 | 9.31 | +1.69 | [1.13, 2.30] |
+| Speech-MASSIVE validation | 2 033 | 10.02 | 11.53 | +1.51 | [0.89, 2.24] |
+| VietMed | 3 437 | 12.43 | 14.83 | +2.40 | [1.48, 3.37] |
+| ViMD | 2 026 | 7.42 | 9.07 | +1.66 | [1.46, 1.86] |
+| ViMedCSS test | 1 614 | 17.85 | **14.34** | **−3.51** | [−3.93, −3.07] |
+
+Macro theo bộ (WER, 11 bộ, không CI): Gipformer 7.58, VieGem 8.56. ViMedCSS test, CS-WER / term recall: Gipformer
+100.22 / 20.49, VieGem 34.96 / 72.36; lát video chưa thấy khi train (100 câu): Gipformer 96.15 / 21.15, VieGem 73.08 /
+43.27; lát video đã thấy (1 514 câu): VieGem 32.68 / 74.10.
+
+Cách đọc: Gipformer tốt hơn VieGem trên 9 / 11 bộ (CI không chứa 0), kể cả 6 bộ VieGem khai báo có trong dữ liệu train
+(mục 7 ý 10); LSVSC ngang nhau. VieGem chỉ thắng ở ViMedCSS test, nơi 93.8% câu đến từ video có trong ViMedCSS train
+mà VieGem đã học; trên 100 câu video chưa thấy, CS-WER của VieGem tăng 32.68 → 73.08 (vẫn tốt hơn Gipformer, nhưng mẫu
+nhỏ). Dữ liệu train của Gipformer không công bố, nên E0 không loại trừ được trùng nguồn phía Gipformer. E0 là bộ
+tiếng Việt thuần (chỉ ViMedCSS có từ Anh): đo giữ chất lượng tiếng Việt sau FT, không đo code-switch.
+
+### 8d. VieGem theo cách giải mã: greedy / beam 32 / beam 32 + KenLM (v1.0, `--mode final`; 18/11/2026)
+
+Hyps từ ma trận giải mã Phần 4 (`results/phase4/decode/<bench>/viegem_{beam,lm}`), chấm lại ở `results/phase4/final/`.
+LM = KenLM 4-gram đi kèm model (`lm_sha256` `4416f163…`, `alpha` 0.35, `beta` 1.5), train trên transcript train của
+VieGem theo model card, nên trên C0 nó mang thêm thiên lệch ViMedCSS (mục 7). Inference mode của hàng LM là `lm`, không
+phải `open_vocab`: không xếp chung hạng với các cột mục 8.
+
+| Bộ | Greedy | Beam 32 | Beam 32 + LM | Δ LM − greedy | CI95 |
+| --- | --- | --- | --- | --- | --- |
+| G0 WER | 22.27 | 22.19 | **20.72** | −1.54 | [−1.81, −1.27] |
+| G0 đọc (VIVOS + CV27) WER | 8.40 | 8.35 | **6.29** | −2.11 | [−2.56, −1.70] |
+| G0 câu thuần Việt: WER / từ Anh chèn /100 câu | 15.09 / 3.03 | 14.96 / 3.23 | **13.09 / 0.82** | | |
+| C0 WER / CS-WER | 21.05 / 84.54 | 20.92 / 84.54 | 19.86 / 82.71 | WER −1.19; CS-WER −1.84 | WER [−1.52, −0.83]; CS-WER [−6.63, +1.76] |
+| C1 WER | 34.38 | 34.39 | 33.74 | −0.64 | [−1.11, −0.16] |
+| C1 CS-WER | 82.39 | 83.07 | 85.13 | **+2.74** | [1.29, 4.31] |
+| C1 CS-WER S+D | 71.56 | 71.49 | 77.11 | **+5.55** | [4.50, 6.61] |
+| C1 term recall | 23.52 | 23.56 | 19.48 | | |
+
+Beam 32 không có LM gần như trùng greedy (|Δ| ≤ 0.7 điểm ở mọi bench). Khoảng cách với Gipformer trên C1 không đổi:
+VieGem + LM − Gipformer CS-WER +14.87 [12.12, 17.53], WER +9.09 [8.24, 9.93]; G0 WER +5.51 [4.85, 6.25].
+
+Cách đọc: LM tiếng Việt kéo phần tiếng Việt về phía đúng (G0 −1.5, câu đọc −2.1, chèn từ Anh giảm từ 3.03 xuống 0.82 /100 câu)
+nhưng **đè từ Anh trong câu Việt**: trên C1, CS-WER S+D +5.55 và term recall 23.5 → 19.5, xấu đi ở cả 4 domain (S+D CI không
+chứa 0). Hệ quả cho Phần 5: một LM chỉ có văn bản tiếng Việt không phải lời giải cho code-switch; nếu thêm LM sau FT (X6)
+thì LM phải có text CS (từ `catalog/train-v1`, không từ bench) và phải báo CS-WER S+D cạnh WER.
 
 ## 9. Phiên bản và bảo trì
 

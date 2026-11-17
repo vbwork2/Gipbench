@@ -54,6 +54,47 @@ releases:
     built_by: gipbench.dataset.derive.confusables, rồi prep_e3_v1 bỏ người nói của dev_vi
     flags: {label_source: "pseudo:Zipformer-30M-RNNT-6000h"}
 
+  # --- pool v2 (17/11/2026, TODO 2c / audit IP-06): sạch với mọi bench khoá; mục cũ giữ nguyên làm lịch sử ---
+  pool/vimedcss_train@v2:
+    manifest: data/pools/vimedcss_train_v2/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vimedcss_train@full (báo cáo cạnh manifest)
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vimedcss_train@full}
+    notes: "ViMedCSS train bỏ MỌI video có trong bench khoá (C0 + E0 ViMedCSS test, theo source_key) và câu trùng text:
+      3 945 câu / 7.64 h / 1 219 video (từ 11 832 / 22.95 h). Chưa loại video của dev_v2 (chưa có): dựng dev_v2 xong thì
+      chạy lại clean_pool --exclude <dev_v2> ra version mới."
+
+  pool/cv_other@v2:
+    manifest: data/pools/cv_other_v2/manifest.jsonl
+    built_by: gipbench.dataset.ingest.local commonvoice_pool (CV27 validated + other, trừ client_id test / dev, trần 30 câu / người
+      nói), rồi gipbench.dataset.release.clean_pool
+    flags: {label_source: "human_prompt:cv27 (phần lớn chưa có phiếu xác nhận)", clean_against: locked_benches}
+    notes: "Thay cv_train@v1 (1 người nói). CV27 validated trừ người nói test / dev chỉ còn đúng 1 người nói, nên lấy thêm
+      other.tsv (down_votes = 0). 859 câu / 1.04 h / 170 người nói; bỏ 170 câu có câu nhắc trùng CV17 test (E0). Nhãn = câu
+      nhắc, đa số câu chưa có phiếu xác nhận: dùng trọng số thấp, hoặc bỏ nếu X0 cho thấy hại."
+
+  pool/confusable_train@e3_v1b:
+    manifest: data/e3_v1/train_confusable.jsonl
+    built_by: gipbench.dataset.derive.confusables, rồi prep_e3_v1 bỏ người nói của dev_vi (cùng file với @e3_v1)
+    flags: {label_source: "human:vivos_train", audio_duplicate_of: pool/vivos_train@e3_v1, errata_for: pool/confusable_train@e3_v1}
+    notes: "Đính chính @e3_v1: nhãn là nhãn người của VIVOS train, không phải nhãn giả. 590 / 590 câu cùng audio với
+      vivos_train@e3_v1: curate (dedupe audio, mặc định bật) chỉ giữ một bản; dùng như trọng số lấy mẫu, không phải dữ liệu mới."
+
+  pool/vivos_train@v2:
+    manifest: data/pools/vivos_train_v2/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vivos_train@e3_v1
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vivos_train@e3_v1}
+    notes: "vivos_train@e3_v1 bỏ 2 câu trùng text với G0 / E0 ngoài luật bộ đọc ('cà phê', 'khải huyền'): 10 557 câu, 42 người nói.
+      Trùng câu chữ VIVOS train / test trong cùng bộ đọc vẫn còn (review, báo lát text_unseen), không phải critical."
+
+  pool/confusable_train@v2:
+    manifest: data/pools/confusable_train_v2/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/confusable_train@e3_v1b
+    flags: {label_source: "human:vivos_train", audio_duplicate_of: pool/vivos_train@v2, clean_against: locked_benches,
+            parent: pool/confusable_train@e3_v1b}
+    notes: "e3_v1b bỏ 4 câu trùng text với G0 (domain confusable không được luật bộ đọc miễn): 586 câu. Vẫn trùng audio
+      100% với vivos_train: curate dedupe chỉ giữ một bản."
+
   dev/dev_cs@e3_v1:
     manifest: data/e3_v1/dev_cs.jsonl
     catalog: catalog/v0-draft
@@ -117,3 +158,19 @@ releases:
     built_by: gipbench.dataset.release.derive_v1_1 --which external
     flags: {locked: false, derived_from: bench/external-v1.0}
     notes: "E0 + audio_sha256 / duration mọi câu đã tải (ViMD còn thiếu 1 736 câu lúc dựng), speaker ViMedCSS test chuẩn hoá, train_video_overlap."
+
+# Đính chính cho release đã phát hành (release bất biến: không sửa mục cũ, chỉ trỏ tới mục thay thế). register.py không đọc
+# khoá này; nó là ghi chép cho người và cho các experiment mới.
+errata:
+  pool/confusable_train@e3_v1:
+    date: 2026-11-17
+    issue: "flags.label_source ghi nhầm là nhãn giả; thực tế là nhãn người VIVOS train, và 590 / 590 câu trùng audio với vivos_train@e3_v1"
+    use_instead: pool/confusable_train@e3_v1b
+  pool/cv_train@v1:
+    date: 2026-11-17
+    issue: "chỉ 1 người nói (CV27 train.tsv): replay không đa dạng (audit R15)"
+    use_instead: pool/cv_other@v2
+  pool/vimedcss_train@full:
+    date: 2026-11-17
+    issue: "chung video với bench khoá (C0 388 câu / 248 video, E0 ViMedCSS test 1 514 câu / 898 video): cổng rò rỉ chặn"
+    use_instead: pool/vimedcss_train@v2
