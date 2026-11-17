@@ -225,6 +225,8 @@ def main(argv=None):
     frozen = R.check_frozen(bm, rows)
     if frozen:
         errors.append(frozen)
+    if bm.get("catalog_sha256") and catalog and R.file_sha256(catalog) != bm["catalog_sha256"]:
+        errors.append(f"catalog đã đổi so với bản khoá: {str(R.file_sha256(catalog))[:12]} != {bm['catalog_sha256'][:12]}")
     run_meta_path = Path(args.run_meta) if args.run_meta else Path(args.hyps).parent / "run_meta.json"
     run_meta = json.loads(run_meta_path.read_text(encoding="utf-8")) if run_meta_path.exists() else None
     imode = args.inference_mode or (run_meta or {}).get("inference_mode") or "unknown"

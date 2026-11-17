@@ -1,0 +1,26 @@
+# Bản khoá v1.0 của code_switch_v1_draft (bản nháp giữ nguyên để so lịch sử). Đổi bất kỳ câu / nhãn / chuẩn hoá = phiên bản mới.
+# C0 Code-switching công khai: ViMedCSS hard (y khoa) với nhãn <en> theo Spec. B1/B2 nằm ở v0_draft (legacy).
+# Dựng bằng: python -m gipbench.dataset.release.build_general --which code_switch --name code_switch_v1 --bench-version code-switch-v1.0
+benchmark_id: code_switch
+version: v1.0
+track: C0
+purpose: >-
+  Đo từ tiếng Anh trong câu tiếng Việt (CS-WER strict, term recall, span accuracy) trên ViMedCSS split hard.
+  VieGem-ASR đã train trên ViMedCSS train (cùng bộ) nên đây KHÔNG phải zero-shot với VieGem.
+evidence_level: locked         # khoá 17/11/2026: câu / nhãn / chuẩn hoá cố định; lời thoại vẫn là nhãn của bên phát hành (datasheet)
+status: active
+manifest: ${data_root}/benchmarks/code_switch_v1/manifest.jsonl
+manifest_sha256: 744d4773d4a0f01161f7ff5694b8a8e3466f93efaff91ebb74750e70388dc06a
+catalog: ${data_root}/raw/vimedcss_hard/catalog_vimedcss.tsv   # catalog ViMedCSS gốc (không lấy span từ bench)
+catalog_sha256: a21c590e064dc3799961c6e58fdbf43ae3eb1a1b4daa56a5803dfe35088589f5   # catalog cũng khoá: lệch = lỗi
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0, gipbench_lenient_diagnostic_v1]
+primary_metric: cs_wer
+group_by: [dataset, topic]
+aggregate: none
+boot_unit: speaker             # = video YouTube
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm, context_bias]
+sources:
+  - {dataset: vimedcss, split: hard, slice: medical_cs}

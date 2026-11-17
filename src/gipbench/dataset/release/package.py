@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Đóng gói bản share của bench: manifest KHÔNG kèm audio + datasheet + config chấm + SHA256SUMS.
 
-  python -m gipbench.dataset.release.package --benchmarks general_v1_draft code_switch_v1_draft cs_ggroup_v1_draft \
-      --name gipbench-bench-v1.0-draft [--out <data_root>/share]
+  python -m gipbench.dataset.release.package --benchmarks general_v1 code_switch_v1 cs_ggroup_v1 \
+      --name gipbench-bench-v1.0 [--out <data_root>/share]
+Benchmark có manifest_sha256 (bản khoá): manifest share phải trùng hash đó (và catalog trùng catalog_sha256), nếu không thì dừng
+trước khi ghi gì.
 
 Mỗi manifest share = manifest của benchmark, bỏ trường `audio` (đường dẫn máy) và mọi trường bắt đầu bằng "_", thêm
 `audio_derivation` (upstream_bytes | soxr_hq_16k_mono_pcm16) để fetch biết cách kiểm. Từ chối đóng gói nếu có dòng
@@ -18,7 +20,8 @@ from pathlib import Path
 
 from gipbench.core import paths as P
 from gipbench.core.manifest import read_jsonl
-from gipbench.dataset.release.fetch import DERIVED, SOURCES
+from gipbench.dataset.release.build_general import manifest_sha256
+from gipbench.dataset.release.fetch import DERIVED, SOURCES, sha256_file
 
 PRIVATE_LICENSES = {"test_only"}
 DOCS = ["docs/datasheet_bench_v1.md", "docs/benchmark_protocol_v1.md", "docs/evaluation_metrics_v1.md"]
@@ -41,7 +44,7 @@ def share_rows(rows):
         if not r.get("upstream_id") or not r.get("audio_sha256"):
             raise SystemExit(f"{r['id']}: thiếu upstream_id / audio_sha256")
         s = {k: v for k, v in r.items() if k != "audio" and not k.startswith("_")}
-        s["audio_derivation"] = "soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED else "upstream_bytes"
+        s.setdefault("audio_derivation", "soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED else "upstream_bytes")
         out.append(s)
     return sorted(out, key=lambda x: x["id"])
 
@@ -55,6 +58,20 @@ def main(argv=None):
     dst = Path(args.out or P.path("data_root") / "share") / args.name
     if dst.exists():
         raise SystemExit(f"{dst} đã có: bản share không được ghi đè (đổi --name / version)")
+    for b in args.benchmarks:  # kiểm trước khi ghi gì: lỗi giữa chừng không để lại gói dở
+        mp, bm = manifest_path(b)
+        rows = share_rows(read_jsonl(str(mp)))
+        if bm.get("evidence_level") == "locked" or bm.get("manifest_sha256"):
+            # người nhận chấm bằng manifest share (+ đường dẫn audio): phải trùng bản khoá
+            want, got = bm.get("manifest_sha256"), manifest_sha256(rows)
+            if got != want:
+                raise SystemExit(f"{b}: manifest share {got[:12]} khác bản khoá {str(want)[:12]}")
+        if bm.get("catalog_from_bench"):
+            raise SystemExit(f"{b}: catalog chứa span lấy từ chính bench, không share làm catalog chấm")
+        if bm.get("catalog_sha256"):
+            cat = Path(bm["catalog"].replace("${data_root}", str(P.path("data_root"))))
+            if sha256_file(cat) != bm["catalog_sha256"]:
+                raise SystemExit(f"{b}: catalog {cat} khác bản khoá")
     (dst / "manifests").mkdir(parents=True)
     summary = {}
     for b in args.benchmarks:
@@ -108,7 +125,10 @@ export HF_HUB_DISABLE_XET=1     # nếu tải bị treo
 python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/general_v1.jsonl --out bench_data/general_v1 \\
     --cv-root /path/cv-corpus-27.0-2026-09-11/vi     # Common Voice vi 27.0: tải tay tại commonvoice.mozilla.org
 python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/code_switch_v1.jsonl --out bench_data/code_switch_v1
+python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/cs_ggroup_v1.jsonl --out bench_data/cs_ggroup_v1
 ```
+`fetch` báo lỗi (thoát mã 1) nếu file tải về khác sha256 trong manifest (riêng ViMedCSS resample: chỉ cảnh báo khi độ dài
+khớp, vì byte phụ thuộc phiên bản soxr / libsndfile).
 
 ## Chấm model của bạn
 
@@ -117,11 +137,18 @@ python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/code_switch
    context_bias | oracle_bias), hoặc dùng `python -m gipbench.bench.transcribe` với adapter có sẵn.
 2. Chấm:
 ```bash
-python -m gipbench.bench.evaluate --manifest bench_data/general_v1/manifest.jsonl --hyps my_system/hyps.jsonl \\
-    --profile gipbench_strict_v1 --mode final --allow-draft
+python -m gipbench.bench.evaluate --benchmark <gói>/manifests/general_v1.benchmark.yaml \\
+    --manifest bench_data/general_v1/manifest.jsonl --hyps my_system/hyps.jsonl --mode final
+python -m gipbench.bench.evaluate --benchmark <gói>/manifests/code_switch_v1.benchmark.yaml \\
+    --manifest bench_data/code_switch_v1/manifest.jsonl --catalog <gói>/manifests/code_switch_v1.catalog.tsv \\
+    --hyps my_system_c0/hyps.jsonl --mode final
+python -m gipbench.bench.evaluate --benchmark <gói>/manifests/cs_ggroup_v1.benchmark.yaml \\
+    --manifest bench_data/cs_ggroup_v1/manifest.jsonl --hyps my_system_c1/hyps.jsonl --mode final
 ```
-Code-switching (CS-WER, term recall): thêm `--catalog <gói>/manifests/code_switch_v1.catalog.tsv`.
-`--mode final` từ chối hyps thiếu / thừa / trùng id. Báo kết quả theo TỪNG bộ dữ liệu, kèm hồ sơ chuẩn hoá và scorer.
+Benchmark đã khoá (`evidence_level: locked`, `manifest_sha256`, C0 thêm `catalog_sha256`): `evaluate` thoát mã 2 nếu
+manifest / catalog khác bản khoá, hyps thiếu / thừa / trùng id, hoặc inference mode không khai báo / không được phép.
+Báo kết quả theo TỪNG bộ dữ liệu, kèm hồ sơ chuẩn hoá (`gipbench_strict_v1`) và inference mode. C1 dùng chung audio với
+phần G-Group của G0: không cộng gộp hai track như hai bằng chứng độc lập.
 
 ## Nội dung
 

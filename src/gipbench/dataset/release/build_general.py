@@ -29,6 +29,7 @@ from pathlib import Path
 from gipbench.core import paths as P
 from gipbench.core.decontam import sha256_file
 from gipbench.core.manifest import read_jsonl, write_jsonl
+from gipbench.dataset.release.fetch import DERIVED
 
 EXPECTED = {"vivos": 760, "commonvoice_vi_27": 1593, "ggroup_tech": 508, "ggroup_edu": 495, "ggroup_finance": 529,
             "ggroup_pubadmin": 515, "vimedcss": 658}
@@ -164,11 +165,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--which", choices=["general", "code_switch", "cs_ggroup"], required=True)
     ap.add_argument("--data-root", help="mặc định: data_root của core.paths (env GIPBENCH_DATA)")
-    ap.add_argument("--out", help="mặc định: <data_root>/benchmarks/<which>_v1_draft")
+    ap.add_argument("--name", help="tên benchmark (mặc định <which>_v1_draft); bản khoá: general_v1 / code_switch_v1 / cs_ggroup_v1")
+    ap.add_argument("--bench-version", help="giá trị bench_version mỗi dòng (mặc định = tên, '_' thành '-')")
+    ap.add_argument("--out", help="mặc định: <data_root>/benchmarks/<name>")
     ap.add_argument("--limit", type=int, default=0, help="N câu đầu mỗi bộ (thử nhanh)")
     args = ap.parse_args()
     data = Path(args.data_root or P.path("data_root"))
-    name = f"{args.which}_v1_draft"
+    name = args.name or f"{args.which}_v1_draft"
     out = Path(args.out or data / "benchmarks" / name)
     out.mkdir(parents=True, exist_ok=True)
     if args.which == "general":
@@ -189,9 +192,11 @@ def main():
             dropped.append({"id": r["id"], "reason": "text rỗng"})
             continue
         r.update({"audio": os.path.relpath(p, out).replace(os.sep, "/"), "audio_sha256": sha256_file(p),
+                  # cách fetch tái dựng audio; nằm trong manifest để bản share có cùng manifest_sha256
+                  "audio_derivation": "soxr_hq_16k_mono_pcm16" if r["dataset"] in DERIVED else "upstream_bytes",
                   "duration": d if d else audio_duration(str(p)), "split": split, "track": split,
                   "license": LICENSE.get(r["dataset"]), "annotation_status": "upstream_human",
-                  "bench_version": name.replace("_", "-")})
+                  "bench_version": args.bench_version or name.replace("_", "-")})
         rows.append(r)
     dup = [i for i, c in Counter(r["id"] for r in rows).items() if c > 1]
     if dup:

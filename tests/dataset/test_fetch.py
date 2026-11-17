@@ -131,6 +131,11 @@ def main():
     s = share_rows([dict(rows[3], audio="x/y.wav", _line=3)])
     check("package bỏ audio / trường _, ghi audio_derivation",
           "audio" not in s[0] and "_line" not in s[0] and s[0]["audio_derivation"] == "soxr_hq_16k_mono_pcm16")
+    from gipbench.dataset.release.build_general import manifest_sha256
+    locked = [dict(rows[2], audio="a.mp3", audio_derivation="upstream_bytes"),
+              dict(rows[3], audio="b.wav", audio_derivation="soxr_hq_16k_mono_pcm16")]
+    check("manifest có sẵn audio_derivation -> bản share cùng manifest_sha256 (khớp bản khoá)",
+          manifest_sha256(share_rows([dict(r) for r in locked])) == manifest_sha256(locked))
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")
     sys.exit(1 if FAIL else 0)
 

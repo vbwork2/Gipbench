@@ -10,9 +10,9 @@ Qwen3-ASR, bản FT…) cho công bằng và tái lập được. Không thay th
 
 | Track | Câu hỏi | Benchmark (configs/bench/benchmarks/) | Trạng thái |
 | --- | --- | --- | --- |
-| **G0** General | Nhận dạng tiếng Việt phổ thông (đọc + tự nhiên) tốt tới đâu? | `general_v1_draft`: VIVOS test, Common Voice vi 27 test, 4 bộ G-Group test (4 400 câu, 4.47 h) | active, **draft** |
-| **C0** Code-switching | Từ tiếng Anh trong câu tiếng Việt? | `code_switch_v1_draft`: ViMedCSS hard (658 câu, 1.29 h); B1/B2 ở `v0_draft` | active, **draft** |
-| **C1** Code-switching tự nhiên | Như C0, trên lời nói tự nhiên nhiều domain | `cs_ggroup_v1_draft`: câu G-Group test có từ Anh (1 260 câu, 1.31 h), tag `<en>` theo quyết định thuật ngữ người duyệt | active, **draft** |
+| **G0** General | Nhận dạng tiếng Việt phổ thông (đọc + tự nhiên) tốt tới đâu? | `general_v1` (v1.0): VIVOS test, Common Voice vi 27 test, 4 bộ G-Group test (4 400 câu, 4.47 h) | active, **locked** |
+| **C0** Code-switching | Từ tiếng Anh trong câu tiếng Việt? | `code_switch_v1` (v1.0): ViMedCSS hard (658 câu, 1.29 h); B1/B2 ở `v0_draft` | active, **locked** |
+| **C1** Code-switching tự nhiên | Như C0, trên lời nói tự nhiên nhiều domain | `cs_ggroup_v1` (v1.0): câu G-Group test có từ Anh (1 260 câu, 1.31 h), tag `<en>` theo quyết định thuật ngữ người duyệt | active, **locked** |
 | **R0** Regression | FT có làm hỏng tiếng Việt? | G0 + B5 của `v0_draft`; so cặp với model gốc | dùng G0 + v0 |
 | **Z0** Zero-shot / OOD sau FT | Tổng quát trên người nói / phiên / thuật ngữ không có trong dữ liệu FT? | `zero_shot_v1` | **planned** (chưa có dữ liệu thu mới) |
 | **E0** External | So với số đã công bố theo giao thức của từng bộ | dùng lại G0/C0, báo từng bộ | không bộ nào công bố scorer chính thức (xem registry) |
@@ -23,7 +23,7 @@ cho đúng số lịch sử tới từng chữ số).
 
 ## 2. Mức bằng chứng và khoá phiên bản
 
-- `evidence_level`: `draft` (nhãn chưa được dự án duyệt) → `human_reviewed` → `locked`. Hiện **mọi benchmark là draft**.
+- `evidence_level`: `draft` (nhãn chưa được dự án duyệt) → `human_reviewed` → `locked`. Từ 17/11/2026: `general_v1`, `code_switch_v1`, `cs_ggroup_v1` là **locked** (v1.0); bản `*_v1_draft` giữ nguyên làm lịch sử, `v0_draft` vẫn draft. v1.0 đi thẳng draft → locked theo quyết định người dùng: lời thoại là nhãn của bên phát hành (chưa duyệt lại), chỉ tag `<en>` của C1 do người duyệt (datasheet mục 4).
 - Một benchmark chỉ được `locked` khi có `manifest_sha256` (sha256 nội dung manifest, bỏ đường dẫn audio, kèm
   `audio_sha256` từng câu), hồ sơ chuẩn hoá và scorer có phiên bản. `evaluate` từ chối chạy nếu manifest khác hash đã khoá.
 - Đổi nhãn / đổi câu / đổi chuẩn hoá = **phiên bản mới**; không sửa bản đã khoá. Số cũ (v0-draft) không bị ghi đè.
@@ -88,6 +88,7 @@ python -m gipbench.bench.registry                                            # k
 python -m gipbench.dataset.release.build_general --which general             # dựng G0 (không tải gì)
 python -m gipbench.dataset.release.build_general --which code_switch         # dựng C0
 python -m gipbench.dataset.release.build_general --which cs_ggroup           # dựng C1 (sau build_bench, xem dataset_registry.md)
+# bản khoá v1.0: thêm --name <which>_v1 --bench-version <which>-v1.0 (dấu _ thành -), rồi so manifest_sha256 với yaml
 python -m gipbench.bench.transcribe --model configs/bench/asr_models/gip15_mbs4_open.yaml --benchmark general_v1_draft \
     --out results/general_asr/general_v1_draft/gip15_mbs4_open                # ~/.venvs/gipbench
 python -m gipbench.bench.transcribe --model configs/bench/asr_models/viegem_greedy.yaml --benchmark general_v1_draft \

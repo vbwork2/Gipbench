@@ -1,4 +1,4 @@
-# Datasheet: gipbench bench v1 (bản nháp, 17/11/2026)
+# Datasheet: gipbench bench v1.0 (khoá 17/11/2026)
 
 Bench đánh giá nhận dạng tiếng nói (ASR) tiếng Việt, gồm ba track: **G0** tiếng Việt phổ thông, **C0** câu tiếng Việt
 có xen từ tiếng Anh (code-switching) trong video y khoa, và **C1** code-switching trong lời nói tự nhiên nhiều domain
@@ -6,8 +6,9 @@ có xen từ tiếng Anh (code-switching) trong video y khoa, và **C1** code-sw
 `python -m gipbench.dataset.release.fetch` (revision cố định, kiểm sha256). Bố cục theo gợi ý "Datasheets for Datasets"
 (Gebru và cs.).
 
-> **Trạng thái: bản nháp (`draft`).** Lời thoại là nhãn của bên phát hành từng bộ, gipbench chưa duyệt lại. Tag `<en>` của
-> C0 và C1 là nhãn phái sinh (mục 4). Kết quả trên bản này dùng để chẩn đoán, không phải bảng xếp hạng cuối.
+> **Trạng thái: đã khoá (`locked`, v1.0).** Tập câu, nhãn và chuẩn hoá cố định theo `manifest_sha256` (mục 9); đổi bất kỳ
+> thứ gì = phiên bản mới. "Khoá" nghĩa là **cố định**, không phải "gipbench đã nghe lại mọi câu": lời thoại vẫn là nhãn của
+> bên phát hành từng bộ (gipbench chưa duyệt lại); tag `<en>` của C0 và C1 là nhãn phái sinh (mục 4).
 
 ## 1. Mục đích
 
@@ -100,7 +101,7 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
    hơi khác khi câu được ghép batch khác: VieGem trên C1 trùng hyps G0 ở 1 177 / 1 260 câu, WER lệch 0.03 điểm,
    CS-WER 0.24 điểm. Config Gipformer của bench chạy batch 1 (trùng 1 260 / 1 260); báo kèm `run_meta.json`.
 
-## 8. Kết quả tham chiếu (bản nháp, open_vocab, hồ sơ gipbench_strict_v1, WER %)
+## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 
 | Bộ | Gipformer 1.5 (68M, beam 4) | VieGem-ASR (359M, greedy) |
 | --- | --- | --- |
@@ -120,5 +121,14 @@ VieGem − Gipformer trên C1: CS-WER +12.13 [9.24, 14.91], WER +9.73 [8.82, 10.
 - `bench_version` trong mỗi dòng; `release.json` và `SHA256SUMS` trong gói. Đổi bất kỳ câu / nhãn / chuẩn hoá nào =
   phiên bản mới; bản đã phát hành không bị sửa.
 - v1.0 = G0 + C0 + C1 như trên. Bộ riêng tư (consensus) **không** share, chỉ chấm hộ.
+
+  | Benchmark | Track | Câu | manifest_sha256 |
+  | --- | --- | --- | --- |
+  | `general_v1` | G0 | 4 400 | `e908c75a3f23c949b2ae0f2b82d6ec98e75eca1204f07dd44a50139e352c3dcb` |
+  | `code_switch_v1` | C0 | 658 | `744d4773d4a0f01161f7ff5694b8a8e3466f93efaff91ebb74750e70388dc06a` |
+  | `cs_ggroup_v1` | C1 | 1 260 | `e3c3cc1b91027fefc529dbfe2bb23d1b52b0948899d17af0b1cbcb9edac496af` |
+
+  C0 khoá cả catalog chấm (`catalog_sha256` `a21c590e…`). manifest_sha256 tính trên mọi trường trừ đường dẫn `audio`,
+  nên manifest do `fetch` ghi ra (thêm đường dẫn audio cục bộ) vẫn khớp bản khoá.
 - License của gói = license của từng bộ nguồn (mục 2); phần phái sinh từ VIVOS phân phối theo CC-BY-NC-SA-4.0.
   Trích dẫn từng bộ nguồn khi dùng.

@@ -1,0 +1,31 @@
+# Bản khoá v1.0 của cs_ggroup_v1_draft (bản nháp giữ nguyên để so lịch sử). Đổi bất kỳ câu / nhãn / chuẩn hoá = phiên bản mới.
+# C1 Code-switching công khai: câu G-Group test (tech / edu / finance / pubadmin) có từ Anh, tag <en> theo quyết định
+# thuật ngữ người duyệt (configs/dataset/labeling/term_decisions.tsv) + phiếu duyệt từng câu cho thuật ngữ "tuỳ câu".
+# Dựng bằng: python -m gipbench.dataset.release.build_general --which cs_ggroup --name cs_ggroup_v1 --bench-version cs-ggroup-v1.0
+benchmark_id: cs_ggroup
+version: v1.0
+track: C1
+purpose: >-
+  Đo từ tiếng Anh trong câu tiếng Việt nói tự nhiên (CS-WER strict, term recall, span accuracy) trên G-Group test.
+  Cùng audio với phần G-Group của G0 (tập con câu có từ Anh); G-Group do tổ chức phát hành Gipformer công bố
+  (pretraining_overlap known_possible với Gipformer).
+evidence_level: locked         # khoá 17/11/2026: câu / nhãn / chuẩn hoá cố định; lời thoại vẫn là nhãn của bên phát hành (datasheet)
+status: active
+manifest: ${data_root}/benchmarks/cs_ggroup_v1/manifest.jsonl
+manifest_sha256: e3c3cc1b91027fefc529dbfe2bb23d1b52b0948899d17af0b1cbcb9edac496af
+catalog: null                  # không dùng catalog: strict, không quy đổi biến thể chính tả (catalog_proxy lấy từ bench tạm)
+catalog_from_bench: false
+profile: gipbench_strict_v1
+also_report_profiles: [legacy_v0]
+primary_metric: cs_wer
+group_by: [dataset, tag_review]
+aggregate: macro_by_dataset
+boot_unit: speaker             # G-Group không có id người nói: speaker = id câu (bootstrap theo câu)
+seed: 0
+iters: 1000
+allowed_inference_modes: [open_vocab, lm, context_bias]
+sources:
+  - {dataset: ggroup_tech, split: test, slice: spontaneous_cs}
+  - {dataset: ggroup_edu, split: test, slice: spontaneous_cs}
+  - {dataset: ggroup_finance, split: test, slice: spontaneous_cs}
+  - {dataset: ggroup_pubadmin, split: test, slice: spontaneous_cs}

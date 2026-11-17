@@ -155,3 +155,14 @@ bash tests/run_tests.sh /tmp/gab
   `term_decisions.tsv`.
 - Gói thử `gipbench-bench-v1.0-draft` (G0 + C0 + C1) ở `data/share_test/pkg3`: SHA256SUMS khớp, không có audio / dòng
   test_only. Cả ba benchmark vẫn `evidence_level: draft`, chưa khoá `manifest_sha256`.
+
+## 10. Khoá và đóng gói v1.0 (17/11/2026, theo yêu cầu người dùng)
+
+- Benchmark khoá mới: `general_v1` (`e908c75a…`), `code_switch_v1` (`744d4773…` + catalog `a21c590e…`), `cs_ggroup_v1`
+  (`e3c3cc1b…`); `evidence_level: locked`. Bản `*_v1_draft` giữ nguyên. Cùng câu / nhãn với draft.
+- Sửa trước khi khoá: `package` từng tự thêm `audio_derivation` nên manifest share có hash khác bản khoá (người nhận sẽ bị
+  `evaluate` từ chối); nay `build_general` ghi `audio_derivation` vào manifest, `package` kiểm hash share = bản khoá (và
+  catalog = `catalog_sha256`) trước khi ghi. `evaluate` báo lỗi khi catalog khác `catalog_sha256`.
+- `evaluate --mode final` trên cả ba bản khoá: đạt, số trùng bản draft (Gipformer G0 WER 15.21, C0 CS-WER 107.12, C1
+  70.25; VieGem 22.27 / 84.54 / 82.39). Chạy thử phía người nhận (yaml + manifest trong gói) cho cùng số.
+- Gói `data/share/gipbench-bench-v1.0` (4.3 MB, 6 318 dòng manifest, không audio, không dòng test_only); SHA256SUMS khớp.
