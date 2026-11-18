@@ -12,7 +12,9 @@ import sys
 import tempfile
 import traceback
 from pathlib import Path
+from unittest.mock import patch
 
+from gipbench.core import release
 from gipbench.core.paths import REPO as G
 from gipbench.infer import decode
 from gipbench.dataset.release import make_dev_split as mds
@@ -66,6 +68,72 @@ def fake_bench():
 
 def units_sides(dev, test):
     return ({mds.unit_of(r) for r in dev}, {mds.unit_of(r) for r in test})
+
+
+def test_independent_dev_excludes_locked_and_training_videos():
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t)
+        bench = "bench/locked"
+        with patch.object(release, "root", return_value=t / "releases"), patch.object(mds.R, "locked_bench_refs", return_value=[bench]):
+            release.write_release(bench, manifest_rows=[
+                row("held", "test", "tech", "held-speaker", "https://youtu.be/abcdefghijk", text="held text")
+            ])
+            jl(t / "train.jsonl", [
+                row("train", "train", "finance", "yt_bcdefghijkl", "training", text="training text", cluster="shared")
+            ])
+            jl(t / "candidates.jsonl", [
+                row("from-bench", "dev", "tech", "yt_abcdefghijk", "first", text="có <en>cloud</en> nhé"),
+                row("from-train", "dev", "tech", "speaker-one", "youtube:bcdefghijkl", text="có <en>data</en> nhé"),
+                row("same-speaker", "dev", "tech", "speaker-two", "unrelated", cluster="shared"),
+                row("unknown", "dev", "tech", "unknown", "unknown"),
+                row("clean", "dev", "tech", "speaker-three", "third"),
+            ])
+            out = t / "filtered" / "dev.jsonl"
+            args = ["--candidates", str(t / "candidates.jsonl"), "--kind", "cs", "--exclude-from",
+                    str(t / "train.jsonl"), "--out-dev", str(out)]
+            assert quiet(mds.run, args) == 0
+            rows = rd(out)
+            assert [r["id"] for r in rows] == ["clean"]
+            assert (out.parent / rows[0]["audio"]).resolve() == t / "audio" / "clean.wav"
+            report = json.loads(out.with_suffix(".jsonl.report.json").read_text(encoding="utf-8"))
+            assert report["verify"][bench]["critical"] == 0
+            assert report["filter"]["rows_by_key"]["source_norm"] == 2
+            assert not report["qualified"]
+            try:
+                quiet(mds.run, args + ["--release", "dev/dev_v2_cs@1"])
+            except SystemExit as exc:
+                assert "release thresholds" in str(exc)
+            else:
+                raise AssertionError("An underqualified split was registered")
+            assert not release.release_dir("dev/dev_v2_cs@1").exists()
+
+
+def test_independent_vi_release_carries_exclusions():
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t)
+        bench = "bench/locked"
+        dev = "dev/dev_v2_vi@1"
+        with patch.object(release, "root", return_value=t / "releases"), patch.object(mds.R, "locked_bench_refs", return_value=[bench]):
+            release.write_release(bench, manifest_rows=[
+                row("held", "test", "tech", "held-speaker", "held-source", text="lời khác")
+            ])
+            train = t / "train.jsonl"
+            jl(train, [row("train", "train", "edu", "train-speaker", "train-source", text="lời huấn luyện")])
+            jl(t / "candidates.jsonl", [
+                row("clean", "source", "edu", "speaker-one", "first", dur=3600, text="chúng mình nói tiếng Việt"),
+                row("read", "source", "read", "speaker-two", "second", text="xin chào"),
+                row("cs", "source", "edu", "speaker-three", "third"),
+                row("video", "source", "edu", "yt_abcdefghijk", "fourth", text="hôm nay trời đẹp"),
+            ])
+            wav = t / "audio" / "clean.wav"
+            wav.parent.mkdir()
+            wav.touch()
+            out = t / "dev.jsonl"
+            assert quiet(mds.run, ["--candidates", str(t / "candidates.jsonl"), "--kind", "vi", "--exclude-from",
+                                  str(train), "--out-dev", str(out), "--release", dev]) == 0
+            registered = release.resolve(dev)
+            assert registered.meta["flags"] == {"independent": True, "exclusion_sets": [bench, str(train)]}
+            assert [r["id"] for r in rd(registered.manifest)] == ["clean"]
 
 
 def split_args(d, bench, extra=(), train=(), **kw):

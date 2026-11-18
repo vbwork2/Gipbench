@@ -194,8 +194,57 @@ def main():
     rc, out = run_mod(env, "gipbench.model.select.select_ckpt", *sel, "--out", d / "s5", "--dev-ref-cs", "dev/khong_co@v1")
     check("dev-ref không tồn tại: dừng (không bỏ qua im lặng)", rc == 3, out)
 
+    test_e4_selector(env, d)
+
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")
     sys.exit(1 if FAIL else 0)
+
+
+def test_e4_selector(env, d):
+    from gipbench.core.manifest import write_jsonl
+
+    cs_labels = ["mình dùng <en>cloud</en>", "mình dùng <en>stocks</en>"]
+    vi_label = " ".join(["chào"] * 115)
+    cs, vi = d / "e4_cs.jsonl", d / "e4_vi.jsonl"
+    write_jsonl(cs, [row(f"cs{i}", text=label, domain=domain, speaker=f"cs-spk{i}")
+                     for i, (label, domain) in enumerate(zip(cs_labels, ("tech", "finance")))])
+    write_jsonl(vi, [row(f"vi{i}", text=vi_label, speaker=f"vi-spk{i}") for i in range(3)])
+    vi_base = [vi_label.replace("chào", "sáng", 1), vi_label, vi_label]
+    cs_good = ["mình dùng cloud", "mình dùng stocks"]
+    cs_base = ["mình dùng mây", "mình dùng stocks"]
+
+    def save_hyps(name, cs_hyps, vi_hyps):
+        for label, texts in (("cs", cs_hyps), ("vi", vi_hyps)):
+            write_jsonl(d / name / f"dev_{label}" / "hyps.jsonl",
+                        [{"id": f"{label}{i}", "hyp": text} for i, text in enumerate(texts)])
+        return d / name
+
+    base = save_hyps("e4_base", cs_base, vi_base)
+    late = save_hyps("ck20", cs_good, vi_base)
+    early = save_hyps("ck10", cs_good, vi_base)
+    domain = save_hyps("domain", ["mình dùng cloud", "mình dùng cổ phiếu"], vi_base)
+    hallucination = save_hyps("hallucination", cs_good, [vi_label.replace("chào", "meeting", 1), vi_label, vi_label])
+    ci = save_hyps("ci", cs_good, [*vi_base[:2], vi_label.replace("chào", "sáng", 1)])
+    limits = ["--rule", "cs_wer", "--max-vi-ci-upper", "0.5", "--max-vi-hallucination-delta", "0.0",
+              "--max-cs-domain-delta", "1.0"]
+    command = ["--catalog", d / "cat_train.tsv", "--dev-cs", cs, "--dev-vi", vi, "--base", base, *limits]
+    rc, output = run_mod(env, "gipbench.model.select.select_ckpt", *command, "--cand", late, early, domain, hallucination, ci,
+                         "--out", d / "e4_sel")
+    check("E4 selector runs with retention thresholds", rc == 0, output)
+    if rc == 0:
+        report = json.loads((d / "e4_sel.json").read_text(encoding="utf-8"))
+        results = report["results"]
+        check("E4 breaks ties by earliest checkpoint", report["pick"] == "ck10")
+        check("E4 rejects a regressed domain", not results["domain"]["eligible"]
+              and results["domain"]["retention"]["cs_domain_deltas"]["finance"] > 1)
+        check("E4 rejects increased English insertions at the same WER", not results["hallucination"]["eligible"]
+              and results["hallucination"]["wer_vi"] == results["e4_base"]["wer_vi"])
+        check("E4 rejects the upper CI at an acceptable point estimate", not results["ci"]["eligible"]
+              and results["ci"]["retention"]["wer_vi_ci95"][1] > 0.5
+              and results["ci"]["wer_vi"] - results["e4_base"]["wer_vi"] < 0.3)
+    partial = save_hyps("partial", cs_good[:1], vi_base)
+    rc, output = run_mod(env, "gipbench.model.select.select_ckpt", *command, "--cand", partial, "--out", d / "e4_partial")
+    check("E4 rejects incomplete dev hypotheses", rc != 0 and "one hypothesis per dev utterance" in output, output)
 
 
 if __name__ == "__main__":

@@ -165,6 +165,25 @@ def test_dry_run():
     check("model pipeline không gọi bench", "gipbench.bench" not in out)
 
 
+def test_x0_dry_run():
+    config = G / "configs/model/experiments/e4_x0.yaml"
+    command = [sys.executable, "-m", "gipbench.model.run", str(config), "--stages", "0-6", "--dry-run"]
+    p = subprocess.run(command, capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 dry-run previews both seeds", p.returncode == 0 and p.stdout.count("== 6.") == 2, p.stderr)
+    train = [line for line in p.stdout.splitlines() if "./zipformer/finetune_cs.py" in line]
+    check("X0 passes both seeds to Icefall and keeps separate output paths",
+          len(train) == 2 and all(f"--seed {seed}" in line and f"seed-{seed}" in line
+                                  for seed, line in enumerate(train)))
+    check("X0 dry-run includes retention limits and replay cap", all(flag in p.stdout for flag in (
+        "--max-vi-ci-upper 0.5", "--max-vi-hallucination-delta 0.0", "--max-cs-domain-delta 1.0",
+        "--epoch-hours 20 --epochs 2 --max-views 8")))
+    p = subprocess.run(command + ["--seed", "1"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 previews one seed when selected", p.returncode == 0 and p.stdout.count("== 6.") == 1
+          and "== e4_x0 seed 1" in p.stdout and "seed-0" not in p.stdout, p.stderr)
+    p = subprocess.run(command + ["--seed", "2"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 rejects an undeclared seed", p.returncode != 0 and "--seed must be one of" in p.stderr)
+
+
 def test_release(T):
     print("release (ghi / đọc / bất biến / materialize)")
     from gipbench.core import paths
@@ -223,7 +242,7 @@ def main():
     with tempfile.TemporaryDirectory() as t:
         T = Path(t)
         cases = [test_experiments, lambda: test_split_groups(T / "sg"), lambda: test_icefall_runner(T / "ir"),
-                 test_dry_run, lambda: test_release(T / "rel"), test_bench_systems]
+                 test_dry_run, test_x0_dry_run, lambda: test_release(T / "rel"), test_bench_systems]
         for d in ("sg", "ir", "rel"):
             (T / d).mkdir()
         for i, fn in enumerate(cases):

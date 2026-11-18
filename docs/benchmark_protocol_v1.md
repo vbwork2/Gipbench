@@ -11,19 +11,21 @@ Qwen3-ASR, bản FT…) cho công bằng và tái lập được. Không thay th
 | Track | Câu hỏi | Benchmark (configs/bench/benchmarks/) | Trạng thái |
 | --- | --- | --- | --- |
 | **G0** General | Nhận dạng tiếng Việt phổ thông (đọc + tự nhiên) tốt tới đâu? | `general_v1` (v1.0): VIVOS test, Common Voice vi 27 test, 4 bộ G-Group test (4 400 câu, 4.47 h) | active, **locked** |
-| **C0** Code-switching | Từ tiếng Anh trong câu tiếng Việt? | `code_switch_v1` (v1.0): ViMedCSS hard (658 câu, 1.29 h); B1/B2 ở `v0_draft` | active, **locked** |
+| **C0** Code-switching | Từ tiếng Anh trong câu tiếng Việt? | `code_switch_v1` (v1.0): ViMedCSS hard (658 câu, 1.29 h)<!-- share:omit -->; B1/B2 ở `v0_draft`<!-- /share:omit --> | active, **locked** |
 | **C1** Code-switching tự nhiên | Như C0, trên lời nói tự nhiên nhiều domain | `cs_ggroup_v1` (v1.0): câu G-Group test có từ Anh (1 260 câu, 1.31 h), tag `<en>` theo quyết định thuật ngữ người duyệt | active, **locked** |
-| **R0** Regression | FT có làm hỏng tiếng Việt? | G0 + B5 của `v0_draft`; so cặp với model gốc | dùng G0 + v0 |
+| **R0** Regression | FT có làm hỏng tiếng Việt? | G0 + B5 của `v0_draft`; so cặp với model gốc | dùng G0 + v0 | <!-- share:omit-line -->
 | **Z0** Zero-shot / OOD sau FT | Tổng quát trên người nói / phiên / thuật ngữ không có trong dữ liệu FT? | `zero_shot_v1` | **planned** (chưa có dữ liệu thu mới) |
 | **E0** External | So với số đã công bố theo giao thức của từng bộ | dùng lại G0/C0, báo từng bộ | không bộ nào công bố scorer chính thức (xem registry) |
-| legacy | Bench nháp B1–B5 | `v0_draft` (4 238 câu) | giữ để so lịch sử |
+| legacy | Bench nháp B1–B5 | `v0_draft` (4 238 câu) | giữ để so lịch sử | <!-- share:omit-line -->
 
+<!-- share:omit -->
 B1–B5 cũ vẫn chấm được y như trước (`gipbench.bench.score`, hoặc `evaluate --benchmark v0_draft` với hồ sơ `legacy_v0`,
 cho đúng số lịch sử tới từng chữ số).
+<!-- /share:omit -->
 
 ## 2. Mức bằng chứng và khoá phiên bản
 
-- `evidence_level`: `draft` (nhãn chưa được dự án duyệt) → `human_reviewed` → `locked`. Từ 17/11/2026: `general_v1`, `code_switch_v1`, `cs_ggroup_v1` là **locked** (v1.0); bản `*_v1_draft` giữ nguyên làm lịch sử, `v0_draft` vẫn draft. v1.0 đi thẳng draft → locked theo quyết định người dùng: lời thoại là nhãn của bên phát hành (chưa duyệt lại), chỉ tag `<en>` của C1 do người duyệt (datasheet mục 4).
+- `evidence_level`: `draft` (nhãn chưa được dự án duyệt) → `human_reviewed` → `locked`. Từ 17/11/2026: `general_v1`, `code_switch_v1`, `cs_ggroup_v1` là **locked** (v1.0)<!-- share:omit -->; bản `*_v1_draft` giữ nguyên làm lịch sử, `v0_draft` vẫn draft<!-- /share:omit -->. v1.0 đi thẳng draft → locked theo quyết định người dùng: lời thoại là nhãn của bên phát hành (chưa duyệt lại), chỉ tag `<en>` của C1 do người duyệt (datasheet mục 4).
 - Một benchmark chỉ được `locked` khi có `manifest_sha256` (sha256 nội dung manifest, bỏ đường dẫn audio, kèm
   `audio_sha256` từng câu), hồ sơ chuẩn hoá và scorer có phiên bản. `evaluate` từ chối chạy nếu manifest khác hash đã khoá.
 - Đổi nhãn / đổi câu / đổi chuẩn hoá = **phiên bản mới**; không sửa bản đã khoá. Số cũ (v0-draft) không bị ghi đè.
@@ -41,8 +43,8 @@ cho đúng số lịch sử tới từng chữ số).
 | `oracle_bias` | hotwords có thông tin từ test (vd catalog v0-draft chứa 1 618 span của chính bench) | **chỉ chẩn đoán**, bị chặn ở G0/Z0 |
 
 `transcribe` chặn trước khi chạy nếu mode không thuộc `allowed_inference_modes` của benchmark, hoặc hotwords lấy từ
-catalog có `catalog_from_bench: true` mà không khai báo `test_derived` + `oracle_bias`. E1 lịch sử (hotwords từ catalog
-v0-draft) là **oracle_bias**, không phải zero-shot.
+catalog có `catalog_from_bench: true` mà không khai báo `test_derived` + `oracle_bias`.<!-- share:omit --> E1 lịch sử (hotwords từ catalog
+v0-draft) là **oracle_bias**, không phải zero-shot.<!-- /share:omit -->
 
 Không so Gipformer + oracle hotwords với VieGem không gợi ý trong cùng một bảng xếp hạng.
 
@@ -79,6 +81,7 @@ Không so Gipformer + oracle hotwords với VieGem không gợi ý trong cùng m
   dùng **lô 1** để kết quả không phụ thuộc thứ tự / tập con. Số E0 lịch sử chỉ tái lập được với đúng manifest v0-draft,
   đúng thứ tự, lô 32.
 
+<!-- share:omit -->
 ## 7. Lệnh
 
 ```bash
@@ -97,3 +100,4 @@ python -m gipbench.bench.evaluate --benchmark general_v1_draft \
     --hyps results/general_asr/general_v1_draft/viegem_greedy/hyps.jsonl \
     --baseline-hyps results/general_asr/general_v1_draft/gip15_mbs4_open/hyps.jsonl
 ```
+<!-- /share:omit -->

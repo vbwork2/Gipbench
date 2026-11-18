@@ -22,7 +22,20 @@ So các bản ONNX INT8 sẵn có bằng modified beam 4 và batch 1. `wise_1` t
 
 Trên đủ 1.260 câu C1, `ck4132` có CS-WER **91,88** so với **70,25** của model gốc (**+21,62** điểm, CI95 **[+19,14; +23,95]**). Dev CS lịch sử xếp ngược chiều, **74,11** so với **97,20** (**−23,09** điểm). Chỉ số C1 sau khi bỏ lỗi chèn cũng tăng từ **56,37** lên **80,77** (Δ **+24,40**, CI95 **[+22,50; +26,02]**).
 
-Trên 787 câu G-Group, WER tăng từ **18,50** lên **29,64** (Δ **+11,14**, CI95 **[+9,93; +12,37]**). Trên 686 câu thỏa tiêu chí thuần Việt của scorer 1.1.0, WER tăng từ **18,30** lên **29,54**. Như vậy `ck4132` làm tăng lỗi ở cả lát CS và lát chủ yếu tiếng Việt. Các ứng viên còn lại được chấm lần lượt trên CPU.
+Trên 787 câu G-Group, WER tăng từ **18,50** lên **29,64** (Δ **+11,14**, CI95 **[+9,93, +12,37]**). Trên 686 câu thỏa tiêu chí thuần Việt của scorer 1.1.0, WER tăng từ **18,30** lên **29,54**.
+
+Tất cả checkpoint đều có đủ đúng 1.260 ID C1 và 787 ID của lát G-Group. So với model gốc, CS-WER trên C1 và WER trên lát G-Group đều tăng ở từng checkpoint dù CS-WER trên dev lịch sử giảm.
+
+| Ứng viên | CS-WER dev cũ | CS-WER C1 | WER lát G-Group |
+| --- | ---: | ---: | ---: |
+| Model gốc | 97,20 | 70,25 | 18,50 |
+| ck4132 | 74,11 | 91,88 | 29,64 |
+| ck8264 | 70,92 | 96,06 | 32,27 |
+| ck12396 | 69,95 | 100,41 | 34,95 |
+| ck16528 | 69,28 | 98,63 | 35,93 |
+| wise_0.3 | 91,11 | 73,65 | 19,43 |
+| wise_0.5 | 82,90 | 77,04 | 20,40 |
+| wise_0.7 | 76,62 | 84,00 | 21,96 |
 
 Trình chạy `scripts/diagnostics/e3_checkpoint_check.py` tiếp tục theo id và chấm riêng từng lát hoàn tất trong `results/phase4/checkpoints/`. Dùng `--report-only` để làm mới bảng `comparison.md` từ các lượt đã chấm.
 
@@ -32,18 +45,38 @@ Mỗi cặp dùng cùng checkpoint và cùng câu trong G0, C0 và C1. Giữ bat
 
 Slot Gipformer + LM cần một LM tương thích chính xác với token ID của Gipformer 1.5 và có nguồn văn bản độc lập với bench. Bản phát hành Gipformer không có artifact đó. Sherpa-ONNX hỗ trợ RNN LM tương thích và có tùy chọn LODR riêng. [Bản phát hành Gipformer](https://huggingface.co/g-group-ai-lab/gipformer1.5-68M-rnnt/tree/main), [ví dụ Sherpa-ONNX](https://github.com/k2-fsa/sherpa-onnx/blob/master/python-api-examples/offline-decode-files.py).
 
-Khi có LM phù hợp, sao chép cấu hình `gip15_mbs4_open.yaml`, đặt `system: gip15_mbs4_lm`, `inference_mode: lm`, thêm `decode.lm` trỏ tới artifact và khai báo `decode.lm_scale` đã chốt. Truyền YAML này qua `decode_matrix.py gipformer --gipformer-lm-config <yaml>`.
+### RNN LM cho Gipformer (18/11/2026)
+
+LM là RNN LM token-level của icefall (BPE 2000 của Gipformer, LSTM 2 lớp 512 chiều, tie weights), xuất ONNX không state cho sherpa-onnx (`results/phase4/lm/gip15_rnnlm/gip15_rnnlm_e2.onnx`).
+
+- **Text** (`scripts/diagnostics/gip15_lm_text.py`): `pool/vimedcss_train@v2`, `pool/vivos_train@v2`, `pool/cv_other@v2`, `pool/vss_cs@e3_v1`, chuẩn hoá bằng `model_case_text` (IN HOA, catalog `train-v1`). Lần kiểm đầu, `leak_audit --text-files` báo **219 câu VIVOS trùng hẳn G0**. Với pool, đây chỉ là mức review vì audio khác, nhưng với LM thì chữ chính là thứ được học. Bản cuối bỏ mọi câu trùng hẳn hoặc gần trùng với 6 bench khoá (178 VIVOS + 41 CV trùng hẳn, 5 câu gần trùng) → **14 751 câu train / 814 câu valid (311k từ)**. Kiểm lại G0 / C0 v1.1 / C1 / E0 v1.1: **0 critical**, 0 thuật ngữ `reserved_terms_v1`.
+- **Train** (`scripts/diagnostics/train_gip15_rnnlm.sh`): ppl valid thấp nhất ở epoch 2 (**112,8**), rồi overfit (epoch 19: 8 947). Bản 256 chiều tốt nhất 127,4. Chỉ chọn trên valid tách từ text train, không nhìn bench (`valid_ppl.txt`).
+- **Giải mã**: beam 4, mọi tham số khác giống `gip15_mbs4_open`. Lưới `lm_scale` 0,1 / 0,3 / 0,5 (`configs/bench/asr_models/gip15_mbs4_lm_s0{1,3,5}.yaml`, `decode_matrix.py gipformer --gipformer-lm-config <yaml…>`). Cả lưới được báo cáo, không chọn hệ số trên bench nên không hàng nào rankable.
+
+Δ so với Gipformer beam 4 trên cùng câu (CI95 bootstrap cặp):
+
+| `lm_scale` | G0 WER | C0 CS-WER | C1 CS-WER | C1 `cs_wer_sd` | C1 term recall |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0,1 | +0,02 [−0,05; +0,10] | −0,31 [−0,89; +0,26] | −0,31 [−0,87; +0,24] | −0,14 [−0,54; +0,27] | 39,76 |
+| 0,3 | +0,06 [−0,05; +0,17] | **−1,30 [−2,14; −0,46]** | −0,51 [−1,45; +0,41] | +0,27 [−0,35; +0,89] | 39,38 |
+| 0,5 | **+0,18 [+0,04; +0,31]** | **−1,07 [−1,96; −0,17]** | −0,75 [−1,82; +0,31] | +0,69 [−0,07; +1,45] | 39,29 |
+
+Beam 4 không LM có C1 term recall **39,57**. G0 `vi_only_wer` lần lượt 9,82 / 9,82 / 9,94 (beam 4: 9,79).
+
+LM chỉ giúp C0, nơi text LM cùng domain y khoa với ViMedCSS train. Trên C1, CS-WER giảm trong nhiễu, nhưng `cs_wer_sd` và term recall xấu đi khi tăng hệ số: LM bớt chèn từ chứ không nhận đúng thuật ngữ hơn. G0 xấu đi có ý nghĩa ở 0,5. Cùng chiều với VieGem + LM (mục 8d datasheet): LM có sẵn không thay được dữ liệu CS ngoài y khoa. Với X6 / T2, chỉ đáng thử lại khi có text CS ngoài y khoa lớn hơn nhiều (độc lập với bench).
 
 Kết quả ở `results/phase4/decode/` được so với greedy VieGem và beam Gipformer đã có ở `results/general_asr/`. Hai hệ tham chiếu ở 1d là Whisper-large-v3 và Qwen3-ASR. Tệp `results/phase4/decode/matrix.md` tổng hợp các lượt đã chấm.
 
 | Hệ | G0 WER | C0 CS-WER | C1 CS-WER |
 | --- | ---: | ---: | ---: |
-| Gipformer greedy | Đang chạy | Đang chạy | 70,90 |
+| Gipformer greedy | 15,33 | 106,89 | 70,90 |
 | Gipformer beam 4 | 15,21 | 107,12 | 70,25 |
-| Gipformer beam 4 + LM | Chờ LM | Chờ LM | Chờ LM |
+| Gipformer beam 4 + RNN LM 0,1 | 15,23 | 106,81 | 69,95 |
+| Gipformer beam 4 + RNN LM 0,3 | 15,27 | 105,81 | 69,74 |
+| Gipformer beam 4 + RNN LM 0,5 | 15,38 | 106,04 | 69,50 |
 | VieGem greedy | 22,27 | 84,54 | 82,39 |
-| VieGem beam 32 | Trong hàng đợi GPU | Trong hàng đợi GPU | Trong hàng đợi GPU |
-| VieGem beam 32 + LM | Trong hàng đợi GPU | Trong hàng đợi GPU | Trong hàng đợi GPU |
+| VieGem beam 32 | 22,19 | 84,54 | 83,07 |
+| VieGem beam 32 + LM | 20,72 | 82,71 | 85,13 |
 | Whisper-large-v3 (1d) | 27,55 | — | 53,91 |
 | Qwen3-ASR-0.6B (1d) | 28,49 | — | 74,71 |
 
@@ -57,7 +90,9 @@ Mốc A4 lịch sử dùng fp16 và budget 150 giây. Log cho thấy grad scale 
 
 Lần đối chứng dùng budget 40 giây cho cả hai precision, một seed và 200 bước mỗi lượt. Trọng số thử nghiệm chỉ tồn tại trong tiến trình. Log được lưu trong `results/phase4/ctc/`. Log `fp32.jsonl` thuộc lần 60 giây. Log đối chứng có đuôi `_40s.jsonl`.
 
-X0 tiếp tục dùng `--drop-ctc` trong khi chờ phép so ở budget 40 giây. Số đo hiện có cho thấy loss fp32 tăng trước khi lượt 60 giây bị kẹt.
+Cả hai lượt 40 giây hoàn thành 200 bước với cùng ID cut ở từng bước. Loss và gradient đều hữu hạn trong log. CTC loss/frame trung vị ở bước 1–25 và 176–200 lần lượt là **0,111 → 3,329** (fp32) và **0,116 → 1,801** (bf16). VRAM đỉnh lần lượt là **2.176 MiB** và **1.895 MiB**.
+
+BF16 dùng ít VRAM hơn và có loss thấp hơn ở cuối phép thử. Loss tăng ở cả hai lượt và kết quả chỉ có một seed, nên X0 vẫn dùng `--drop-ctc`.
 
 ## Môi trường thu trên G0
 
@@ -100,4 +135,4 @@ PYTHONPATH="$PWD/src:$PWD/results/phase4/kenlm_wheel" \
 
 Wheel CAMeL KenLM được kiểm trực tiếp với file 4-gram phát hành kèm VieGem. Venv VieGem dùng Python 3.11. Chạy lần lượt hai precision và VieGem trên RTX 3050 4 GB. Chọn tên log mới nếu lặp CTC để lưu riêng từng lần chạy. [Wheel CAMeL KenLM](https://pypi.org/project/camel-kenlm/2026.2.7/).
 
-Các lượt còn lại chạy nền trong WSL. Xem `results/phase4/gpu_queue.log` và `results/phase4/continuation.log` để theo dõi. Bộ kiểm thử repo đã đạt 21/21.
+Các lượt decode và CTC đã hoàn thành được lưu dưới `results/phase4/`. LM Gipformer: `results/phase4/lm/gip15_rnnlm/` (text + `meta.json`, báo cáo rò rỉ, log train, ONNX), log decode ở `results/phase4/lm/logs/`.

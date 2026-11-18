@@ -74,6 +74,7 @@ Lưu ý khi đọc:
 | `baseline_hyps_sha256`, `baseline_hyp_check` | baseline của so cặp được kiểm như hyps chính |
 | `metric_definitions` | định nghĩa các metric ở mục 2b |
 
+<!-- share:omit -->
 ## 3. Vì sao CS-WER strict = lenient trên v0-draft (đã điều tra)
 
 Catalog `data/bench_v0_draft/catalog_v0_draft.tsv` có 1 933 thuật ngữ, **0** dòng có cột `phonetic`, **0** dòng có cột
@@ -81,6 +82,8 @@ Catalog `data/bench_v0_draft/catalog_v0_draft.tsv` có 1 933 thuật ngữ, **0*
 score.py có ghi cờ `lenient_available: false` cho trường hợp này, nhưng `summary.json` của các lần chạy v0-draft được tạo
 trước khi có cờ đó. Muốn có số lenient thì phải soạn cột phonetic **từ nguồn không phải test** (vd từ điển phiên âm).
 Không được lấy từ lỗi của model trên test.
+
+<!-- /share:omit -->
 
 ## 4. Kiểm hyps
 

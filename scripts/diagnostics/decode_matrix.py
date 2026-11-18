@@ -18,7 +18,8 @@ def write_matrix(out, existing):
         "| System | G0 WER | C0 CS-WER | C1 CS-WER |",
         "| --- | ---: | ---: | ---: |",
     ]
-    for system in ("gip15_greedy_open", "gip15_mbs4_open", "gip15_mbs4_lm", "viegem_greedy",
+    lm_grid = sorted({p.name for p in out.glob("*/gip15_mbs4_lm*") if p.is_dir()}) or ["gip15_mbs4_lm"]
+    for system in ("gip15_greedy_open", "gip15_mbs4_open", *lm_grid, "viegem_greedy",
                    "viegem_beam", "viegem_lm", "whisper_large_v3", "qwen3_asr_0.6b"):
         cells = []
         for bench, metric in BENCHES:
@@ -39,7 +40,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("family", choices=("gipformer", "viegem"))
     parser.add_argument("--threads", type=int, default=2)
-    parser.add_argument("--gipformer-lm-config", type=Path)
+    parser.add_argument("--gipformer-lm-config", type=Path, nargs="+",
+                        help="một hoặc nhiều YAML system gip15_mbs4_lm* (mỗi file một lm_scale; báo cáo cả lưới)")
     parser.add_argument("--report-only", action="store_true")
     args = parser.parse_args()
     results = registry.P.path("results_root")
@@ -54,17 +56,21 @@ def main():
     if args.gipformer_lm_config:
         if args.family != "gipformer":
             parser.error("--gipformer-lm-config requires the gipformer family")
-        cfg = transcribe.load_model_cfg(str(args.gipformer_lm_config))
         beam = transcribe.load_model_cfg("configs/bench/asr_models/gip15_mbs4_open.yaml")
-        if cfg["system"] != "gip15_mbs4_lm" or cfg["inference_mode"] != "lm" or not cfg["decode"].get("lm"):
-            parser.error("Expected system gip15_mbs4_lm with decode.lm and inference_mode lm")
-        for key in ("engine", "model", "batch"):
-            if cfg[key] != beam[key]:
-                parser.error(f"Keep {key} identical to gip15_mbs4_open")
-        settings = {key: value for key, value in cfg["decode"].items() if key not in ("lm", "lm_scale")}
-        if settings != beam["decode"]:
-            parser.error("Keep all non-LM decoder settings identical to gip15_mbs4_open")
-        systems[cfg["system"]] = args.gipformer_lm_config
+        for lm_config in args.gipformer_lm_config:
+            cfg = transcribe.load_model_cfg(str(lm_config))
+            if (not cfg["system"].startswith("gip15_mbs4_lm") or cfg["inference_mode"] != "lm"
+                    or not cfg["decode"].get("lm")):
+                parser.error("Expected system gip15_mbs4_lm* with decode.lm and inference_mode lm")
+            for key in ("engine", "model", "batch"):
+                if cfg[key] != beam[key]:
+                    parser.error(f"Keep {key} identical to gip15_mbs4_open")
+            settings = {key: value for key, value in cfg["decode"].items() if key not in ("lm", "lm_scale")}
+            if settings != beam["decode"]:
+                parser.error("Keep all non-LM decoder settings identical to gip15_mbs4_open")
+            if cfg["system"] in systems:
+                parser.error(f"Duplicate system {cfg['system']}")
+            systems[cfg["system"]] = lm_config
     for bench in ("cs_ggroup_v1", "code_switch_v1", "general_v1"):
         for system, src_cfg in systems.items():
             config = src_cfg

@@ -15,10 +15,11 @@ purpose: >-
   báo theo từng bộ. Nhiều bộ trùng nguồn với dữ liệu train của VieGem (pretraining_overlap). ViMedCSS test: 93.8% câu
   đến từ video có trong ViMedCSS train, nên chỉ lát train_video_overlap:False (100 câu) đo tổng quát cho model đã train
   trên ViMedCSS train.
-evidence_level: draft          # audio đủ (missing_audio 0, lời thoại khớp v1.0 0 lệch); chờ duyệt khoá
+evidence_level: locked         # khoá 18/11/2026: audio đủ (32 203 / 32 203 có audio_sha256, lời thoại khớp v1.0 0 lệch)
+                               # giữ câu e0_vimedcss_test_Med_CS-4072_1-13 (audio rỗng 44 byte từ nguồn; adapter trả hyp "" -> lỗi xoá cho mọi hệ)
 status: active
 manifest: ${data_root}/benchmarks/external_v1_1/manifest.jsonl
-manifest_sha256: 2960680ca6b8476ec73b20f0c8c9295e617e7e0a3533a949afb1a2cae9c26be3   # derive_v1_1 17/11 21:31 (build_meta.json)
+manifest_sha256: 2960680ca6b8476ec73b20f0c8c9295e617e7e0a3533a949afb1a2cae9c26be3   # khoá 18/11/2026 (derive_v1_1 17/11 21:31, build_meta.json)
 require_audio_sha: true
 catalog: null
 profile: gipbench_strict_v1

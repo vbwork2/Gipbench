@@ -8,6 +8,8 @@
 #            infer/asr_hyps.py và cache.py, có docstring về nguồn dữ liệu nội bộ. Người nhận chấm model khác bằng script
 #            tự viết (README mục 4a) hoặc adapter Gipformer / VieGem.
 # configs:   file cấu hình chép vào gói (đường dẫn tính từ gốc repo).
+# scorer_files: file (tính từ src/gipbench/) mà scorer_code_sha256 băm, theo đúng thứ tự. Phải trùng
+#            gipbench.bench.evaluate.SCORER_FILES (tests/dataset/test_package.py kiểm); package ghi hash này vào release.json.
 roots:
   - gipbench.bench.evaluate
   - gipbench.bench.transcribe
@@ -29,3 +31,10 @@ configs:
   - configs/bench/asr_models/gip15_greedy_open.yaml
   - configs/bench/asr_models/viegem_greedy.yaml
   - configs/bench/asr_models/viegem_lm.yaml
+scorer_files:
+  - core/textnorm.py
+  - core/normprofiles.py
+  - core/align.py
+  - core/scoring.py
+  - core/evalstats.py
+  - bench/evaluate.py

@@ -23,7 +23,7 @@ python tests/golden/capture.py --layout new --out /tmp/g && python tests/golden/
 | Distill / confusable | `gipbench.dataset.pseudolabel.distill`, `gipbench.dataset.derive.confusables` |
 | TTS | `gipbench.dataset.synth.{make_text,synth,verify}` (`docs/tts_pipeline.md`); `make_text` BẮT BUỘC `--reserved-terms` và từ chối catalog `from_bench`; ra thêm `tts_text.txt` cho `leak_gate.text_files` |
 | Thuật ngữ giữ riêng (FT-unseen) | đề xuất: `python -m gipbench.dataset.release.propose_reserved_terms [--fraction 0.5]` -> `configs/dataset/reserved_terms_v1.proposal.txt`; người dùng duyệt / sửa rồi đổi tên thành `reserved_terms_v1.txt` (chốt TRƯỚC khi dựng dữ liệu FT) |
-| Catalog train (không có span bench) | `python -m gipbench.dataset.release.build_train_catalog --source pool/vimedcss_train@full:text_tagged_orig --source pool/vss_cs@e3_v1:text_tagged --reserved-terms configs/dataset/reserved_terms_v1.txt --out data/catalogs/train_v1/catalog.tsv` (`--preview` chỉ in số liệu), rồi thêm `catalog/train-v1` (`flags: {from_bench: false}`) vào `releases.yaml` và `register` |
+| Catalog train (không có span bench) | `python -m gipbench.dataset.release.build_train_catalog --source pool/vimedcss_train@v2:text_tagged_orig --source pool/vss_cs@e3_v1:text_tagged --reserved-terms configs/dataset/reserved_terms_v1.txt --out data/catalogs/train_v1/catalog.tsv` (`--preview` chỉ in số liệu), rồi thêm `catalog/train-v1` (`flags: {from_bench: false}`) vào `releases.yaml` và `register`. **Đã dựng 18/11/2026**: `reserved_terms_v1.txt` chốt (820), `catalog/train-v1` 727 thuật ngữ |
 | Bench từ phiếu duyệt | `python -m gipbench.dataset.release.build_bench …` |
 | Dev / pool cho FT | `gipbench.dataset.release.{prep_e3_v1,build_dev_cs,make_dev_split}` |
 | Kiểm rò rỉ bench ↔ train | `python -m gipbench.dataset.release.validate --bench … --catalog … --train … --dev …` |
@@ -34,6 +34,24 @@ Release đã có (16/11/2026): `catalog/v0-draft`, `bench/v0-draft`, `pool/{vime
 vivos_train@e3_v1, cv_train@v1, distill@e3_v1, confusable_train@e3_v1}`, `dev/{dev_cs@e3_v1, dev_vi@e3_v1}`.
 Thêm 17/11/2026: `catalog/vimedcss-v1.0`, `bench/{general-v1.0, code-switch-v1.0, cs-ggroup-v1.0, external-v1.0}` (bench khoá: cổng rò rỉ
 của `model.run` đọc danh sách này từ `releases.yaml`, nên phải `register` trước khi chạy experiment).
+
+### Dev độc lập
+
+Chuẩn bị manifest nguồn nói tự nhiên có nhãn và id người nói ổn định. Ví dụ dưới đây kiểm trước phần ViMedCSS.
+Bổ sung manifest CS ngoài y khoa vào `--candidates` và liệt kê tất cả pool train liên quan trong `--exclude-from`.
+Công cụ tự bổ sung mọi bench khoá. Kiểm tra trùng audio dùng SHA-256 có sẵn trong manifest.
+
+```bash
+python -m gipbench.dataset.release.make_dev_split \
+  --kind cs --candidates data/raw/vimedcss_full/dev_vimedcss.jsonl \
+  --exclude-from pool/vimedcss_train@full pool/vimedcss_train@v2 \
+  --out-dev data/tmp/dev_vimedcss_filtered.jsonl
+```
+
+Đọc `<out-dev>.report.json` để xem số câu, domain, người nói và phát hiện critical. ID video ViMedCSS chỉ được tính là
+đơn vị nguồn. Dev CS đạt khi có ít nhất 1.500 câu, 4 domain và 100 người nói. Dùng `--kind vi` với nguồn thuần Việt nói tự
+nhiên, ngưỡng ít nhất 1 giờ. Thêm `--release dev/dev_v2_cs@1` hoặc `--release dev/dev_v2_vi@1` để đăng ký release đủ điều
+kiện, có audio và kèm `flags.independent` / `flags.exclusion_sets`. Sau đó đối chiếu `ck4132` với model gốc trên dev_v2.
 
 ## 2. Model: experiment -> artifact
 
@@ -67,11 +85,24 @@ python scripts/colab/pack_ft_bundle.py --out D:/gipbench_ft_bundle [--refs dev/<
 python scripts/colab/unpack_ft_bundle.py --bundle /content/drive/MyDrive/gipbench_ft --dest /content/gipbench
 ```
 
-Mở `scripts/colab/colab_ft.ipynb` trên Colab GPU, đặt `BRANCH`, `EXPERIMENT` và Secret `GH_TOKEN`, rồi chạy từ trên xuống.
+Mở `scripts/colab/colab_ft.ipynb` trên Colab GPU. Đặt `BRANCH` trỏ tới nhánh chứa cấu hình X0 và cấp quyền đọc repo bằng
+Secret `GH_TOKEN`. Giữ `RUN_EXPERIMENT = False` để kiểm CUDA/k2, giải nén gói Drive và chạy dry-run.
 Notebook chép `configs/paths.colab.yaml` thành `configs/paths.yaml`: data ở local, checkpoint / kết quả trên Drive;
 ba Python dùng chung môi trường Colab (biến môi trường trỏ tới đường dẫn tuyệt đối của `python3`).
-Cài k2 theo torch / CUDA hiện có; dry-run rồi cổng rò rỉ trước stage 1–6, watchdog dùng `/content` (chừa 5 GiB).
-Chưa kiểm trên Colab thật; `e4_x0.yaml` chưa có, cần hoàn thành TODO Phần 5 và bổ sung gói dev / catalog trước khi chạy.
+
+Gói gốc ở `D:/gipbench_ft_bundle`. Chép các shard 006–007 từ `data/tmp/colab_x0_bundle` vào cùng thư mục chứa các shard
+000–005 trên Drive, rồi dùng `bundle_index.json` mới trong thư mục bổ sung. Shard 006 chứa hai manifest bench v1.1 đã khoá
+và model ONNX INT8 cho baseline. Shard 007 chứa catalog train và file thuật ngữ đã chốt. Có thể chạy dry-run cục bộ trước
+khi tải gói lên.
+
+```bash
+python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 --dry-run
+python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 --seed 1 --dry-run
+```
+
+Lệnh đầu in cả hai seed. Lượt thật chạy lần lượt với `SEED = 0` và `SEED = 1`. Mỗi seed có thư mục làm việc, checkpoint,
+kết quả dev và artifact riêng. Chỉ bật `RUN_EXPERIMENT` khi đã bổ sung dev_v2, catalog train và `reserved_terms_v1.txt`.
+Notebook chạy cổng rò rỉ trước stage 1–6. Watchdog dùng `/content` và chừa 5 GiB.
 
 ## 3. Bench: system -> kết quả -> leaderboard
 
@@ -107,7 +138,7 @@ python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/<x>.jsonl -
 
 Benchmark đã khoá (`evidence_level: locked`): đổi câu / nhãn / chuẩn hoá = phiên bản mới, không sửa yaml / manifest cũ.
 
-Phiên bản benchmark v1.1 (draft, 17/11/2026; `docs/datasheet_bench_v1.md` mục 9):
+Phiên bản benchmark v1.1 (dựng 17/11/2026, **khoá 18/11/2026**, release `bench/{code-switch,external}-v1.1`; `docs/datasheet_bench_v1.md` mục 9):
 
 ```bash
 python -m gipbench.dataset.release.derive_v1_1 --which code_switch   # C0 + train_video_overlap (lát video chưa thấy)

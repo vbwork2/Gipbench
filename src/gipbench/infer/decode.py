@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Giải mã bench bằng model Zipformer-transducer ONNX (Gipformer hoặc bản FT export lại) qua sherpa-onnx.
 
-  # E0 baseline
-  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system e0_baseline
-  # E1 hotwords từ catalog
-  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system e1_hw2.0 \
+  # model gốc, không gợi ý
+  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system baseline
+  # hotwords từ catalog (catalog phải lấy từ nguồn ngoài test, xem inference mode context_bias)
+  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system hw2.0 \
       --hotwords-catalog configs/catalog.tsv --hotwords-score 2.0
-  # E1 hotwords + từ gây nhiễu (không có trong catalog; tạo bằng src/gipbench/model/systems/hotword_distractors.py), lấy mẫu 500 từ, có seed
-  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system e1_hw1.5_dis500 \
+  # hotwords + từ gây nhiễu (file TSV, cột đầu là từ; không có trong catalog), lấy mẫu 500 từ, có seed
+  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir models/gip15 --system hw1.5_dis500 \
       --hotwords-catalog configs/catalog.tsv --hotwords-distractors data/distractors.tsv \
       --hotwords-distractors-n 500 --hotwords-seed 0
-  # model FT đã export
-  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir exp/e3/onnx --system e3_ft
+  # model khác cùng kiến trúc, đã export ONNX
+  python -m gipbench.infer.decode --bench data/bench.jsonl --model-dir path/to/onnx --system my_model
 
 --model-dir cần: encoder*.onnx, decoder*.onnx, joiner*.onnx, tokens.txt (và bpe.model nếu dùng hotwords).
 Không có model trên máy: tải bằng  huggingface-cli download g-group-ai-lab/gipformer1.5-68M-rnnt --local-dir models/gip15
@@ -50,7 +50,7 @@ def write_hotwords(catalog: Catalog, out: Path, case: str, include_reserved: boo
 
 
 def read_distractors(path) -> list:
-    """Đọc file từ gây nhiễu (src/gipbench/model/systems/hotword_distractors.py): cột đầu của mỗi dòng, bỏ dòng trống và dòng '#'."""
+    """Đọc file từ gây nhiễu (TSV): cột đầu của mỗi dòng, bỏ dòng trống và dòng '#'."""
     out = []
     for line in open(path, encoding="utf-8"):
         t = line.rstrip("\n").split("\t")[0].strip()
@@ -96,7 +96,7 @@ def main():
     ap.add_argument("--hotwords-exclude-b3", action="store_true",
                     help="bỏ thuật ngữ reserved_b3 khỏi danh sách (mặc định giữ: biasing được phép biết danh sách thuật ngữ lúc decode)")
     ap.add_argument("--hotwords-score", type=float, default=1.5)
-    ap.add_argument("--hotwords-distractors", help="file từ gây nhiễu (src/gipbench/model/systems/hotword_distractors.py) trộn vào hotwords, cùng điểm "
+    ap.add_argument("--hotwords-distractors", help="file từ gây nhiễu (TSV, cột đầu là từ) trộn vào hotwords, cùng điểm "
                                                    "với thuật ngữ thật; cần --hotwords-catalog hoặc --hotwords-file")
     ap.add_argument("--hotwords-distractors-n", type=int, default=None, help="số từ gây nhiễu lấy mẫu (mặc định: tất cả)")
     ap.add_argument("--hotwords-seed", type=int, default=0, help="seed lấy mẫu từ gây nhiễu")

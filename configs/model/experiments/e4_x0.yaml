@@ -1,0 +1,49 @@
+name: e4_x0
+description: Vietnamese replay control for Gipformer 1.5
+base_model: models/gip15
+catalog: catalog/train-v1
+leak_guard: bench/general-v1.0
+leak_gate:
+  mode: fail
+  reserved_terms: configs/dataset/reserved_terms_v1.txt
+dev:
+  cs: dev/dev_v2_cs@1
+  vi: dev/dev_v2_vi@1
+seeds: [0, 1]
+
+pools:
+  replay_human:
+    weight: 1.0
+    datasets: [vivos]
+    refs: [pool/vivos_train@v2]
+
+features: {speed_perturb: true, phone_sim: 0.3}
+mix: {epochs: 2, epoch_hours: 20, max_views: 8}
+
+train:
+  lr: 0.0003
+  # At 20 hours this keeps the estimated checkpoint interval above Icefall's 200-step averaging period.
+  max_duration: 60
+  freeze: "encoder_embed.,encoder.encoders.0.,encoder.encoders.1."
+  model_args: "--use-transducer 1 --use-ctc 0"
+  drop_ctc: true
+  workers: 2
+  buckets: 10
+  keep_last_k: 40
+  segments_per_epoch: 4
+  watchdog: {min_free_disk_gb: 5, min_ram_mb: 1024, ram_grace_s: 180, hang_s: 600, poll_s: 60}
+
+select:
+  rule: cs_wer
+  max_vi_delta: 0.3
+  max_vi_ci_upper: 0.5
+  max_vi_hallucination_delta: 0.0
+  max_cs_domain_delta: 1.0
+  wise_alphas: [0.3, 0.5, 0.7, 1.0]
+decode_dev: {threads: 2, batch: 1}
+
+output:
+  exp_dir: ${exp_root}/e4_x0
+  work_dir: data/work/model/e4_x0
+  dev_results: ${results_root}/e4_x0_dev
+  artifact: ${exp_root}/artifacts/e4_x0

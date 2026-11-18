@@ -137,12 +137,19 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
 10. **E0 trùng nguồn train của VieGem** ở FLEURS, CV17, PhoAudiobook, LSVSC, Bud500, GigaSpeech2, ViMD, ViMedCSS
     (model card VieGem liệt kê các bộ này trong dữ liệu train, "đã lọc theo câu test"). VietMed và Speech-MASSIVE không có
     trong danh sách đó. Mức trùng của Gipformer: unknown (không công bố dữ liệu train).
-11. **E0: kết quả tham chiếu ở mục 8c** (18/11/2026, E0 v1.1 draft, đủ 32 203 câu). Một clip
+11. **E0: kết quả tham chiếu ở mục 8c** (18/11/2026, E0 v1.1 khoá, đủ 32 203 câu). Một clip
     `e0_vimedcss_test_Med_CS-4072_1-13` có file audio rỗng (44 byte, chỉ header WAV) ngay từ nguồn tải: cả hai hệ ra
-    chuỗi rỗng (tính toàn bộ là xoá). Đề xuất bỏ câu này khi khoá E0 v1.1 (chờ người dùng duyệt).
+    chuỗi rỗng (tính toàn bộ là xoá). Người dùng quyết định **giữ** câu này khi khoá E0 v1.1 (18/11/2026), để v1.1 khớp
+    v1.0 từng câu; ảnh hưởng như nhau với mọi hệ (1 / 32 203 câu).
 12. **Bộ trùng nhau giữa các track**: C1 ⊂ G0 (1 260 câu cùng audio); CV17 test (E0) chứa 1 024 / 1 274 clip của CV27 test
-    (G0), 143 / 146 người nói; C0 ∩ E0 `vimedcss_test` 113 video. Số câu **không trùng** của cả gói là **36 237**
-    (= 4 400 + 658 + 32 203 − 1 024; đính chính: bản trước ghi 37 261, chưa trừ clip CV trùng).
+    (G0), 143 / 146 người nói; C0 ∩ E0 `vimedcss_test` 113 video. Số câu **không trùng** của cả gói là **36 236**
+    (= 4 400 + 658 + 32 203 − 1 024 − 1; `package.py` tính bằng hợp mã clip / `audio_sha256` / (họ bộ, upstream_id) và
+    ghi vào `release.json`). Bản trước ghi 37 261 (chưa trừ clip CV trùng), rồi 36 237 (đếm theo id, chưa thấy cặp dưới).
+13. **Hai câu ViMedCSS test cùng audio, khác lời thoại** (phát hiện 18/11/2026 khi đếm câu không trùng):
+    `e0_vimedcss_test_Med_CS-4819-2` (video `68Co3q2MfKA`) và `e0_vimedcss_test_Med_CS-5081_1-1` (video `y-Lpbnx9QmE`) có
+    cùng `audio_sha256` `4f10b21eaba5…` (7,0 s) nhưng lời thoại khác nhau: nguồn gắn nhầm audio cho ít nhất một câu. Cả hai
+    thuộc lát `train_video_overlap = false` của E0 (100 câu), nên lát này có ≥ 1 câu nhãn sai. E0 v1.1 đã khoá nên giữ
+    nguyên; bản sau nên loại cả hai câu.
 
 ## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 
@@ -183,7 +190,7 @@ lần). Lỗi G-Group của Whisper rải đều (WER trung vị theo câu 33%),
 cho kênh…"). Hệ quả cho FT: CS-WER ~54 là mức một model đa ngữ lớn đạt được mà không train trên G-Group, nên phần lớn
 khoảng cách 70 → 54 của Gipformer nằm ở năng lực tiếng Anh của model, không phải giới hạn của audio / nhãn C1.
 
-### 8b. C0 tách theo video đã thấy khi train (code_switch v1.1, draft, cùng hyps với mục 8; 17/11/2026)
+### 8b. C0 tách theo video đã thấy khi train (code_switch v1.1, khoá 18/11/2026, `--mode final`, cùng hyps với mục 8)
 
 | Lát C0 | Câu | Gipformer WER / CS-WER / CS-WER S+D / term recall | VieGem WER / CS-WER / CS-WER S+D / term recall |
 | --- | --- | --- | --- |
@@ -202,7 +209,7 @@ hai model ngang nhau và term recall của VieGem giảm một nửa (20.75 → 
 học đúng quy ước viết từ Anh của ViMedCSS (đổi bản tag làm CS-WER đổi ~6 điểm theo hai chiều; `docs/evaluation_metrics_v1.md`
 mục 2b), không chỉ do nhận dạng tốt hơn.
 
-### 8c. E0 (external v1.1, draft, 32 203 câu, `manifest_sha256` `2960680c…`; `--mode diagnostic`; 18/11/2026)
+### 8c. E0 (external v1.1, khoá 18/11/2026, 32 203 câu, `manifest_sha256` `2960680c…`; `--mode final`)
 
 Δ = VieGem − Gipformer, ghép cặp, CI95 bootstrap theo người nói (FLEURS: theo `sentence_id`). Δ > 0: Gipformer tốt hơn.
 
@@ -262,7 +269,7 @@ thì LM phải có text CS (từ `catalog/train-v1`, không từ bench) và ph�
 - `bench_version` trong mỗi dòng; `release.json` và `SHA256SUMS` trong gói. Đổi bất kỳ câu / nhãn / chuẩn hoá nào =
   phiên bản mới; bản đã phát hành không bị sửa.
 - v1.0 = G0 + C0 + C1 như trên; v1.1 = v1.0 + E0 (`external_v1`, 32 203 câu, `manifest_sha256`
-  `f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd`). Bộ riêng tư (consensus) **không** share,
+  `f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd`). Bộ riêng tư **không** share,
   chỉ chấm hộ.
 
   | Benchmark | Track | Câu | manifest_sha256 |
@@ -273,16 +280,16 @@ thì LM phải có text CS (từ `catalog/train-v1`, không từ bench) và ph�
 
   C0 khoá cả catalog chấm (`catalog_sha256` `a21c590e…`). manifest_sha256 tính trên mọi trường trừ đường dẫn `audio`,
   nên manifest do `fetch` ghi ra (thêm đường dẫn audio cục bộ) vẫn khớp bản khoá.
-- **Phiên bản benchmark v1.1 (draft, 17/11/2026).** Lưu ý tên: "bench v1.1" ở trên là phiên bản **gói**; `code_switch v1.1`
-  / `external v1.1` là phiên bản **từng benchmark**, sẽ vào gói kế tiếp khi được khoá. Cùng câu, lời thoại, chuẩn hoá với
+- **Phiên bản benchmark v1.1 (dựng 17/11/2026, khoá 18/11/2026).** Lưu ý tên: "bench v1.1" ở trên là phiên bản **gói**; `code_switch v1.1`
+  / `external v1.1` là phiên bản **từng benchmark**, sẽ vào gói kế tiếp. Cùng câu, lời thoại, chuẩn hoá với
   v1.0 (bản khoá v1.0 giữ nguyên); dựng bằng `python -m gipbench.dataset.release.derive_v1_1`.
 
-  | Benchmark | Khác v1.0 | manifest_sha256 lúc dựng | Trạng thái |
+  | Benchmark | Khác v1.0 | manifest_sha256 | Trạng thái |
   | --- | --- | --- | --- |
-  | `code_switch_v1_1` | thêm `train_video_overlap`; nhóm báo cáo theo trường này; `alt_label_fields: [text_tagged_orig]` | `3af637ff…` | draft, chờ duyệt khoá |
-  | `external_v1_1` | `audio` + `audio_sha256` + `duration` thật (5 951 sha256 của v1.0 khớp lại sha256 lúc tải); speaker / source ViMedCSS test chuẩn hoá `yt_<ID>` / `youtube:<ID>` + `train_video_overlap`; bootstrap FLEURS theo `sentence_id` | `723d5cac…` (đổi khi ViMD tải xong) | draft: ViMD còn 1 736 câu chưa có audio; khoá cần đủ sha256 (`require_audio_sha`) |
+  | `code_switch_v1_1` | thêm `train_video_overlap`; nhóm báo cáo theo trường này; `alt_label_fields: [text_tagged_orig]` | `3af637ffa603b0259268c98ec4432ff56d23d16f014cc575d90a347199d079ba` | **khoá 18/11/2026**; release `bench/code-switch-v1.1` |
+  | `external_v1_1` | `audio` + `audio_sha256` + `duration` thật (5 951 sha256 của v1.0 khớp lại sha256 lúc tải); speaker / source ViMedCSS test chuẩn hoá `yt_<ID>` / `youtube:<ID>` + `train_video_overlap`; bootstrap FLEURS theo `sentence_id` | `2960680ca6b8476ec73b20f0c8c9295e617e7e0a3533a949afb1a2cae9c26be3` (dựng lại 17/11 21:31 sau khi ViMD tải xong) | **khoá 18/11/2026**: 32 203 / 32 203 câu có `audio_sha256` (`require_audio_sha`); release `bench/external-v1.1` |
 
 - **Đính chính 17/11/2026** (audit `reports/audits/full_research_audit_vi.md`): số trùng video ViMedCSS 308 / 201 → **388 / 248**;
-  số câu không trùng của gói 37 261 → **36 237**. Không bộ khoá nào bị sửa.
+  số câu không trùng của gói 37 261 → 36 237 → **36 236** (18/11: cặp audio trùng ở mục 7 ý 13). Không bộ khoá nào bị sửa.
 - License của gói = license của từng bộ nguồn (mục 2); phần phái sinh từ VIVOS phân phối theo CC-BY-NC-SA-4.0.
   Trích dẫn từng bộ nguồn khi dùng.

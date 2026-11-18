@@ -15,7 +15,7 @@ E0 chỉ có kết quả của chính bạn: gói không kèm hyps của model g
 
 ## Các bộ trong gói
 
-Số câu không trùng là 36 237 (4 400 + 658 + 32 203 − 1 024): C1 là tập con của G0, và 1 024 clip CV17 test (E0) cũng có trong CV27 test (G0). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng.
+Số câu không trùng là 36 236 (4 400 + 658 + 32 203 − 1 024 − 1; `release.json` ghi `distinct_utterances`): C1 là tập con của G0, 1 024 clip CV17 test (E0) cũng có trong CV27 test (G0), và hai câu ViMedCSS test có audio giống hệt nhau (lời thoại khác nhau, lỗi của nguồn: datasheet mục 7 ý 13). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng. Lời thoại "**không**": gói không kèm text, `fetch` lấy lại đúng lời thoại từ nguồn (bộ gated, bản đăng lại, hoặc license ND chưa rà xong).
 
 | Track | Bộ | Nguồn | Split | Câu | Giờ | Người nói | License | Lời thoại trong gói | Train VieGem (model card) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -31,13 +31,13 @@ Số câu không trùng là 36 237 (4 400 + 658 + 32 203 − 1 024): C1 là tậ
 | E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | có | có |
 | E0 | `vietmed` | leduckhai/VietMed | test | 3 437 | 6.02 | 27 | MIT | có | không |
 | E0 | `phoaudiobook` | thivux/phoaudiobook (gated) | test | 383 | 1.24 | 40 | điều khoản riêng | **không** | có |
-| E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | có | có |
-| E0 | `bud500` | linhtran92/viet_bud500 (gated) | test | 7 500 | – | – | CC-BY-NC-SA-4.0 | có | có |
+| E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | **không** | có |
+| E0 | `bud500` | linhtran92/viet_bud500 (gated) | test | 7 500 | – | – | CC-BY-NC-SA-4.0 | **không** | có |
 | E0 | `gigaspeech2_vi` | speechcolab/gigaspeech2 vi (gated) | test | 4 422 | – | – | điều khoản riêng | **không** | có |
-| E0 | `vimd` | nguyendv02/ViMD_Dataset | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 | có | có |
+| E0 | `vimd` | nguyendv02/ViMD_Dataset | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 | **không** | có |
 | E0 | `vimedcss_test` | tensorxt/ViMedCSS | test | 1 614 | – | 995 video | CC-BY-4.0 | có | có |
 | E0 | `speech_massive_vi` | FBK-MT/Speech-MASSIVE vi-VN | validation | 2 033 | – | 28 | CC-BY-NC-SA-4.0 | có | không |
-| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 | có | không |
+| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 | **không** | không |
 
 Cột cuối lấy từ model card VieGem-ASR. Bộ ghi "có" nằm trong dữ liệu train của VieGem, nên không dùng để kết luận VieGem tổng quát hoá tốt; bộ "không nêu" chỉ nghĩa là model card không liệt kê, chưa phải bằng chứng bộ đó sạch. Mức trùng của Gipformer: chưa rõ (không công bố dữ liệu train).
 

@@ -10,10 +10,10 @@ purpose: >-
   Đo từ tiếng Anh trong câu tiếng Việt (CS-WER strict, term recall, span accuracy) trên ViMedCSS split hard, báo riêng
   lát video chưa có trong ViMedCSS train. VieGem-ASR đã train trên ViMedCSS train (cùng bộ) nên số overall KHÔNG phải
   zero-shot với VieGem; đọc lát train_video_overlap:False.
-evidence_level: draft          # chờ duyệt khoá; câu / nhãn giống hệt v1.0, chỉ thêm trường đánh dấu
+evidence_level: locked         # khoá 18/11/2026: câu / nhãn / chuẩn hoá giống hệt v1.0, chỉ thêm trường train_video_overlap
 status: active
 manifest: ${data_root}/benchmarks/code_switch_v1_1/manifest.jsonl
-manifest_sha256: 3af637ffa603b0259268c98ec4432ff56d23d16f014cc575d90a347199d079ba   # sha lúc dựng (chưa khoá)
+manifest_sha256: 3af637ffa603b0259268c98ec4432ff56d23d16f014cc575d90a347199d079ba   # khoá 18/11/2026 (= sha lúc dựng 17/11)
 catalog: ${data_root}/raw/vimedcss_hard/catalog_vimedcss.tsv
 catalog_sha256: a21c590e064dc3799961c6e58fdbf43ae3eb1a1b4daa56a5803dfe35088589f5
 profile: gipbench_strict_v1

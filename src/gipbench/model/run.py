@@ -66,17 +66,20 @@ def opt_args(d):
 
 
 class Ctx:
-    def __init__(self, exp, dry):
-        self.exp, self.dry = exp, dry
+    def __init__(self, exp, dry, seed=None):
+        self.exp, self.dry, self.seed = exp, dry, seed
         self.py = str(paths.path("python_cpu"))
         self.py_ft = str(paths.path("python_ft"))
         self.icefall = X.abspath(paths.get("icefall"))
         self.model = X.abspath(exp["base_model"])
         o = exp["output"]
-        self.work = X.abspath(o["work_dir"])
-        self.exp_dir = X.abspath(o["exp_dir"])
-        self.rd = X.abspath(o["dev_results"])
-        self.artifact = X.abspath(o["artifact"])
+        subdir = f"seed-{seed}" if seed is not None else ""
+        self.work = X.abspath(o["work_dir"]) / subdir
+        self.exp_dir = X.abspath(o["exp_dir"]) / subdir
+        self.rd = X.abspath(o["dev_results"]) / subdir
+        self.artifact = X.abspath(o["artifact"]) / subdir
+        self.seed_args = [] if seed is None else ["--seed", str(seed)]
+        self.init_ckpt = (self.model if seed is None else self.work) / "init_ft.pt"
         self.cat = R.release_dir(exp["catalog"]) / "catalog.tsv"
         self.guard_refs = LG.guard_refs(exp)
         if not self.guard_refs:
@@ -140,7 +143,10 @@ def stage_prepare(c):
     if c.dry:
         return
     c.work.mkdir(parents=True, exist_ok=True)
-    (c.work / "experiment.resolved.yaml").write_text(yaml.safe_dump(dict(c.exp), allow_unicode=True, sort_keys=False),
+    resolved = dict(c.exp)
+    if c.seed is not None:
+        resolved["run_seed"] = c.seed
+    (c.work / "experiment.resolved.yaml").write_text(yaml.safe_dump(resolved, allow_unicode=True, sort_keys=False),
                                                      encoding="utf-8")
     res = LG.run_gate(c.exp["name"], c.guard_refs, jobs, mode=g["mode"],
                       exemptions=str(X.abspath(g["exemptions"])) if g["exemptions"] else None,
@@ -183,9 +189,12 @@ def stage_prepare(c):
 # ------------------------------------------------------------------ stage 1
 def stage_curate(c):
     print("== 1. curate")
+    curate = dict(c.exp.get("curate") or {})
+    if c.seed is not None:
+        curate["seed"] = c.seed
     c.run([c.py, "-m", "gipbench.model.recipe.curate", "--manifest", *[p for _, p in c.inputs], "--catalog", c.cat,
            "--out", c.work / "train_curated.jsonl", *(["--allow-bench-catalog"] if c.oracle else []),
-           *opt_args(c.exp.get("curate"))])
+           *opt_args(curate)])
 
 
 # ------------------------------------------------------------------ stage 2
@@ -201,7 +210,7 @@ def stage_features(c):
     aug = (["--speed-perturb"] if f.get("speed_perturb") else []) + (["--phone-sim", f["phone_sim"]] if f.get("phone_sim") else [])
     tail = ["--bench", c.bench, "--catalog", c.cat, "--out", c.lhotse]
     for g, p in sorted(files.items()):
-        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", p, "--name", g, *tail, *aug])
+        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", p, "--name", g, *tail, *aug, *c.seed_args])
     for k in ("cs", "vi"):
         c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.dev[k], "--name", f"dev_{k}", *tail])
 
@@ -217,14 +226,14 @@ def stage_mix(c):
             args += ["--group", f"{g['group']}={p}:{g['weight']}"]
     c.run([c.py_ft, "-m", "gipbench.model.features.mix_cuts", *args, "--epoch-hours", m["epoch_hours"],
            "--epochs", m["epochs"], *(["--max-views", m["max_views"]] if m.get("max_views") else []),
-           "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
+           *c.seed_args, "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
 
 
 # ------------------------------------------------------------------ stage 4
 def finetune_cmd(c, seg):
     t, lh = c.exp["train"], c.lhotse
     return lambda res: [c.py_ft, "./zipformer/finetune_cs.py", "--world-size", "1", "--use-fp16", "1",
-                        *t["model_args"].split(), *res, "--exp-dir", str(c.exp_dir), "--bpe-model", str(c.model / "bpe.model"),
+                        *t["model_args"].split(), *res, *c.seed_args, "--exp-dir", str(c.exp_dir), "--bpe-model", str(c.model / "bpe.model"),
                         "--freeze-modules", t["freeze"], "--train-cuts", str(lh / "train_mix_cuts.jsonl.gz"),
                         "--valid-cuts", str(lh / "dev_cs_cuts_raw.jsonl.gz"), str(lh / "dev_vi_cuts_raw.jsonl.gz"),
                         "--on-the-fly-feats", "True", "--num-workers", str(t.get("workers", 2)),
@@ -242,18 +251,18 @@ def stage_finetune(c):
     seg, eps = IR.segment_plan(steps, t.get("segments_per_epoch", 4))
     print(f"== 4. finetune (LR {t['lr']}, freeze {t['freeze']}) -> {c.exp_dir}")
     print(f"  ước tính {steps} step / epoch ảo -> checkpoint mỗi {seg} step, epoch ảo = {eps} step")
-    c.run([c.py_ft, "-m", "gipbench.model.train.wrap_ckpt", c.model / "model.pt", c.model / "init_ft.pt"]
+    c.run([c.py_ft, "-m", "gipbench.model.train.wrap_ckpt", c.model / "model.pt", c.init_ckpt]
           + (["--drop-ctc"] if t.get("drop_ctc") else []))
     c.run([c.py_ft, "-m", "gipbench.model.train.patch_finetune", "--icefall", c.icefall])
     cmd = finetune_cmd(c, seg)
     if c.dry:
-        print(f"$ (cd {c.egs}) " + " ".join(cmd(IR.resume_args(c.exp_dir, c.model / "init_ft.pt"))) + f" >> {c.work}/finetune.log")
+        print(f"$ (cd {c.egs}) " + " ".join(cmd(IR.resume_args(c.exp_dir, c.init_ckpt))) + f" >> {c.work}/finetune.log")
         print(f"  watchdog {t.get('watchdog')}; resume: --do-finetune 0 --start-epoch 2 --num-epochs 1 --start-batch <N>")
         return
     wd = t.get("watchdog", {})
     runner = IR.Runner(cmd, cwd=c.egs, env=c.icefall_env(), exp_dir=c.exp_dir, eps=eps, log=c.work / "finetune.log",
                        seg_log=c.work / "segments.log", watchdog=wd, disk_path=wd.get("disk_path", str(c.work)))
-    res = runner.run(c.model / "init_ft.pt")
+    res = runner.run(c.init_ckpt)
     if res != "done":
         raise SystemExit(f"finetune dừng: {res}")
 
@@ -296,11 +305,12 @@ def natural(p):
 
 def select(c, cands, out):
     sel = c.exp.get("select", {})
+    limits = {key: sel.get(key) for key in ("max_vi_ci_upper", "max_vi_hallucination_delta", "max_cs_domain_delta")}
     c.run([c.py, "-m", "gipbench.model.select.select_ckpt", "--catalog", c.cat, "--dev-cs", c.dev["cs"], "--dev-vi", c.dev["vi"],
            "--base", c.rd / "base", "--cand", *cands, "--max-vi-delta", sel.get("max_vi_delta", 0.3),
            "--rule", sel.get("rule", "term_acc_macro"), "--dev-ref-cs", c.exp["dev"]["cs"], "--dev-ref-vi", c.exp["dev"]["vi"],
            *(["--allow-legacy-dev"] if sel.get("allow_legacy_dev") else []), *(["--allow-bench-catalog"] if c.oracle else []),
-           "--out", out])
+           *opt_args(limits), "--out", out])
     return None if c.dry else json.loads(Path(f"{out}.json").read_text(encoding="utf-8"))
 
 
@@ -326,7 +336,7 @@ def stage_select(c):
         best = min((k for k in r["results"] if k.startswith("ck")), key=lambda k: r["results"][k]["cs_wer"])
         wck = best if pick == "base" else pick
     print(f"  checkpoint theo luật: {pick}; WiSE-FT trên: {wck}")
-    c.run([c.py_ft, "-m", "gipbench.model.select.interpolate_ckpt", "--base", c.model / "init_ft.pt",
+    c.run([c.py_ft, "-m", "gipbench.model.select.interpolate_ckpt", "--base", c.init_ckpt,
            "--ft", c.exp_dir / f"checkpoint-{wck[2:]}.pt", "--ft-key", "model", "--alphas", *map(str, alphas),
            "--out-dir", c.exp_dir / "wise", "--epoch", "1"])
     wise = []
@@ -359,6 +369,9 @@ def stage_select(c):
             "git_commit": R.git_commit()}
     if c.oracle:
         card.update(inference_mode="oracle_bias", rankable=False)
+    if c.seed is not None:
+        card["seed"] = c.seed
+        card["mix"] = json.loads((c.lhotse / "train_mix_cuts.jsonl.gz.json").read_text(encoding="utf-8"))
     onnx_export.write_artifact(c.artifact, md, card)
     for ext in ("json", "md"):
         shutil.copy(c.work / f"leak_report.{ext}", c.artifact / f"leak_report.{ext}")
@@ -402,14 +415,20 @@ def main():
     ap.add_argument("experiment")
     ap.add_argument("--stages", default="0-6", help="vd 0-6, 2-3, 4")
     ap.add_argument("--set", action="append", default=[], metavar="KHOÁ=GIÁ_TRỊ", help="ghi đè config, vd train.lr=0.001")
+    ap.add_argument("--seed", type=int, help="Run a single configured seed")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     exp = X.load(args.experiment, args.set)
-    c = Ctx(exp, args.dry_run)
-    for i in parse_stages(args.stages):
+    stages = parse_stages(args.stages)
+    for i in stages:
         if not 0 <= i < len(STAGES):
             sys.exit(f"stage {i} không có (0–{len(STAGES) - 1})")
-        STAGES[i](c)
+    for seed in X.run_seeds(exp, args.seed, args.dry_run):
+        c = Ctx(exp, args.dry_run, seed=seed)
+        if seed is not None:
+            print(f"== {exp['name']} seed {seed}")
+        for i in stages:
+            STAGES[i](c)
 
 
 if __name__ == "__main__":
