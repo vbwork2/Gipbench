@@ -238,7 +238,7 @@ Luật cho **mọi** lần chạy:
 
 - [ ] **Chạy trên Colab** (17/11): dữ liệu + model gốc qua Drive b.vinh2005 (Drive for desktop), code bằng `git clone`. RUNBOOK mục 2b.
   - [x] `scripts/colab/pack_ft_bundle.py` / `unpack_ft_bundle.py` (+ `tests/dataset/test_colab_bundle.py`): gói 6 pool (v2 + vss_cs / distill e3_v1) + `models/gip15` (model.pt, bpe, tokens) + manifest mọi bench / catalog = 18 848 file, 4.28 GB, 6 shard (000–005; 005 là lượt gói bổ sung) ở `D:/gipbench_ft_bundle`.
-  - [ ] 👤 Hoàn tất chép index hiện hành và shard 000–009 từ `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft`.
+  - [x] 👤 Đã chép index hiện hành và shard 000–009 từ `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft` (19/11; Claude đối chiếu cỡ 10/10 shard + index với `bundle_index.json`, chưa kiểm sha256 phía Drive: notebook kiểm khi giải nén).
   - [x] `configs/paths.colab.yaml` + `scripts/colab/colab_ft.ipynb`: chung Python Colab, k2 khớp torch / CUDA, checkpoint trên Drive, watchdog `/content` (chừa 5 GiB); có test cấu hình / notebook.
   - [x] Commit + push nhánh `fix/scorer-leak-audit` (18/11, `044e7fe`; notebook clone đúng nhánh này).
   - [x] 👤 Đã có Secret `GH_TOKEN` trong Colab (người dùng xác nhận 19/11).
