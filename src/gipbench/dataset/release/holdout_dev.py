@@ -29,6 +29,8 @@ import argparse
 import csv
 import hashlib
 import json
+import os
+import re
 import shutil
 from collections import defaultdict
 from pathlib import Path
@@ -40,6 +42,24 @@ from gipbench.core.textnorm import Catalog, normalize_ref
 from gipbench.dataset.pseudolabel.listen_sample import REVIEW_COLS, load_rows, local_audio, read_csv
 
 _CAT = Catalog()
+
+
+def portable_audio(a, base: Path) -> str:
+    """Đường audio viết tương đối theo `base` (thư mục của jsonl ghi ra), dấu '/'. Đường Windows `D:\\...` đọc trên Linux
+    được đổi sang `/mnt/d/...` trước. Release mang đường tuyệt đối của một máy sẽ hỏng khi chép sang WSL / Colab."""
+    a = str(a or "")
+    m = re.match(r"([A-Za-z]):[\\/](.*)", a)
+    if m and os.name != "nt":
+        a = f"/mnt/{m.group(1).lower()}/{m.group(2)}"
+    if os.name != "nt":
+        a = a.replace("\\", "/")
+    p = Path(a)
+    if not a or not p.is_absolute():
+        return a.replace("\\", "/")
+    try:
+        return os.path.relpath(p, base).replace("\\", "/")
+    except ValueError:  # khác ổ đĩa (Windows)
+        return str(p).replace("\\", "/")
 
 
 def video_of(r: Dict) -> str:
@@ -86,7 +106,8 @@ def cmd_select(args):
                 reuse[x["id"]] = x
     out = Path(args.out)
     (out / "audio").mkdir(parents=True, exist_ok=True)
-    abs_rows = lambda rs: (dict(r, audio=str(local_audio(r) or r.get("audio"))) for r in rs)  # noqa: E731
+    abs_rows = lambda rs: (dict(r, audio=portable_audio(local_audio(r) or r.get("audio"), out.resolve()))  # noqa: E731
+                           for r in rs)
     write_jsonl(str(out / "heldout.jsonl"), abs_rows(held))
     write_jsonl(str(out / "candidates.jsonl"), abs_rows(cand))
     sheet, reused, missing = [], [], []
@@ -259,6 +280,8 @@ def cmd_apply(args):
         fixed = (x.get("text_tagged_fixed") or "").strip() if dec == "fix" else ""
         tt = fixed or r.get("text_tagged") or ""
         row = {k: v for k, v in r.items() if not k.startswith("_")}
+        if row.get("audio"):  # candidates cũ (trước 19/11) ghi đường tuyệt đối của máy chạy select
+            row["audio"] = portable_audio(row["audio"], d.resolve())
         how = "auto:asr_agree" if (x.get("note") or "").strip() == AUTO_NOTE else "human:listen_review"
         row.update(text_tagged=tt, text=detag(tt), label_source=f"{how}(from {r.get('label_source', '?')})",
                    label_review=dec, text_tagged_pseudo=r.get("text_tagged", ""))

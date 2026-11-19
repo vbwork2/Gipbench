@@ -81,7 +81,23 @@ mọi ASR khác họ (VI chỉ có 6 / 365 câu nên giữ lại cả để ki�
 Phiếu gộp để nghe một lượt: `data/listen/pending_all/listen.csv`. Nghe phiếu gộp thì chạy `apply` cho từng thư mục với
 `--review "$(pwd)/data/listen/pending_all/listen_reviewed.csv"` (mỗi `apply` chỉ lấy id của mình).
 
-`--interim` đòi mọi câu có `label_source: human:*` (hoặc `auto:asr_agree` từ `triage`). Ngưỡng: CS ≥ 300 câu, VI ≥ 1 giờ. Release gắn
+LLM rà ngữ cảnh một lượt (tuỳ chọn, trước hoặc giữa lúc nghe): đánh dấu từ không hợp nghĩa với từ trước / sau, từ Anh lạ
+ngữ cảnh, và từ trông như tiếng Anh mà chưa gắn `<en>`. Ghi cột `llm_suspects`; trang duyệt gạch chân sóng các từ đó, câu có
+dấu ◆ ở danh sách, phím `F` nhảy tới câu kế tiếp. LLM chỉ đánh dấu, không sửa nhãn. Cache ở `llm_check.jsonl` cạnh phiếu,
+chạy lại chỉ hỏi câu mới / đổi nhãn.
+
+```bash
+export OPENAI_API_KEY=...            # PowerShell: $env:OPENAI_API_KEY = "..."; OPENAI_MODEL / --model để đổi model
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all --dry-run      # xem prompt, không gọi API
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all --limit 20     # thử 20 câu, đọc kết quả
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all \
+  --skip-decided data/listen/pending_all/listen_reviewed.csv                                    # bỏ câu đã nghe
+```
+
+Đã nghe một phần trong trình duyệt thì xuất CSV trước rồi dùng `--skip-decided`. Mở lại `listen.csv` trên trang: tiến độ
+vẫn còn (lưu theo tên file + số câu).
+
+`--interim` đòi mọi câu có `label_source: human:*` (hoặc `auto:asr_agree` từ `triage`). Ngưỡng: CS ≥ 300 câu, VI ≥ 0,75 giờ (dev tạm VI, chọn 19/11; dev VI đạt chuẩn vẫn ≥ 1 giờ). Release gắn
 `interim: true, representative: false, speaker_unit: video, carved_from`.
 
 ## 2. Model: experiment -> artifact

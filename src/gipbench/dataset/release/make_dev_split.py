@@ -250,6 +250,8 @@ def is_video_unit(unit):
 
 
 INTERIM_MIN_CS_ROWS = 300  # dev tạm: không đòi 4 domain / 100 người nói (không có nguồn, TODO 2e)
+# dev tạm VI: 0,75 h (người dùng chọn 19/11: nghe xong 214 / 365 câu = 0,76 h, bỏ 41%). Dev VI đạt chuẩn vẫn ≥ 1 h.
+INTERIM_MIN_VI_SECONDS = 0.75 * 3600
 
 
 def build_independent(args):
@@ -331,7 +333,8 @@ def build_independent(args):
     n_auto = sum(str(r.get("label_source") or "").startswith("auto:") for r in keep)
     if args.interim:
         # dev tạm cắt từ pool nhãn giả: mọi câu phải qua người nghe (holdout_dev apply), ngưỡng nới, cờ ghi rõ giới hạn
-        qualified = (len(keep) >= INTERIM_MIN_CS_ROWS if args.kind == "cs" else seconds >= 3600) and not unverified
+        qualified = (len(keep) >= INTERIM_MIN_CS_ROWS if args.kind == "cs" else seconds >= INTERIM_MIN_VI_SECONDS) \
+            and not unverified
     else:
         qualified = ((len(keep) >= 1500 and len(domains) >= 4 and len(speakers) >= 100)
                      if args.kind == "cs" else seconds >= 3600)
@@ -339,6 +342,8 @@ def build_independent(args):
     if args.interim:
         flags.update(interim=True, representative=False, speaker_unit="video", carved_from=list(args.carved_from),
                      labels_auto_asr_agree=n_auto,
+                     min_threshold=(f"rows>={INTERIM_MIN_CS_ROWS}" if args.kind == "cs"
+                                    else f"hours>={INTERIM_MIN_VI_SECONDS / 3600:g}"),
                      use="smoke test / X0 / chọn checkpoint; không claim general; không chấm checkpoint train trên carved_from")
     report = {"input_rows": len(rows), "kind": args.kind, "interim": bool(args.interim), "filter": stats,
               "domains": sorted(domains), "speakers": len(speakers), "speaker_units": len(units), "hours": seconds / 3600,

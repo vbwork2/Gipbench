@@ -188,11 +188,23 @@ Dev tạm này mở đường cho smoke test, X0 và chọn checkpoint. **Không
   VI ≥ 1 h. Release gắn `interim: true, representative: false, speaker_unit: video, carved_from`. Thêm: video VSS
   không còn được đếm là người nói (`is_video_unit`), và dev VI không tạm vẫn từ chối đơn vị video.
 - [x] `e4_x0.yaml` trỏ `dev/dev_interim_{cs,vi}@1`. Stage 0 sẽ dừng với lỗi "chưa có release" cho tới khi nghe xong.
-- [ ] 👤 Nghe `data/listen/dev_interim_cs/listen.csv` (401 câu) và `data/listen/dev_interim_vi/listen.csv` (365 câu) bằng
+- [x] 👤 Nghe `data/listen/dev_interim_cs/listen.csv` (401 câu) và `data/listen/dev_interim_vi/listen.csv` (365 câu) bằng
   `review_bench.html` (thư mục audio = `audio/` cạnh phiếu). Xuất thành `listen_reviewed.csv` trong cùng thư mục.
   Với VI: sửa chữ cho đúng; câu thật ra có từ Anh thì gắn `<en>`, câu đó sẽ tự rời dev VI.
   - Bản gộp để nghe một lượt: `data/listen/pending_all/listen.csv` (766 câu: 401 CS rồi 365 VI, cột `split` ghi phiếu gốc; audio là hardlink). Nghe bản gộp thì xuất `data/listen/pending_all/listen_reviewed.csv` và chạy `apply` với `--review` trỏ tới file đó (mỗi `apply` chỉ lấy id của phiếu mình).
-- [ ] Sau khi nghe: `holdout_dev apply` → `make_dev_split --interim … --release dev/dev_interim_{cs,vi}@1` (lệnh ở RUNBOOK).
+  - [ ] 👤 (tuỳ chọn) LLM rà ngữ cảnh một lượt: `dataset.label.llm_context_check` (OpenAI, cần `OPENAI_API_KEY`) ghi cột `llm_suspects`; trang duyệt gạch chân từ bị nghi, phím `F` nhảy câu nghi kế tiếp. Lệnh ở RUNBOOK. Key đọc từ `.env` (đã gitignore). 19/11: thử 20 câu, prompt v1 nhiễu (27 từ / 16 câu, bắt cả lặp từ văn nói) → prompt `ctx-v2` + lọc bỏ mục không có từ đề xuất: 8 từ / 8 câu, giữ các chỗ đúng (dấu→giấu, cờ gạo→cơm gạo, luật vi→lượt view, mát→match).
+- [x] 👤 Nghe xong 766 câu (19/11). Phiếu gộp `pending_all/listen_reviewed.csv`, bản gốc giữ ở `listen_reviewed.orig.csv`.
+  Claude sửa 4 lỗi gõ trong các câu `fix`: `cái1`, `<en>iTri thức</en> thức` → `<en>i</en> tri thức`,
+  `<en>airing ring</en>` → `<en>airing</en>`, khoảng trắng trong tag. CS: ok 257 / fix 67 / drop 9. VI: ok 213 / fix 1 /
+  **drop 151 (41%)**: nhãn giả `distill` VI sai nhiều, cần xem lại chất lượng `pool/distill@v5` trước X3+.
+- [x] `holdout_dev apply` → `make_dev_split --interim`:
+  - **`dev/dev_interim_cs@1`**: 323 câu / 1.18 h / 61 video / 8 domain.
+  - **`dev/dev_interim_vi@1`**: 213 câu / 0.76 h / 23 video.
+  - Cả hai 0 critical so với 12 tập, 0 nhãn chưa kiểm.
+  - Ngưỡng dev tạm VI hạ còn **0,75 h** (người dùng chọn 19/11, ghi ở cờ `min_threshold`), nên CI ΔWER VI rộng hơn.
+  - `apply` / `select` giờ ghi đường audio tương đối. Trước đó candidates mang `D:\...`, WSL / Colab không đọc được.
+  - Đã gói vào shard `gipbench_ft-009.tar` (`D:/gipbench_ft_bundle`).
+  - Stage 0 X0 chạy thật (19/11, WSL): ĐẠT, 0 critical.
 - ⚠️ **Giới hạn (ghi vào mọi báo cáo dùng dev tạm):**
   - cùng phân phối với vss_cs train (podcast, 80% `other`), giống thiết kế `dev_cs@e3_v1` từng báo "tốt lên" sai;
   - không đủ 4 domain; đơn vị người nói = video;

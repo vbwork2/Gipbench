@@ -5,79 +5,190 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Duyệt bench</title>
 <!--
-  Công cụ duyệt phiếu *_review.csv của converter (gipbench). Mở trực tiếp bằng trình duyệt, KHÔNG cần server/mạng
+  Công cụ duyệt phiếu *_review.csv / listen.csv (gipbench). Mở trực tiếp bằng trình duyệt, KHÔNG cần server/mạng
   (trừ khi audio là link HF). Xuất CSV đúng định dạng src/gipbench/dataset/release/build_bench.py đọc:
   decision (ok/fix/drop), text_tagged_fixed, viet_levels, reading_note, region, gender, note — các cột khác giữ nguyên.
   Cột hint (nếu có; vd listener_texts "A: ... || B: ..." của bộ consensus) được hiện làm gợi ý dưới câu.
-  Phím tắt: 1 = ok, 2 = drop, 3 = fix (sửa text_tagged; Enter lưu, Esc huỷ), Space = phát/dừng, R = phát lại,
-  ← / → = câu trước / sau, S / M / N = thêm mức Việt hoá strong / mid / native, Backspace = xoá mức cuối,
-  U = bỏ quyết định, Ctrl+S = xuất CSV. Sau 1 / 2 / lưu fix: tự sang câu chưa duyệt kế tiếp và phát audio.
+  Cột llm_suspects (nếu có; do dataset/label/llm_context_check.py ghi): từ LLM nghi sai theo ngữ cảnh được gạch chân sóng,
+  kèm lý do; câu có từ bị nghi mang dấu ◆ ở danh sách, phím F nhảy tới câu có dấu ◆ kế tiếp. Mỗi từ bị nghi có nút
+  "→ gợi ý" (thay luôn) và "✎ sửa" (tự gõ); phím W sửa riêng từ đang rê chuột (từ nào cũng được). Sửa từ -> câu thành fix.
+  Dạng sóng vẽ ngay trong trình duyệt từ file audio; bấm / kéo trên sóng để tua.
+  Phím tắt: 1 = ok (câu đang có bản sửa thì giữ bản sửa), 2 = drop, 3 = fix (sửa text_tagged; Enter lưu, Esc huỷ),
+  E = bật / tắt <en> cho từ đang rê chuột (hoặc các từ đang bôi đen; nhấp vào từ cũng được) -> câu thành fix,
+  Space = phát/dừng, R = phát lại, ← / → = câu trước / sau, [ / ] = chậm / nhanh hơn (0.75–2×),
+  S / M / N = thêm mức Việt hoá strong / mid / native, Backspace = xoá mức cuối, U = bỏ quyết định, Ctrl+S = xuất CSV.
+  Sau 1 / 2 / lưu fix: tự sang câu chưa duyệt kế tiếp.
   Tiến độ được lưu tạm trong trình duyệt (localStorage) theo tên file; vẫn phải bấm "Xuất CSV" để có file.
+  File xuất tên <phiếu>_reviewed.csv (listen.csv -> listen_reviewed.csv; x_review.csv -> x_reviewed.csv).
 -->
 <style>
-:root { --bg:#f7f7f5; --fg:#1d1d1b; --mut:#6b6b66; --card:#fff; --line:#dcdcd6; --en:#0b57d0; --enbg:#e8f0fe;
-        --ok:#1e7d32; --drop:#b3261e; --fix:#8a5a00; --warn:#fff4d6; }
+:root { --bg:#f6f6f3; --fg:#1d1d1b; --mut:#6b6b66; --card:#fff; --line:#dcdcd6; --soft:#efefeb; --wave:#a9a9a2;
+        --en:#0b57d0; --enbg:#e8f0fe; --ok:#1e7d32; --okbg:#e6f4ea; --drop:#b3261e; --dropbg:#fce8e6;
+        --fix:#8a5a00; --fixbg:#fef3d7; --warn:#fff4d6; --accent:#0b57d0; --accentfg:#fff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161615; --fg:#ececea; --mut:#a3a39d;
-        --card:#212120; --line:#3a3a37; --en:#8ab4f8; --enbg:#1f2a3d; --ok:#6dd58c; --drop:#f2b8b5; --fix:#ffd27a; --warn:#3b3220; } }
-:root[data-theme="dark"] { --bg:#161615; --fg:#ececea; --mut:#a3a39d; --card:#212120; --line:#3a3a37; --en:#8ab4f8;
-        --enbg:#1f2a3d; --ok:#6dd58c; --drop:#f2b8b5; --fix:#ffd27a; --warn:#3b3220; }
+        --card:#212120; --line:#3a3a37; --soft:#2a2a28; --wave:#5d5d58; --en:#8ab4f8; --enbg:#1f2a3d; --ok:#6dd58c; --okbg:#1c3324;
+        --drop:#f2b8b5; --dropbg:#3d2222; --fix:#ffd27a; --fixbg:#3b3220; --warn:#3b3220; --accent:#8ab4f8; --accentfg:#10213f; } }
+:root[data-theme="dark"] { --bg:#161615; --fg:#ececea; --mut:#a3a39d; --card:#212120; --line:#3a3a37; --soft:#2a2a28;
+        --wave:#5d5d58; --en:#8ab4f8; --enbg:#1f2a3d; --ok:#6dd58c; --okbg:#1c3324; --drop:#f2b8b5; --dropbg:#3d2222;
+        --fix:#ffd27a; --fixbg:#3b3220; --warn:#3b3220; --accent:#8ab4f8; --accentfg:#10213f; }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); }
-header h1 { font-size:16px; margin:0 8px 0 0; }
+code { font-size:13px; background:var(--soft); border-radius:4px; padding:0 4px; }
+
+/* thanh trên */
+header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
+.top { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:10px 16px; max-width:1240px; margin:0 auto; }
+.top h1 { font-size:16px; margin:0 6px 0 0; white-space:nowrap; }
+.grow { flex:1 1 auto; }
 label.btn, button { border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:6px; padding:5px 10px;
         font:inherit; cursor:pointer; }
+label.btn:hover, button:hover { border-color:var(--mut); }
+button.primary { background:var(--accent); color:var(--accentfg); border-color:var(--accent); font-weight:600; }
+button:disabled { opacity:.45; cursor:default; }
 input[type=file] { display:none; }
-main { display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:16px; padding:16px; max-width:1200px; margin:0 auto; }
-@media (max-width:820px) { main { grid-template-columns:1fr; } #list { max-height:240px; } }
-.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; }
-.meta { color:var(--mut); font-size:13px; display:flex; flex-wrap:wrap; gap:4px 14px; }
-.text { font-size:21px; line-height:1.6; margin:12px 0; word-wrap:break-word; }
-.text b.en { color:var(--en); background:var(--enbg); border-radius:4px; padding:0 3px; font-weight:700; }
-.orig { color:var(--mut); font-size:14px; }
-.flags span { background:var(--warn); border-radius:4px; padding:1px 6px; margin-right:6px; font-size:13px; }
-audio { width:100%; margin:8px 0; }
+.top input[type=text] { font:inherit; font-size:13px; background:var(--card); color:var(--fg); border:1px solid var(--line);
+        border-radius:6px; padding:5px 8px; width:260px; max-width:100%; }
+.progress { display:flex; align-items:center; gap:10px; padding:0 16px 8px; max-width:1240px; margin:0 auto; }
+.bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex:0 0 220px; }
+.bar i { display:block; height:100%; background:var(--ok); width:0; transition:width .2s; }
+.meta { color:var(--mut); font-size:13px; display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; }
+
+main { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:16px; padding:16px; max-width:1240px; margin:0 auto; }
+@media (max-width:860px) { main { grid-template-columns:1fr; } #list { max-height:240px; position:static; } .bar { flex-basis:120px; } }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0; }
+
+/* thông tin câu */
+.chip { border-radius:999px; padding:1px 9px; font-size:12px; font-weight:600; background:var(--soft); color:var(--fg); }
+.chip.cs { background:var(--enbg); color:var(--en); }
 .dec { font-weight:700; text-transform:uppercase; }
 .dec.ok { color:var(--ok); } .dec.drop { color:var(--drop); } .dec.fix { color:var(--fix); }
-.row { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; align-items:center; }
+.chip.dec.ok { background:var(--okbg); } .chip.dec.drop { background:var(--dropbg); } .chip.dec.fix { background:var(--fixbg); }
+
+/* trình phát + dạng sóng */
+#player { margin:12px 0 4px; display:none; }
+#wave { position:relative; height:96px; border-radius:8px; overflow:hidden; background:var(--soft); cursor:pointer; touch-action:none; }
+#waveCv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+#ph, #hov { position:absolute; top:0; bottom:0; left:0; width:2px; pointer-events:none; will-change:transform; }
+#ph { background:var(--fg); }
+#hov { background:var(--mut); opacity:.6; display:none; }
+#hovT { position:absolute; top:4px; left:0; font:12px/1.4 ui-monospace, Consolas, monospace; color:var(--bg);
+        background:var(--fg); border-radius:4px; padding:0 5px; pointer-events:none; display:none; white-space:nowrap; }
+#waveMsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--mut);
+        font-size:13px; text-align:center; padding:0 16px; pointer-events:none; }
+.transport { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:8px; }
+#playBtn { width:40px; height:40px; border-radius:50%; padding:0; font-size:16px; line-height:1; background:var(--accent);
+        color:var(--accentfg); border-color:var(--accent); }
+#replayBtn { height:32px; }
+#tm { font:13px ui-monospace, Consolas, monospace; color:var(--mut); min-width:120px; }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+.seg button { border:0; border-radius:0; padding:4px 10px; font-size:13px; background:var(--card); font-variant-numeric:tabular-nums; }
+.seg button + button { border-left:1px solid var(--line); }
+.seg button.on { background:var(--accent); color:var(--accentfg); font-weight:600; }
+.seglab { font-size:12px; color:var(--mut); margin-right:-6px; }
+
+/* câu + quyết định */
+.text { font-size:22px; line-height:1.75; margin:14px 0 2px; word-wrap:break-word; }
+.text b.en { color:var(--en); background:var(--enbg); border-radius:4px; padding:0 3px; font-weight:700; }
+.text .w { border-radius:4px; padding:0 1px; cursor:pointer; }
+.text .w:hover { box-shadow:inset 0 -2px 0 var(--en); }
+.text .w.en { color:var(--en); background:var(--enbg); font-weight:700; padding:0 3px; }
+.text .w.en.l { border-top-right-radius:0; border-bottom-right-radius:0; padding-right:0; }   /* nối các từ cùng một span */
+.text .w.en.r { border-top-left-radius:0; border-bottom-left-radius:0; padding-left:0; }
+.text .gap.en { background:var(--enbg); }
+.texthint { color:var(--mut); font-size:12px; margin-bottom:6px; }
+.orig { color:var(--mut); font-size:14px; margin-top:4px; }
+.flags span { background:var(--warn); border-radius:4px; padding:1px 6px; margin-right:6px; font-size:13px; }
+.hint { background:var(--soft); border-radius:8px; padding:8px 12px; margin-top:10px; font-size:14px; }
+.hint b { color:var(--mut); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+.text .w.sus { text-decoration:underline wavy var(--drop); text-decoration-thickness:1.5px; text-underline-offset:6px; }
+.hint.llm { background:var(--dropbg); }
+.hint.llm i { font-style:normal; color:var(--mut); }
+.hint.llm .sitem { margin-top:5px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
+button.mini { padding:1px 8px; font-size:13px; border-radius:5px; }
+button.mini.use { border-color:var(--ok); color:var(--ok); font-weight:600; }
+.text .w.editing { outline:2px solid var(--fix); }
+#wordbox { display:none; margin:4px 0 8px; padding:8px 10px; border:1px solid var(--fix); background:var(--fixbg);
+        border-radius:8px; font-size:14px; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+#wordbox input#wbIn { font:inherit; font-size:17px; background:var(--bg); color:var(--fg); border:1px solid var(--line);
+        border-radius:6px; padding:3px 8px; }
+#wordbox .wbhelp { color:var(--mut); font-size:12px; }
+#list .sus { color:var(--drop); margin-left:4px; }
+.decide { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.decide button { flex:1 1 120px; padding:9px 12px; font-weight:600; border-width:2px; }
+.decide kbd { font-weight:400; margin-left:6px; }
+.decide .ok { color:var(--ok); border-color:var(--ok); } .decide .ok.on { background:var(--okbg); }
+.decide .fix { color:var(--fix); border-color:var(--fix); } .decide .fix.on { background:var(--fixbg); }
+.decide .drop { color:var(--drop); border-color:var(--drop); } .decide .drop.on { background:var(--dropbg); }
+.row { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; align-items:center; font-size:14px; }
 .row input, .row select, textarea { font:inherit; background:var(--bg); color:var(--fg); border:1px solid var(--line);
         border-radius:6px; padding:4px 8px; }
-textarea { width:100%; min-height:70px; font-size:17px; }
-#fixbox { display:none; margin-top:10px; }
+textarea { width:100%; min-height:70px; font-size:18px; }
+#fixbox { display:none; margin-top:12px; }
 #fixerr { color:var(--drop); font-size:13px; min-height:1.2em; }
-#list { max-height:70vh; overflow:auto; font-size:13px; padding:6px; }
+details.more { margin-top:14px; border-top:1px solid var(--line); padding-top:8px; }
+details.more summary { cursor:pointer; color:var(--mut); font-size:13px; }
+.keys { color:var(--mut); font-size:12px; margin-top:14px; line-height:1.9; }
+kbd { border:1px solid var(--line); border-radius:4px; padding:0 5px; background:var(--bg); font:12px ui-monospace, Consolas, monospace; }
+
+/* danh sách */
+#list { max-height:calc(100vh - 150px); overflow:auto; font-size:13px; padding:6px; position:sticky; top:100px; }
 #list div { padding:3px 6px; border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; gap:6px; }
+#list div:hover { background:var(--soft); }
 #list div.cur { outline:2px solid var(--en); }
 #list div span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.keys { color:var(--mut); font-size:13px; margin-top:12px; }
-.keys kbd { border:1px solid var(--line); border-radius:4px; padding:0 5px; background:var(--bg); }
-.bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex:1 1 120px; min-width:120px; }
-.bar i { display:block; height:100%; background:var(--ok); width:0; }
 #empty { color:var(--mut); }
+#empty ol { padding-left:20px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Duyệt bench</h1>
-  <label class="btn">Mở CSV phiếu duyệt<input id="csvIn" type="file" accept=".csv,text/csv"></label>
-  <label class="btn">Chọn thư mục audio<input id="dirIn" type="file" webkitdirectory multiple></label>
-  <input id="urlPrefix" placeholder="URL gốc audio (tuỳ chọn, vd link HF …/resolve/main/)" size="38">
-  <select id="rate" title="tốc độ phát"><option>1</option><option>1.25</option><option>1.5</option><option>1.75</option></select>
-  <button id="exportBtn">Xuất CSV</button>
-  <div class="bar"><i id="barFill"></i></div>
-  <span id="stat" class="meta"></span>
+  <div class="top">
+    <h1>Duyệt bench</h1>
+    <label class="btn">Mở CSV phiếu duyệt<input id="csvIn" type="file" accept=".csv,text/csv"></label>
+    <label class="btn">Chọn thư mục audio<input id="dirIn" type="file" webkitdirectory multiple></label>
+    <input id="urlPrefix" type="text" placeholder="URL gốc audio (tuỳ chọn, vd …/resolve/main/)">
+    <span class="grow"></span>
+    <button id="exportBtn" class="primary" disabled>Xuất CSV</button>
+  </div>
+  <div class="progress"><div class="bar"><i id="barFill"></i></div><span id="stat" class="meta"></span></div>
 </header>
 <main>
   <section class="card" id="view">
-    <p id="empty">Mở file <code>*_review.csv</code> do converter xuất (vd <code>data/raw/ggroup/b1_candidates_review.csv</code>),
-      rồi chọn thư mục chứa audio (thư mục của CSV, vd <code>data/raw/ggroup</code>). Audio là link http(s) thì phát thẳng.</p>
+    <div id="empty">
+      <ol>
+        <li>Bấm <b>Mở CSV phiếu duyệt</b>, chọn phiếu (vd <code>data/listen/pending_all/listen.csv</code> hoặc
+          <code>data/raw/ggroup/b1_candidates_review.csv</code>).</li>
+        <li>Bấm <b>Chọn thư mục audio</b>, chọn thư mục audio của phiếu (vd <code>data/listen/pending_all/audio</code>).
+          Audio là link http(s) thì phát thẳng.</li>
+        <li>Nghe xong bấm <b>Xuất CSV</b>, lưu cạnh phiếu gốc.</li>
+      </ol>
+    </div>
+    <div id="head" class="meta"></div>
+    <div id="player">
+      <div id="wave">
+        <canvas id="waveCv"></canvas>
+        <div id="hov"></div><div id="ph"></div><div id="hovT"></div>
+        <div id="waveMsg"></div>
+      </div>
+      <div class="transport">
+        <button id="playBtn" title="phát / dừng (Space)">▶</button>
+        <button id="replayBtn" title="phát lại từ đầu (R)">↺ Phát lại</button>
+        <span id="tm">0:00.0 / 0:00.0</span>
+        <span class="grow"></span>
+        <span class="seglab">Tốc độ</span>
+        <div class="seg" id="rateSeg" title="tốc độ phát ([ / ])"></div>
+      </div>
+      <audio id="aud" preload="auto"></audio>
+    </div>
+    <div id="body"></div>
   </section>
   <aside class="card" id="list"></aside>
 </main>
 
 <script id="core">
-// ---- lõi thuần (không DOM): đọc/ghi CSV, kiểm tag, áp quyết định. Test chạy phần này bằng Node.
+// ---- lõi thuần (không DOM): đọc/ghi CSV, kiểm tag, áp quyết định, gắn <en> theo từ, dạng sóng. Test chạy phần này bằng Node.
 const OUT_COLS = ["decision", "text_tagged_fixed", "viet_levels", "reading_note", "region", "gender", "note"];
+const RATES = [0.75, 1, 1.25, 1.5, 1.75, 2];
 
 function parseCSV(text) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
@@ -151,13 +262,119 @@ function tagHtml(t) {  // span <en> tô đậm, phần còn lại escape
   }).join("");
 }
 
-if (typeof module !== "undefined") module.exports = { OUT_COLS, parseCSV, toCSV, ensureCols, tagError, applyReview, tagHtml, countSpans };
+// listen.csv -> listen_reviewed.csv; x_review.csv -> x_reviewed.csv; đã là *_reviewed.csv thì giữ nguyên
+function exportName(name) {
+  const base = String(name || "review.csv").replace(/\.csv$/i, "");
+  if (/_reviewed$/i.test(base)) return base + ".csv";
+  return (/_review$/i.test(base) ? base + "ed" : base + "_reviewed") + ".csv";
+}
+
+function nextRate(cur, dir) {  // dir = +1 nhanh hơn, -1 chậm hơn; tốc độ lạ thì nhảy về mức gần nhất
+  let k = RATES.findIndex(r => Math.abs(r - cur) < 1e-6);
+  if (k < 0) k = RATES.reduce((b, r, j) => (Math.abs(r - cur) < Math.abs(RATES[b] - cur) ? j : b), 0);
+  return RATES[Math.max(0, Math.min(RATES.length - 1, k + dir))];
+}
+
+// câu có tag -> danh sách từ {w, en, g (số span, 0 = không phải EN), attr (thuộc tính của tag <en ...>)}
+function tokenizeTagged(t) {
+  const out = [], re = /<en(\s[^>]*)?>([\s\S]*?)<\/en>/g;
+  const plain = s => s.split(/\s+/).filter(Boolean).forEach(w => out.push({ w, en: false, g: 0, attr: "" }));
+  let last = 0, g = 0, m;
+  t = String(t || "");
+  while ((m = re.exec(t))) {
+    plain(t.slice(last, m.index)); g++;
+    m[2].split(/\s+/).filter(Boolean).forEach(w => out.push({ w, en: true, g, attr: m[1] || "" }));
+    last = re.lastIndex;
+  }
+  plain(t.slice(last));
+  return out;
+}
+
+// các từ EN liền nhau cùng span -> một <en>…</en>
+function serializeTokens(ts) {
+  const out = [];
+  for (let i = 0; i < ts.length;) {
+    if (!ts[i].en) { out.push(ts[i++].w); continue; }
+    const g = ts[i].g, attr = ts[i].attr || "", ws = [];
+    while (i < ts.length && ts[i].en && ts[i].g === g) ws.push(ts[i++].w);
+    out.push(`<en${attr}>${ws.join(" ")}</en>`);
+  }
+  return out.join(" ");
+}
+
+// bật / tắt EN cho các từ idxs. Mọi từ đã EN -> tắt hết; ngược lại bật hết thành một span.
+// Bật một từ nằm sát một span EN -> nhập vào span đó (gõ lần lượt "machine" rồi "learning" ra một span).
+function toggleEn(ts, idxs) {
+  ts = ts.map(t => Object.assign({}, t));
+  idxs = [...new Set(idxs)].filter(k => k >= 0 && k < ts.length).sort((a, b) => a - b);
+  if (!idxs.length) return ts;
+  if (idxs.every(k => ts[k].en)) { for (const k of idxs) Object.assign(ts[k], { en: false, g: 0, attr: "" }); return ts; }
+  let g = ts.reduce((m, t) => Math.max(m, t.g), 0) + 1, attr = "";
+  if (idxs.length === 1) {
+    const L = ts[idxs[0] - 1], R = ts[idxs[0] + 1];
+    if (L && L.en) ({ g, attr } = L); else if (R && R.en) ({ g, attr } = R);
+  }
+  for (const k of idxs) Object.assign(ts[k], { en: true, g, attr });
+  return ts;
+}
+
+// x: mẫu mono -> n cặp (min, max) cho dạng sóng
+function peaks(x, n) {
+  n = Math.max(1, Math.min(n, x.length || 1));
+  const out = new Float32Array(2 * n);
+  for (let b = 0; b < n; b++) {
+    const s = Math.floor(b * x.length / n), e = Math.max(s + 1, Math.floor((b + 1) * x.length / n));
+    let lo = 0, hi = 0;
+    for (let i = s; i < e && i < x.length; i++) { const v = x[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    out[2 * b] = lo; out[2 * b + 1] = hi;
+  }
+  return out;
+}
+
+// cột llm_suspects (JSON [{i, w, kind, maybe, why}]) -> các mục còn có trong câu đang hiện. Câu đã sửa chữ thì vị trí có
+// thể lệch vài từ: lấy chỗ cùng từ gần nhất (±3); từ đã bị sửa thì mục đó biến mất
+function suspectsFor(raw, ts) {
+  let xs;
+  try { xs = JSON.parse(raw || "[]"); } catch (e) { return []; }
+  if (!Array.isArray(xs)) return [];
+  const out = [], used = new Set();
+  for (const s of xs) {
+    if (!s || !Number.isInteger(s.i)) continue;
+    let best = -1;
+    for (let d = 0; d <= 3 && best < 0; d++)
+      for (const k of [s.i - d, s.i + d]) if (best < 0 && ts[k] && ts[k].w === s.w && !used.has(k)) best = k;
+    if (best >= 0) { used.add(best); out.push(Object.assign({}, s, { i: best })); }
+  }
+  return out;
+}
+
+// gợi ý của LLM -> chữ để thay: bỏ phần giải thích ("match (hoặc 'khớp')", "đâu đó / từ") và dấu nháy
+function cleanMaybe(m) {
+  return String(m || "").split(/\s*\(|\s+\/\s+|\s+hoặc\s+|[,;]/)[0].replace(/["'“”‘’]/g, "").replace(/\s+/g, " ").trim();
+}
+
+// thay n từ bắt đầu ở i (mặc định 1) bằng text (nhiều từ được, rỗng = xoá). en: true / false = đặt lại tiếng Anh;
+// bỏ trống = giữ như từ đầu tiên bị thay
+function replaceWord(ts, i, text, en, n) {
+  ts = ts.map(t => Object.assign({}, t));
+  if (!(i >= 0 && i < ts.length)) return ts;
+  n = Math.max(1, Math.min(n || 1, ts.length - i));
+  const o = ts[i], isEn = en === undefined ? o.en : !!en;
+  let g = isEn ? o.g : 0, attr = isEn ? o.attr : "";
+  if (isEn && !o.en) { g = ts.reduce((m, t) => Math.max(m, t.g), 0) + 1; attr = ""; }
+  ts.splice(i, n, ...String(text || "").split(/\s+/).filter(Boolean).map(w => ({ w, en: isEn, g, attr })));
+  return ts;
+}
+
+if (typeof module !== "undefined") module.exports = { OUT_COLS, RATES, parseCSV, toCSV, ensureCols, tagError, applyReview, tagHtml,
+  countSpans, exportName, nextRate, tokenizeTagged, serializeTokens, toggleEn, peaks, suspectsFor, cleanMaybe, replaceWord };
 </script>
 
 <script>
 // ---- giao diện
 const $ = id => document.getElementById(id);
-const S = { name: "", header: [], rows: [], rev: {}, i: 0, files: new Map(), url: null, shownAt: 0, times: [] };
+const S = { name: "", header: [], rows: [], rev: {}, i: 0, files: new Map(), url: null, srcKey: null, shownAt: 0, times: [],
+            rate: 1, wave: null, waveFor: null, waveJob: 0, cache: new Map(), hoverW: -1, path: null };
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* trình duyệt chặn lưu: bỏ qua */ } },
@@ -165,20 +382,36 @@ const store = {
 const key = () => `gipbench-review:${S.name}:${S.rows.length}`;
 const decOf = r => (S.rev[r.id] && S.rev[r.id].decision !== undefined ? S.rev[r.id].decision : r.decision || "").trim().toLowerCase();
 const field = (r, k, col) => (S.rev[r.id] && S.rev[r.id][k] !== undefined ? S.rev[r.id][k] : r[col || k] || "");
+const curText = r => (decOf(r) === "fix" ? field(r, "fixed", "text_tagged_fixed") || r.text_tagged : r.text_tagged);
+const aud = $("aud");
+const WAVE_SR = 8000, WAVE_BUCKETS = 3000;
 
-$("rate").value = String(store.get("gipbench-review:rate", "1"));
+// ---- tuỳ chọn lưu lại
+S.rate = +store.get("gipbench-review:rate", 1) || 1;
 $("urlPrefix").value = store.get("gipbench-review:urlPrefix", "");
-$("rate").onchange = () => { store.set("gipbench-review:rate", $("rate").value); const a = $("aud"); if (a) a.playbackRate = +$("rate").value; };
-$("urlPrefix").onchange = () => { store.set("gipbench-review:urlPrefix", $("urlPrefix").value.trim()); render(true); };
+$("urlPrefix").onchange = () => { store.set("gipbench-review:urlPrefix", $("urlPrefix").value.trim()); S.srcKey = null; render(true); };
 
+$("rateSeg").innerHTML = RATES.map(r => `<button data-r="${r}">${r}×</button>`).join("");
+$("rateSeg").onclick = e => { const b = e.target.closest("button[data-r]"); if (b) setRate(+b.dataset.r); };
+function setRate(r) {
+  S.rate = r; store.set("gipbench-review:rate", r);
+  aud.defaultPlaybackRate = r; aud.playbackRate = r;
+  for (const b of $("rateSeg").children) b.classList.toggle("on", Math.abs(+b.dataset.r - r) < 1e-6);
+}
+aud.preservesPitch = true;
+setRate(S.rate);
+
+// ---- mở file
 $("csvIn").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   const { header, rows } = parseCSV(await f.text());
+  e.target.value = "";
   if (!header.includes("id")) { alertBox("CSV không có cột id"); return; }
-  Object.assign(S, { name: f.name, header: ensureCols(header), rows, i: 0, times: [] });
+  Object.assign(S, { name: f.name, header: ensureCols(header), rows, i: 0, times: [], srcKey: null });
   S.rev = store.get(key(), {});
   const first = rows.findIndex(r => !decOf(r));
   S.i = first < 0 ? 0 : first;
+  $("exportBtn").disabled = false;
   buildList(); render(true);
 };
 $("dirIn").onchange = e => {
@@ -187,23 +420,27 @@ $("dirIn").onchange = e => {
     const parts = (f.webkitRelativePath || f.name).split("/");
     for (let k = 0; k < parts.length; k++) S.files.set(parts.slice(k).join("/"), f);  // khớp theo mọi hậu tố đường dẫn
   }
+  S.srcKey = null; S.cache.clear();
   render(true);
 };
 $("exportBtn").onclick = exportCSV;
+// nút vừa bấm không giữ focus, để Space / phím tắt không bấm lại nút đó
+document.addEventListener("click", e => { const b = e.target.closest("button"); if (b) b.blur(); });
 
-function alertBox(msg) { $("view").insertAdjacentHTML("afterbegin", `<p class="flags"><span>${escapeHtml(msg)}</span></p>`); }
+function alertBox(msg) { $("body").insertAdjacentHTML("afterbegin", `<p class="flags"><span>${escapeHtml(msg)}</span></p>`); }
 
-function audioSrc(r) {
+// nguồn audio của dòng: File (thư mục đã chọn) hoặc URL; key để biết có phải nạp lại không
+function audioRef(r) {
   const a = String(r.audio || "").replace(/^\.\//, "");
-  if (/^https?:\/\//i.test(a)) return a;
+  if (/^https?:\/\//i.test(a)) return { key: a, url: a };
   const f = S.files.get(a) || S.files.get(a.split("/").pop());
-  if (f) { if (S.url) URL.revokeObjectURL(S.url); S.url = URL.createObjectURL(f); return S.url; }
+  if (f) return { key: "file:" + (f.webkitRelativePath || f.name) + ":" + f.size, file: f };
   const pre = $("urlPrefix").value.trim();
-  return pre ? pre + a : "";
+  return pre ? { key: pre + a, url: pre + a } : null;
 }
 
 function buildList() {
-  $("list").innerHTML = S.rows.map((r, k) => `<div data-k="${k}"><span>${escapeHtml(r.id)}</span><span class="dec ${decOf(r)}">${decOf(r) || "·"}</span></div>`).join("");
+  $("list").innerHTML = S.rows.map((r, k) => `<div data-k="${k}"><span>${escapeHtml(r.id)}${hasSus(r) ? '<b class="sus" title="LLM nghi từ sai ngữ cảnh">◆</b>' : ""}</span><span class="dec ${decOf(r)}">${decOf(r) || "·"}</span></div>`).join("");
   $("list").onclick = e => { const d = e.target.closest("div[data-k]"); if (d) { S.i = +d.dataset.k; render(true); } };
 }
 
@@ -220,47 +457,324 @@ function updateStats() {
   const cur = items[S.i]; if (cur) cur.scrollIntoView({ block: "nearest" });
 }
 
+// câu hiển thị theo từ: rê chuột + E (hoặc nhấp) để bật / tắt <en>
+const KIND_VI = { ctx: "lệch ngữ cảnh", en: "từ Anh lạ", untag: "có thể là tiếng Anh chưa gắn" };
+const hasSus = r => String(r.llm_suspects || "").trim().length > 2;
+function wordsHtml(tagged, sus) {
+  const ts = tokenizeTagged(tagged), at = new Map((sus || []).map(s => [s.i, s]));
+  return ts.map((t, k) => {
+    const same = j => ts[j] && t.en && ts[j].en && ts[j].g === t.g, s = at.get(k);
+    const cls = "w" + (t.en ? " en" : "") + (same(k + 1) ? " l" : "") + (same(k - 1) ? " r" : "") + (s ? " sus" : "");
+    const tip = s ? ` title="${escapeHtml(`LLM: ${KIND_VI[s.kind] || s.kind}${s.maybe ? " → " + s.maybe : ""}. ${s.why || ""}`)}"` : "";
+    return `<span class="${cls}" data-w="${k}"${tip}>${escapeHtml(t.w)}</span>` + (k < ts.length - 1 ? `<span class="gap${same(k + 1) ? " en" : ""}"> </span>` : "");
+  }).join("");
+}
+
+// mỗi từ bị nghi: nút "→ gợi ý" (thay luôn; loại untag thì gắn <en>) và nút ✎ (tự gõ từ đúng)
+function llmHtml(sus, total) {
+  if (!total) return "";
+  const done = total - sus.length;
+  return `<div class="hint llm"><b>LLM nghi sai ngữ cảnh · nghe lại kỹ</b>${sus.map(s => {
+    const m = cleanMaybe(s.maybe), en = s.kind === "untag" || (s.kind === "en" && /^[a-z0-9 .'-]+$/i.test(m));
+    const multi = m.split(" ").length > 1;  // gợi ý nhiều từ: mở ô sửa để chỉnh vùng thay, không thay ngay
+    return `<div class="sitem"><strong>${escapeHtml(s.w)}</strong>
+      ${m ? `<button class="mini use" data-i="${s.i}" data-to="${escapeHtml(m)}" data-en="${en ? 1 : 0}" data-multi="${multi ? 1 : 0}"
+        title="${multi ? "mở ô sửa, chỉnh số từ bị thay rồi lưu" : `thay «${escapeHtml(s.w)}» bằng «${escapeHtml(m)}»${en ? " (tiếng Anh)" : ""}`}">→ ${escapeHtml(m)}${multi ? " …" : ""}</button>` : ""}
+      <button class="mini edit" data-i="${s.i}" title="tự gõ từ đúng cho «${escapeHtml(s.w)}»">✎ sửa</button>
+      <i>${escapeHtml(KIND_VI[s.kind] || s.kind)}${s.maybe && s.maybe !== m ? " · " + escapeHtml(s.maybe) : ""}</i>
+      ${escapeHtml(s.why || "")}</div>`;
+  }).join("")}${done ? `<div class="sitem"><i>${done} chỗ đã sửa</i></div>` : ""}</div>`;
+}
+
 function render(play) {
   if (!S.rows.length) return;
-  const r = S.rows[S.i], src = audioSrc(r), d = decOf(r);
-  const tagged = d === "fix" ? field(r, "fixed", "text_tagged_fixed") || r.text_tagged : r.text_tagged;
+  $("empty").style.display = "none";
+  $("player").style.display = "block";
+  const r = S.rows[S.i], ref = audioRef(r), d = decOf(r), tagged = curText(r);
   const flags = String(r.flags || "").split(/[;|]/).map(x => x.trim()).filter(Boolean);
   const nsp = countSpans(tagged), lv = field(r, "viet_levels").split(",").map(x => x.trim()).filter(Boolean);
-  $("view").innerHTML = `
-    <div class="meta"><b>${escapeHtml(r.id)}</b><span>${escapeHtml(r.split || "")}</span><span>${escapeHtml(r.duration || "")} s</span>
-      <span>confidence: ${escapeHtml(r.confidence || "–")}</span><span>câu ${S.i + 1}/${S.rows.length}</span>
-      <span class="dec ${d}">${d || "chưa duyệt"}</span></div>
-    ${src ? `<audio id="aud" controls preload="auto" src="${escapeHtml(src)}"></audio>`
-          : `<p class="flags"><span>Chưa có audio: chọn thư mục audio hoặc nhập URL gốc (${escapeHtml(r.audio || "")})</span></p>`}
-    <div class="text">${tagHtml(tagged)}</div>
+  const split = String(r.split || "");
+  let susAll = []; try { susAll = JSON.parse(r.llm_suspects || "[]"); } catch (e) { /* cột hỏng: coi như không có */ }
+  const sus = suspectsFor(r.llm_suspects, tokenizeTagged(tagged)), nSus = Array.isArray(susAll) ? susAll.length : 0;
+  S.hoverW = -1;
+  if (S.shownId !== r.id) { S.shownId = r.id; S.shownAt = performance.now(); }
+  $("head").innerHTML = `<b>${escapeHtml(r.id)}</b>
+    ${split ? `<span class="chip ${/cs/i.test(split) ? "cs" : ""}">${escapeHtml(split)}</span>` : ""}
+    <span>${escapeHtml(r.duration || "")} s</span><span>confidence: ${escapeHtml(r.confidence || "–")}</span>
+    <span>câu ${S.i + 1}/${S.rows.length}</span><span class="chip dec ${d}">${d || "chưa duyệt"}</span>`;
+  $("body").innerHTML = `
+    ${ref ? "" : `<p class="flags"><span>Chưa có audio: chọn thư mục audio hoặc nhập URL gốc (${escapeHtml(r.audio || "")})</span></p>`}
+    <div class="text" id="words">${wordsHtml(tagged, sus)}</div>
+    <div class="texthint">Rê chuột lên từ rồi nhấn <kbd>E</kbd> (hoặc nhấp vào từ) để bật / tắt tiếng Anh; bôi đen nhiều từ + <kbd>E</kbd> = một cụm;
+      <kbd>W</kbd> = sửa riêng từ đó.</div>
+    <div id="wordbox"><span id="wbLab"></span> <input id="wbIn" size="22" autocomplete="off" spellcheck="false">
+      <label title="gắn &lt;en&gt; cho chữ mới"><input type="checkbox" id="wbEn"> tiếng Anh</label>
+      <button id="wbLess" class="mini" title="thay ít từ hơn">− từ</button><button id="wbMore" class="mini" title="thay thêm từ phía sau">+ từ</button>
+      <button id="wbOk">Lưu</button> <button id="wbNo">Huỷ</button>
+      <span class="wbhelp">Enter lưu · Esc huỷ · để trống = xoá từ · gõ nhiều từ được</span></div>
     ${r.text_tagged_orig && r.text_tagged_orig !== r.text_tagged ? `<div class="orig">nhãn gốc dataset: ${tagHtml(r.text_tagged_orig)}</div>` : ""}
     ${d === "fix" ? `<div class="orig">nhãn máy: ${tagHtml(r.text_tagged)}</div>` : ""}
-    ${r.hint ? `<div class="orig">gợi ý (người nghe${r.status ? ", " + escapeHtml(r.status) : ""}):${String(r.hint).split("||")
+    ${llmHtml(sus, nSus)}
+    ${r.hint ? `<div class="hint"><b>gợi ý${r.status ? " · " + escapeHtml(r.status) : ""}</b>${String(r.hint).split("||")
         .map(x => x.trim()).filter(Boolean).map(x => `<br>· ${escapeHtml(x)}`).join("")}</div>` : ""}
-    <div class="flags">${flags.map(f => `<span>${escapeHtml(f)}</span>`).join("")}</div>
+    <div class="flags" style="margin-top:8px">${flags.map(f => `<span>${escapeHtml(f)}</span>`).join("")}</div>
+    <div class="decide">
+      <button class="ok ${d === "ok" ? "on" : ""}" data-dec="ok">${d === "fix" ? "Đúng (giữ bản sửa)" : "Đúng"}<kbd>1</kbd></button>
+      <button class="fix ${d === "fix" ? "on" : ""}" data-dec="fix">Sửa chữ<kbd>3</kbd></button>
+      <button class="drop ${d === "drop" ? "on" : ""}" data-dec="drop">Bỏ câu<kbd>2</kbd></button>
+    </div>
     <div id="fixbox"><textarea id="fixText"></textarea><div id="fixerr"></div>
       <button id="fixSave">Lưu fix (Enter)</button> <button id="fixCancel">Huỷ (Esc)</button></div>
-    <div class="row">
-      <label>viet_levels (<span id="lvc">${lv.length}</span>/${nsp} span) <input id="fLv" size="22" value="${escapeHtml(lv.join(","))}"></label>
-      <label>region <select id="fRegion">${["", "north", "central", "south", "other", "unk"].map(v =>
-        `<option ${field(r, "region") === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-      <label>gender <select id="fGender">${["", "f", "m", "u"].map(v =>
-        `<option ${field(r, "gender") === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-    </div>
-    <div class="row"><label style="flex:1">reading_note <input id="fRead" style="width:100%" value="${escapeHtml(field(r, "reading_note"))}"></label></div>
-    <div class="row"><label style="flex:1">note <input id="fNote" style="width:100%" value="${escapeHtml(field(r, "note"))}"></label></div>
-    <div class="keys"><kbd>1</kbd> ok · <kbd>2</kbd> drop · <kbd>3</kbd> fix · <kbd>Space</kbd> phát/dừng · <kbd>R</kbd> phát lại ·
-      <kbd>←</kbd>/<kbd>→</kbd> câu trước/sau · <kbd>S</kbd>/<kbd>M</kbd>/<kbd>N</kbd> mức Việt hoá · <kbd>U</kbd> bỏ quyết định ·
-      <kbd>Ctrl+S</kbd> xuất CSV</div>`;
+    <details class="more" ${store.get("gipbench-review:more", false) ? "open" : ""}>
+      <summary>Thông tin thêm (mức Việt hoá, vùng, giới, ghi chú)</summary>
+      <div class="row">
+        <label>viet_levels (<span id="lvc">${lv.length}</span>/${nsp} span) <input id="fLv" size="22" value="${escapeHtml(lv.join(","))}"></label>
+        <label>region <select id="fRegion">${["", "north", "central", "south", "other", "unk"].map(v =>
+          `<option ${field(r, "region") === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+        <label>gender <select id="fGender">${["", "f", "m", "u"].map(v =>
+          `<option ${field(r, "gender") === v ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      </div>
+      <div class="row"><label style="flex:1">reading_note <input id="fRead" style="width:100%" value="${escapeHtml(field(r, "reading_note"))}"></label></div>
+      <div class="row"><label style="flex:1">note <input id="fNote" style="width:100%" value="${escapeHtml(field(r, "note"))}"></label></div>
+    </details>
+    <div class="keys"><kbd>1</kbd> ok · <kbd>2</kbd> drop · <kbd>3</kbd> fix · <kbd>E</kbd> bật/tắt tiếng Anh · <kbd>Space</kbd> phát/dừng ·
+      <kbd>R</kbd> phát lại · <kbd>←</kbd>/<kbd>→</kbd> câu trước/sau · <kbd>F</kbd> câu LLM nghi kế tiếp · <kbd>W</kbd> sửa từ đang rê chuột · <kbd>[</kbd>/<kbd>]</kbd> chậm/nhanh · bấm lên sóng để tua ·
+      <kbd>S</kbd>/<kbd>M</kbd>/<kbd>N</kbd> mức Việt hoá · <kbd>U</kbd> bỏ quyết định · <kbd>Ctrl+S</kbd> xuất CSV</div>`;
   const bind = (id, k) => { $(id).onchange = () => setRev(r, { [k]: $(id).value.trim() }); };
   bind("fLv", "viet_levels"); bind("fRegion", "region"); bind("fGender", "gender"); bind("fRead", "reading_note"); bind("fNote", "note");
+  $("body").querySelector("details.more").ontoggle = e => store.set("gipbench-review:more", e.target.open);
+  $("body").querySelector(".decide").onclick = e => {
+    const b = e.target.closest("button[data-dec]"); if (!b) return;
+    if (b.dataset.dec === "fix") openFix(); else decide(b.dataset.dec);
+  };
+  const llm = $("body").querySelector(".hint.llm");
+  if (llm) llm.onclick = e => {
+    const b = e.target.closest("button[data-i]"); if (!b) return;
+    const i = +b.dataset.i, to = b.dataset.to, en = b.dataset.en === "1";
+    if (!b.classList.contains("use")) editWord(i);
+    else if (b.dataset.multi === "1") editWord(i, to, en, to.split(" ").length);
+    else applyWord(i, to, en);
+  };
+  $("wbOk").onclick = () => saveWordBox();
+  $("wbNo").onclick = closeWordBox;
+  $("wbLess").onclick = () => { S.editN = Math.max(1, S.editN - 1); markEditing(); };
+  $("wbMore").onclick = () => { S.editN++; markEditing(); };
+  $("wbIn").onkeydown = e => {
+    if (e.key === "Enter") { e.preventDefault(); saveWordBox(); }
+    if (e.key === "Escape") { e.preventDefault(); closeWordBox(); }
+  };
+  const words = $("words");
+  words.onmouseover = e => { const w = e.target.closest("[data-w]"); S.hoverW = w ? +w.dataset.w : -1; };
+  words.onmouseleave = () => { S.hoverW = -1; };
+  words.onclick = e => {
+    const w = e.target.closest("[data-w]"); const sel = window.getSelection();
+    if (w && (!sel || sel.isCollapsed)) toggleWords([+w.dataset.w]);
+  };
   $("fixSave").onclick = saveFix; $("fixCancel").onclick = () => { $("fixbox").style.display = "none"; };
-  const a = $("aud");
-  if (a) { a.playbackRate = +$("rate").value; if (play) a.play().catch(() => {}); }
-  S.shownAt = performance.now();
+  loadAudio(ref, play);
   updateStats();
 }
 
+// ---- gắn <en> theo từ
+function selectedWords() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !$("words")) return [];
+  return [...$("words").querySelectorAll("[data-w]")].filter(s => sel.containsNode(s, true)).map(s => +s.dataset.w);
+}
+
+function toggleWords(idxs) {
+  const r = S.rows[S.i];
+  if (!idxs.length) return;
+  const text = serializeTokens(toggleEn(tokenizeTagged(curText(r)), idxs));
+  const orig = serializeTokens(tokenizeTagged(r.text_tagged));
+  if (tagError(text)) { alertBox("Không gắn được: " + tagError(text)); return; }
+  if (text === orig) setRev(r, { decision: decOf(r) === "fix" ? "" : decOf(r), fixed: "" });  // quay về đúng nhãn máy
+  else setRev(r, { decision: "fix", fixed: text });
+  const sel = window.getSelection(); if (sel) sel.removeAllRanges();
+  render(false);
+}
+
+// ---- sửa riêng một từ (nút ở từ LLM nghi, hoặc phím W trên từ đang rê chuột). Câu thành fix, audio không dừng.
+function applyWord(i, text, en, n) {
+  const r = S.rows[S.i];
+  const t = serializeTokens(replaceWord(tokenizeTagged(curText(r)), i, text, en, n));
+  if (!t) { alertBox("Không xoá được: câu sẽ trống"); return; }
+  if (tagError(t)) { alertBox("Không sửa được: " + tagError(t)); return; }
+  const orig = serializeTokens(tokenizeTagged(r.text_tagged));
+  if (t === orig) setRev(r, { decision: decOf(r) === "fix" ? "" : decOf(r), fixed: "" });  // quay về đúng nhãn máy
+  else setRev(r, { decision: "fix", fixed: t });
+  render(false);
+}
+
+// mở ô sửa cho n từ từ vị trí i; text / en bỏ trống thì lấy theo gợi ý LLM (nếu có) hoặc chính từ đó
+function editWord(i, text, en, n) {
+  const ts = tokenizeTagged(curText(S.rows[S.i])), t = ts[i];
+  if (!t) return;
+  const sus = suspectsFor(S.rows[S.i].llm_suspects, ts).find(s => s.i === i);
+  S.editW = i; S.editN = Math.max(1, n || 1);
+  $("wbIn").value = text !== undefined ? text : (sus && cleanMaybe(sus.maybe)) || t.w;
+  $("wbEn").checked = en !== undefined ? en : sus && sus.kind === "untag" ? true : t.en;
+  $("wordbox").style.display = "flex";
+  markEditing();
+  $("wbIn").focus(); $("wbIn").select();
+}
+
+function markEditing() {
+  const ts = tokenizeTagged(curText(S.rows[S.i]));
+  S.editN = Math.max(1, Math.min(S.editN, ts.length - S.editW));
+  $("wbLab").innerHTML = `Thay <b>${escapeHtml(ts.slice(S.editW, S.editW + S.editN).map(t => t.w).join(" "))}</b>
+    <span class="wbhelp">(${S.editN} từ)</span> bằng`;
+  document.querySelectorAll("#words .w").forEach(x => {
+    const k = +x.dataset.w; x.classList.toggle("editing", k >= S.editW && k < S.editW + S.editN);
+  });
+}
+
+function saveWordBox() {
+  if (S.editW == null) return;
+  const i = S.editW; S.editW = null;
+  applyWord(i, $("wbIn").value.trim(), $("wbEn").checked, S.editN);
+}
+
+function closeWordBox() {
+  S.editW = null;
+  $("wordbox").style.display = "none";
+  document.querySelectorAll("#words .w.editing").forEach(x => x.classList.remove("editing"));
+}
+
+// ---- trình phát
+function loadAudio(ref, play) {
+  const k = ref ? ref.key : null;
+  if (k !== S.srcKey) {
+    S.srcKey = k;
+    if (S.url) { URL.revokeObjectURL(S.url); S.url = null; }
+    aud.pause();
+    if (ref) {
+      const src = ref.file ? (S.url = URL.createObjectURL(ref.file)) : ref.url;
+      aud.src = src; aud.defaultPlaybackRate = S.rate; aud.playbackRate = S.rate;
+    } else aud.removeAttribute("src");
+    aud.load();
+    S.wave = null; S.waveFor = null; drawWave(); loadWave();
+    if (play && ref) aud.play().catch(() => {});
+  } else if (play && ref && aud.paused) { aud.currentTime = 0; aud.play().catch(() => {}); }
+  $("playBtn").disabled = $("replayBtn").disabled = !ref;
+  updateTime();
+}
+
+const fmt = t => { t = isFinite(t) ? Math.max(0, t) : 0; const m = Math.floor(t / 60); return m + ":" + (t - 60 * m).toFixed(1).padStart(4, "0"); };
+const durOf = () => (isFinite(aud.duration) && aud.duration > 0 ? aud.duration : S.wave ? S.wave.duration : 0);
+function updateTime() {
+  const d = durOf(), t = aud.currentTime || 0;
+  $("tm").textContent = `${fmt(t)} / ${fmt(d)}`;
+  $("playBtn").textContent = aud.paused ? "▶" : "❚❚";
+  const w = $("wave").clientWidth;
+  $("ph").style.transform = `translateX(${d ? Math.min(w - 2, (t / d) * w) : 0}px)`;
+  paintWave(d ? t / d : 0);
+}
+let raf = 0;
+function tick() { updateTime(); raf = aud.paused ? 0 : requestAnimationFrame(tick); }
+aud.addEventListener("play", () => { if (!raf) raf = requestAnimationFrame(tick); });
+for (const ev of ["pause", "seeked", "loadedmetadata", "ended", "timeupdate"]) aud.addEventListener(ev, updateTime);
+aud.addEventListener("ratechange", () => { if (Math.abs(aud.playbackRate - S.rate) > 1e-6) aud.playbackRate = S.rate; });
+$("playBtn").onclick = () => { if (aud.paused) aud.play().catch(() => {}); else aud.pause(); };
+$("replayBtn").onclick = () => { aud.currentTime = 0; aud.play().catch(() => {}); };
+
+// bấm / kéo trên sóng để tua; rê chuột hiện thời điểm
+const waveX = e => { const b = $("wave").getBoundingClientRect(); return Math.max(0, Math.min(b.width, e.clientX - b.left)) / b.width; };
+let dragging = false;
+$("wave").addEventListener("pointerdown", e => { const d = durOf(); if (!d) return; dragging = true;
+  $("wave").setPointerCapture(e.pointerId); aud.currentTime = waveX(e) * d; updateTime(); });
+$("wave").addEventListener("pointerup", () => { if (!dragging) return; dragging = false;
+  if (aud.paused && S.srcKey) aud.play().catch(() => {}); });
+$("wave").addEventListener("pointermove", e => {
+  const d = durOf(), x = waveX(e), w = $("wave").clientWidth;
+  if (dragging && d) { aud.currentTime = x * d; updateTime(); }
+  $("hov").style.display = $("hovT").style.display = d ? "block" : "none";
+  $("hov").style.transform = `translateX(${x * w}px)`;
+  $("hovT").textContent = fmt(x * d);
+  $("hovT").style.transform = `translateX(${Math.min(w - 60, x * w + 6)}px)`;
+});
+$("wave").addEventListener("pointerleave", () => { $("hov").style.display = $("hovT").style.display = "none"; });
+
+// ---- dạng sóng
+async function computeWave(ref) {
+  const buf = ref.file ? await ref.file.arrayBuffer() : await (await fetch(ref.url)).arrayBuffer();
+  const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const ab = await new Ctx(1, WAVE_SR, WAVE_SR).decodeAudioData(buf);  // giải mã + resample
+  let x = ab.getChannelData(0);
+  if (ab.numberOfChannels > 1) {
+    x = Float32Array.from(x);
+    for (let c = 1; c < ab.numberOfChannels; c++) { const y = ab.getChannelData(c); for (let i = 0; i < x.length; i++) x[i] += y[i]; }
+  }
+  const pk = peaks(x, WAVE_BUCKETS);
+  let amp = 1e-4; for (const v of pk) amp = Math.max(amp, Math.abs(v));
+  return { peaks: pk, amp, duration: ab.duration };
+}
+
+async function loadWave() {
+  if (!S.rows.length) return;
+  const ref = audioRef(S.rows[S.i]);
+  if (!ref) { S.wave = null; drawWave("Chưa có audio"); return; }
+  if (S.waveFor === ref.key) { drawWave(); return; }
+  S.waveFor = ref.key;
+  const job = ++S.waveJob;
+  if (S.cache.has(ref.key)) { S.wave = S.cache.get(ref.key); drawWave(); return; }
+  S.wave = null; drawWave("Đang vẽ sóng âm…");
+  try {
+    const wv = await computeWave(ref);
+    S.cache.set(ref.key, wv);
+    if (S.cache.size > 32) S.cache.delete(S.cache.keys().next().value);
+    if (job === S.waveJob) { S.wave = wv; drawWave(); }
+  } catch (err) {
+    if (job === S.waveJob) { S.wave = null; drawWave("Không vẽ được sóng âm (" + (err && err.message || err) + "). Audio vẫn phát được."); }
+  }
+  updateTime();
+}
+
+// dựng Path2D các cột sóng theo kích thước canvas; tô hai lần (đã phát / chưa phát) mỗi khung hình
+function drawWave(msg) {
+  const box = $("wave"), cv = $("waveCv"), dpr = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(box.clientWidth * dpr)), h = Math.max(1, Math.round(box.clientHeight * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  $("waveMsg").textContent = msg || "";
+  S.path = null;
+  if (S.wave) {
+    const { peaks: pk, amp } = S.wave, n = pk.length / 2, step = Math.max(1, Math.round(2 * dpr)), bw = Math.max(1, step - Math.round(dpr));
+    const mid = h / 2, scale = (h / 2 - 3 * dpr) / amp, p = new Path2D();
+    for (let x = 0; x < w; x += step) {
+      const b0 = Math.floor(x / w * n), b1 = Math.max(b0 + 1, Math.floor((x + step) / w * n));
+      let lo = 0, hi = 0;
+      for (let b = b0; b < b1 && b < n; b++) { if (pk[2 * b] < lo) lo = pk[2 * b]; if (pk[2 * b + 1] > hi) hi = pk[2 * b + 1]; }
+      const top = mid - hi * scale, bot = mid - lo * scale;
+      p.rect(x, Math.min(top, mid - dpr / 2), bw, Math.max(dpr, bot - top));
+    }
+    S.path = p;
+  }
+  const d = durOf();
+  paintWave(d ? (aud.currentTime || 0) / d : 0);
+}
+
+function paintWave(frac) {
+  const cv = $("waveCv"), g = cv.getContext("2d"), w = cv.width, h = cv.height, dpr = window.devicePixelRatio || 1;
+  g.clearRect(0, 0, w, h);
+  if (!S.path || !S.wave) return;
+  const css = getComputedStyle(document.documentElement), px = Math.round(frac * w);
+  g.fillStyle = css.getPropertyValue("--wave").trim(); g.fill(S.path);
+  g.save(); g.beginPath(); g.rect(0, 0, px, h); g.clip();
+  g.fillStyle = css.getPropertyValue("--accent").trim(); g.fill(S.path);
+  g.restore();
+  // vạch giây ở đáy
+  const dsec = S.wave.duration, pps = w / dsec, every = pps / dpr > 45 ? 1 : 5;
+  g.fillStyle = css.getPropertyValue("--mut").trim(); g.font = `${10 * dpr}px ui-monospace, Consolas, monospace`; g.textBaseline = "bottom";
+  for (let s = 1; s < dsec; s++) {
+    const x = Math.round(s * pps), tall = s % every ? 3 : 6;
+    g.fillRect(x, h - tall * dpr, Math.max(1, dpr), tall * dpr);
+    if (s % every === 0) g.fillText(s + "s", x + 3 * dpr, h - 1 * dpr);
+  }
+}
+window.addEventListener("resize", () => { drawWave($("waveMsg").textContent); updateTime(); });
+if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => updateTime());
+
+// ---- quyết định
 function setRev(r, patch) {
   S.rev[r.id] = Object.assign({}, S.rev[r.id] || {}, patch);
   store.set(key(), S.rev);
@@ -268,6 +782,7 @@ function setRev(r, patch) {
 
 function decide(dec, patch) {
   const r = S.rows[S.i];
+  if (dec === "ok" && decOf(r) === "fix" && !patch) dec = "fix";  // câu đã có bản sửa (vd gắn EN bằng E): 1 = giữ bản sửa
   setRev(r, Object.assign({ decision: dec }, patch || {}));
   S.times.push((performance.now() - S.shownAt) / 1000);
   next(true);
@@ -302,7 +817,7 @@ function exportCSV() {
   const out = toCSV(S.header, S.rows.map(r => applyReview(r, S.rev[r.id])));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([out], { type: "text/csv;charset=utf-8" }));
-  a.download = S.name || "review.csv";
+  a.download = exportName(S.name);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -311,7 +826,8 @@ document.addEventListener("keydown", e => {
   if (!S.rows.length) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); exportCSV(); return; }
   if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
-  const r = S.rows[S.i], a = $("aud");
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const r = S.rows[S.i];
   // sửa mức Việt hoá tại chỗ (không vẽ lại trang, để audio đang phát không bị dừng)
   const setLv = lv => { setRev(r, { viet_levels: lv.join(",") }); $("fLv").value = lv.join(","); $("lvc").textContent = lv.length; };
   const curLv = () => field(r, "viet_levels").split(",").map(x => x.trim()).filter(Boolean);
@@ -320,15 +836,24 @@ document.addEventListener("keydown", e => {
     case "1": decide("ok"); break;
     case "2": decide("drop"); break;
     case "3": e.preventDefault(); openFix(); break;
-    case " ": e.preventDefault(); if (a) (a.paused ? a.play() : a.pause()); break;
-    case "r": case "R": if (a) { a.currentTime = 0; a.play().catch(() => {}); } break;
+    case "e": case "E": { const sel = selectedWords(); toggleWords(sel.length ? sel : S.hoverW >= 0 ? [S.hoverW] : []); break; }
+    case " ": e.preventDefault(); if (S.srcKey) (aud.paused ? aud.play().catch(() => {}) : aud.pause()); break;
+    case "r": case "R": if (S.srcKey) { aud.currentTime = 0; aud.play().catch(() => {}); } break;
+    case "[": setRate(nextRate(S.rate, -1)); break;
+    case "]": setRate(nextRate(S.rate, +1)); break;
     case "ArrowRight": S.i = Math.min(S.i + 1, S.rows.length - 1); render(true); break;
     case "ArrowLeft": S.i = Math.max(S.i - 1, 0); render(true); break;
+    case "f": case "F": {  // câu có từ LLM nghi kế tiếp (vòng lại đầu phiếu)
+      const n = S.rows.length;
+      for (let j = 1; j < n; j++) { const k = (S.i + j) % n; if (hasSus(S.rows[k])) { S.i = k; render(true); break; } }
+      break;
+    }
     case "s": case "S": addLv("strong"); break;
     case "m": case "M": addLv("mid"); break;
     case "n": case "N": addLv("native"); break;
     case "Backspace": { e.preventDefault(); setLv(curLv().slice(0, -1)); break; }
     case "u": case "U": setRev(r, { decision: "" }); render(false); break;
+    case "w": case "W": if (S.hoverW >= 0) { e.preventDefault(); editWord(S.hoverW); } break;
   }
 });
 </script>

@@ -106,6 +106,21 @@ def test_select_apply(d):
           fixed["text_tagged_pseudo"] == sheet[1]["text_tagged"] and fixed["label_review"] == "fix", fixed)
     check("quyết định dùng lại áp vào nhãn", "<en>meetings</en>" in ver[f"v{vid}_0"]["text_tagged"])
     check("label_source là nhãn người", all(r["label_source"].startswith("human:") for r in ver.values()))
+    check("candidates / verified ghi audio tương đối (chép sang WSL / Colab vẫn đọc được)",
+          all(not Path(r["audio"]).is_absolute() and "\\" not in r["audio"] and (out / r["audio"]).is_file()
+              for r in list(ver.values()) + cand), [r["audio"] for r in cand[:2]])
+    # candidates cũ ghi đường tuyệt đối: apply vẫn ra đường tương đối
+    c_abs = [dict(r, audio=str((out / r["audio"]).resolve())) for r in rd(out / "candidates.jsonl")]
+    jl(out / "candidates.jsonl", c_abs)
+    with contextlib.redirect_stdout(io.StringIO()):
+        H.cmd_apply(Namespace(dir=str(out), review="listen_reviewed.csv"))
+    ver2 = rd(out / "verified.jsonl")
+    check("apply viết lại đường tuyệt đối cũ thành tương đối",
+          all(not Path(r["audio"]).is_absolute() and (out / r["audio"]).is_file() for r in ver2), ver2[0]["audio"])
+    if H.os.name != "nt":
+        check("đường Windows D:\\ đọc trên Linux -> /mnt/d, rồi tương đối",
+              H.portable_audio("D:\\x\\data\\a.wav", Path("/mnt/d/x/dev")) == "../data/a.wav",
+              H.portable_audio("D:\\x\\data\\a.wav", Path("/mnt/d/x/dev")))
     return out, pool
 
 
