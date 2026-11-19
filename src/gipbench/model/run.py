@@ -91,8 +91,11 @@ class Ctx:
         self.oracle = X.catalog_use(exp) == "oracle_diagnostic"
         self.inputs = [(ref, self.work / "inputs" / f"{safe(ref)}.jsonl") for ref in X.input_refs(exp)]
         self.has_dev = bool(exp.get("dev"))
-        self.dev = {k: self.work / "inputs" / f"dev_{k}.jsonl" for k in ("cs", "vi")} if self.has_dev else {}
-        self.fixed = (exp.get("select") or {}).get("rule") == X.FIXED_RULE
+        rule = (exp.get("select") or {}).get("rule")
+        self.fixed = rule == X.FIXED_RULE
+        self.vi_only = rule == X.VI_WER_RULE
+        dev_kinds = ("vi",) if self.vi_only else ("cs", "vi")
+        self.dev = {k: self.work / "inputs" / f"dev_{k}.jsonl" for k in dev_kinds} if self.has_dev else {}
         # không có dev: valid loss của icefall tính trên mẫu nhỏ CỦA TRAIN (chỉ để theo dõi, không dùng chọn checkpoint)
         self.valid = self.work / "inputs" / "valid_from_train.jsonl"
         self.lhotse = self.work / "lhotse"
@@ -276,7 +279,7 @@ def stage_mix(c):
 # ------------------------------------------------------------------ stage 4
 def finetune_cmd(c, seg):
     t, lh = c.exp["train"], c.lhotse
-    valid = ([str(lh / "dev_cs_cuts_raw.jsonl.gz"), str(lh / "dev_vi_cuts_raw.jsonl.gz")] if c.has_dev
+    valid = ([str(lh / f"dev_{kind}_cuts_raw.jsonl.gz") for kind in c.dev] if c.has_dev
              else [str(lh / "valid_cuts_raw.jsonl.gz")])
     return lambda res: [c.py_ft, "./zipformer/finetune_cs.py", "--world-size", "1", "--use-fp16", "1",
                         *t["model_args"].split(), *res, *c.seed_args, "--exp-dir", str(c.exp_dir), "--bpe-model", str(c.model / "bpe.model"),
@@ -345,7 +348,8 @@ def decode_dev(c, md, name):
     d = c.exp.get("decode_dev", {})
     for k in c.dev:
         s = f"dev_{k}"
-        if (c.rd / name / s / "hyps.jsonl").exists():
+        results = c.rd / name / s
+        if (results / "hyps.jsonl").is_file() and (not c.vi_only or (results / "decode_summary.json").is_file()):
             continue
         c.run([c.py, "-m", "gipbench.infer.decode", "--bench", c.dev[k], "--model-dir", md, "--system", s,
                "--results", c.rd / name, "--threads", d.get("threads", 16), "--batch", d.get("batch", 32)],
@@ -359,11 +363,13 @@ def stage_candidates(c):
     print("== 5. ứng viên: model gốc + checkpoint mỗi epoch ảo -> export int8 -> decode dev")
     decode_dev(c, c.model, "base")
     nums = IR.ckpt_nums(c.exp_dir) or (["<N>"] if c.dry else [])
+    expected = [f"{part}.int8.onnx" for part in onnx_export.PARTS] + ["tokens.txt", "bpe.model"]
     for n in nums:
         name = f"ck{n}"
-        if not (c.exp_dir / "cand" / name / "onnx" / "encoder.int8.onnx").exists():
+        model_dir = c.exp_dir / "cand" / name / "onnx"
+        if not all((model_dir / file).is_file() for file in expected):
             export(c, c.exp_dir, name, ["--iter", str(n)])
-        decode_dev(c, c.exp_dir / "cand" / name / "onnx", name)
+        decode_dev(c, model_dir, name)
 
 
 def natural(p):
@@ -374,10 +380,11 @@ def select(c, cands, out):
     sel = c.exp.get("select", {})
     limits = {key: sel.get(key) for key in ("max_vi_ci_upper", "max_vi_hallucination_delta", "max_cs_domain_delta")}
     gate_config = LG.gate_config(c.exp)
-    reserved = gate_config["reserved_terms"] if gate_config["check_dev"] else None
-    c.run([c.py, "-m", "gipbench.model.select.select_ckpt", "--catalog", c.cat, "--dev-cs", c.dev["cs"], "--dev-vi", c.dev["vi"],
+    reserved = gate_config["reserved_terms"] if gate_config["check_dev"] and not c.vi_only else None
+    dev_args = [arg for kind in c.dev for arg in (f"--dev-{kind}", c.dev[kind], f"--dev-ref-{kind}", c.exp["dev"][kind])]
+    c.run([c.py, "-m", "gipbench.model.select.select_ckpt", "--catalog", c.cat, *dev_args,
            "--base", c.rd / "base", "--cand", *cands, "--max-vi-delta", sel.get("max_vi_delta", 0.3),
-           "--rule", sel.get("rule", "term_acc_macro"), "--dev-ref-cs", c.exp["dev"]["cs"], "--dev-ref-vi", c.exp["dev"]["vi"],
+           "--rule", sel.get("rule", "term_acc_macro"),
            *(["--allow-legacy-dev"] if sel.get("allow_legacy_dev") else []), *(["--allow-bench-catalog"] if c.oracle else []),
            *opt_args({**limits, "reserved_terms": X.abspath(reserved) if reserved else None}), "--out", out])
     return None if c.dry else json.loads(Path(f"{out}.json").read_text(encoding="utf-8"))
@@ -418,13 +425,21 @@ def stage_select(c):
     if c.fixed:
         final, md, wck = select_fixed(c)
         rw = {"results": {}}
+    elif c.vi_only:
+        nums = ["<N>"] if c.dry else IR.ckpt_nums(c.exp_dir)
+        if not nums:
+            sys.exit(f"No checkpoints in {c.exp_dir}; run stage 4 first.")
+        rw = select(c, [c.rd / f"ck{n}" for n in nums], c.rd / "select_ckpt")
+        final = "<pick>" if c.dry else rw["pick"]
+        md = c.model if final == "base" else c.exp_dir / "cand" / final / "onnx"
+        wck = None
     else:
         final, md, wck, rw = select_on_dev(c, alphas)
     print(f"  model chọn: {final} ({md}) -> artifact {c.artifact}")
     if c.dry:
         return
     sel = c.exp.get("select", {})
-    dev_refs = [c.exp["dev"][k] for k in ("cs", "vi")] if c.has_dev else []
+    dev_refs = [c.exp["dev"][k] for k in c.dev]
     card = {"system": c.exp["name"], "experiment": {"path": c.exp["_path"], "overrides": c.exp["_overrides"],
                                                      "sha256": hashlib.sha256(Path(c.exp["_path"]).read_bytes()).hexdigest()},
             "base_model": {"path": str(c.model), "sha256": onnx_export.sha256(c.model / "model.pt")
@@ -433,7 +448,7 @@ def stage_select(c):
                               [*X.input_refs(c.exp), *dev_refs, c.exp["catalog"], *c.guard_refs]},
             "catalog": {"ref": c.exp["catalog"], "flags": R.catalog_flags(c.exp["catalog"]), "use": X.catalog_use(c.exp)},
             "select": {"rule": sel.get("rule", "term_acc_macro"), "dev": c.exp["dev"],
-                       "dev_flags": {k: R.resolve(c.exp["dev"][k]).meta.get("flags") or {} for k in ("cs", "vi")}
+                       "dev_flags": {k: R.resolve(c.exp["dev"][k]).meta.get("flags") or {} for k in c.dev}
                        if c.has_dev else None,
                        **({"fixed_wise_alpha": float(sel.get("fixed_wise_alpha", 1.0))} if c.fixed else {})},
             "leak_gate": LG.card_summary(gate, c.work / "leak_report.json"),

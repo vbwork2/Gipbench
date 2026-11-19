@@ -150,8 +150,23 @@ python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 -
 
 Lệnh đầu in cả hai seed. Lượt thật chạy lần lượt với `SEED = 0` và `SEED = 1`. Mỗi seed có thư mục làm việc, checkpoint,
 kết quả dev và artifact riêng. Bật `RUN_EXPERIMENT` khi cell dry-run không còn báo đầu vào thiếu.
-X0 không cần dev (`dev: null`, `select.rule: fixed_last`); catalog train và `reserved_terms_v1.txt` nằm ở shard 007.
+X0 gốc không cần dev (`dev: null`, `select.rule: fixed_last`); catalog train và `reserved_terms_v1.txt` nằm ở shard 007.
 Notebook chạy cổng rò rỉ trước stage 1–6. Watchdog dùng `/content` và chừa 5 GiB.
+
+#### Thử X0 với learning rate thấp hơn trên dev VI
+
+Notebook mặc định chọn `e4_x0_lr1e4_vi.yaml`, chạy seed 0 với LR `0.0001` và cùng ngân sách 2.400 batch như X0 gốc.
+Bổ sung `dev/dev_v2_vi@1` vào gói Drive hiện có trước khi chạy.
+
+```bash
+python scripts/colab/pack_ft_bundle.py --out D:/gipbench_ft_bundle --refs dev/dev_v2_vi@1 --no-bench-catalog --model-files
+```
+
+Chép các shard mới và `bundle_index.json` cập nhật vào `My Drive/gipbench_ft`. Trong notebook, dùng `BRANCH` chứa code mới,
+đặt `RUN_EXPERIMENT = True` và chọn Run all. Lượt chạy tự chấm model gốc và các checkpoint còn giữ trên dev VI.
+Chọn checkpoint có WER thấp nhất trong số các checkpoint giảm WER và có cận trên CI 95% của ΔWER ≤ 0.
+Nếu không có checkpoint đạt điều kiện, kết quả chọn `base`. Xem `select_ckpt.md` hoặc `select_ckpt.json` trong
+`My Drive/gipbench_results/e4_x0_lr1e4_vi_dev/seed-0/`. Lượt thử này chỉ giải mã dev VI.
 
 ### 2c. Chạy ablation E4
 

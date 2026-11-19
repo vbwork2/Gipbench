@@ -205,6 +205,7 @@ def main():
     check("dev-ref không tồn tại: dừng (không bỏ qua im lặng)", rc == 3, out)
 
     test_e4_selector(env, d)
+    test_vi_selector(env, d)
 
     print(f"\n{len(FAIL)} ca hỏng" if FAIL else "\nTất cả đạt")
     sys.exit(1 if FAIL else 0)
@@ -255,6 +256,37 @@ def test_e4_selector(env, d):
     partial = save_hyps("partial", cs_good[:1], vi_base)
     rc, output = run_mod(env, "gipbench.model.select.select_ckpt", *command, "--cand", partial, "--out", d / "e4_partial")
     check("E4 rejects incomplete dev hypotheses", rc != 0 and "one hypothesis per dev utterance" in output, output)
+
+
+def test_vi_selector(env, d):
+    from gipbench.core.manifest import write_jsonl
+
+    text = "chào bạn hôm nay"
+    vi = d / "vi_only.jsonl"
+    write_jsonl(vi, [row(f"v{i}", text=text, speaker=f"speaker{i}") for i in range(3)])
+
+    def hypotheses(name, texts):
+        path = d / "vi_only" / name
+        write_jsonl(path / "dev_vi/hyps.jsonl", [{"id": f"v{i}", "hyp": hyp} for i, hyp in enumerate(texts)])
+        return path
+
+    base = hypotheses("base", ["chào bạn", "chào bạn hôm", text])
+    late = hypotheses("ck2400", [text] * 3)
+    early = hypotheses("ck1200", [text] * 3)
+    uncertain = hypotheses("uncertain", [text, text, "chào bạn hôm"])
+    incomplete = hypotheses("incomplete", [text])
+    command = ["--catalog", d / "cat_train.tsv", "--dev-vi", vi, "--dev-ref-vi", "dev/dvind@v1", "--base", base,
+               "--rule", "vi_wer", "--max-vi-delta", "0.0", "--max-vi-ci-upper", "0.0"]
+    for name, candidates, expected in (("vi_pick", [late, early], "ck1200"), ("vi_base", [uncertain], "base")):
+        rc, output = run_mod(env, "gipbench.model.select.select_ckpt", *command, "--cand", *candidates, "--out", d / name)
+        report = json.loads((d / f"{name}.json").read_text(encoding="utf-8")) if rc == 0 else {}
+        check(f"VI-only selection chooses {expected}", rc == 0 and report.get("pick") == expected, output)
+        if name == "vi_base" and rc == 0:
+            metrics = report["results"]["uncertain"]
+            check("VI-only selection rejects an improvement with a positive upper CI",
+                  metrics["wer_vi_delta"] < 0 < metrics["wer_vi_ci95"][1] and not metrics["eligible"], metrics)
+    rc, output = run_mod(env, "gipbench.model.select.select_ckpt", *command, "--cand", incomplete, "--out", d / "vi_partial")
+    check("VI-only selection rejects incomplete hypotheses", rc != 0 and "one hypothesis per dev utterance" in output, output)
 
 
 if __name__ == "__main__":

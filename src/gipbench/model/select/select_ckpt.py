@@ -32,6 +32,7 @@ from gipbench.core.evalstats import check_hyps, paired_bootstrap, ratio, sum_cou
 from gipbench.core.manifest import read_jsonl
 from gipbench.core.textnorm import Catalog, normalize_hyp, normalize_ref
 from gipbench.core.scoring import agg, count_occ, cs_breakdown, score_utt
+from gipbench.model.recipe.experiment import VI_WER_RULE
 
 
 def evaluate(rows, hyp_path, cat, strict=False, reserved=()):
@@ -98,10 +99,47 @@ def retention_checks(metrics, base, vi_rows, base_vi_rows, limits):
     return deltas, limit is None or all(d is not None and d <= limit + 1e-9 for d in domains.values())
 
 
+def write_selection(path, lines, result):
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path + ".md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    Path(path + ".json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("\n".join(lines))
+
+
+def select_vi_wer(args, cat, dev_ref, flags, cat_flags):
+    rows = read_jsonl(args.dev_vi)
+    base = Path(args.base)
+    baseline, _, baseline_records = evaluate(rows, base / "dev_vi/hyps.jsonl", cat, strict=True)
+    if baseline["wer"] is None:
+        raise SystemExit(f"{args.dev_vi}: no reference tokens to score")
+    ci_upper = args.max_vi_ci_upper if args.max_vi_ci_upper is not None else 0.0
+    results = {base.name: {"wer_vi": baseline["wer"], "wer_vi_delta": 0.0, "eligible": True}}
+    eligible = []
+    table = ["| Model | WER dev VI | ΔWER | CI 95% của ΔWER | Đạt |", "| --- | ---: | ---: | --- | --- |",
+             f"| {base.name} | {baseline['wer']:.2f} | 0.00 | – | có |"]
+    for path in map(Path, args.cand):
+        metrics, _, records = evaluate(rows, path / "dev_vi/hyps.jsonl", cat, strict=True)
+        paired = paired_bootstrap(baseline_records, records, "wer", "boot_unit", iters=1000, seed=0)
+        delta, ci = paired["delta"], paired["ci95"]
+        ok = delta < 0 and delta <= args.max_vi_delta and ci is not None and ci[1] <= ci_upper
+        results[path.name] = {"wer_vi": metrics["wer"], "wer_vi_delta": delta, "wer_vi_ci95": ci, "eligible": ok}
+        if ok:
+            step = int(path.name[2:]) if path.name.startswith("ck") and path.name[2:].isdigit() else float("inf")
+            eligible.append((metrics["wer"], step, path.name))
+        interval = f"[{ci[0]:+.2f}, {ci[1]:+.2f}]" if ci else "–"
+        table.append(f"| {path.name} | {metrics['wer']:.2f} | {delta:+.2f} | {interval} | {'có' if ok else 'không'} |")
+    pick = min(eligible)[2] if eligible else base.name
+    table += ["", f"Được chọn: **{pick}**."]
+    write_selection(args.out, table, {"pick": pick, "results": results, "dev_refs": {"vi": dev_ref},
+                    "dev_flags": {"vi": flags}, "catalog": args.catalog, "catalog_flags": cat_flags,
+                    "rule": {"name": VI_WER_RULE, "require_improvement": True, "max_vi_delta": args.max_vi_delta,
+                             "max_vi_ci_upper": ci_upper, "bootstrap_iters": 1000, "bootstrap_seed": 0}})
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--catalog", required=True)
-    ap.add_argument("--dev-cs", required=True)
+    ap.add_argument("--dev-cs")
     ap.add_argument("--dev-vi", required=True)
     ap.add_argument("--base", required=True)
     ap.add_argument("--cand", nargs="+", required=True)
@@ -110,7 +148,7 @@ def main():
     ap.add_argument("--max-vi-hallucination-delta", type=float)
     ap.add_argument("--max-cs-domain-delta", type=float)
     ap.add_argument("--reserved-terms", help="Frozen list for reporting FT-unseen term recall on CS development data")
-    ap.add_argument("--rule", choices=["term_acc_macro", "cs_wer"], default="term_acc_macro",
+    ap.add_argument("--rule", choices=["term_acc_macro", "cs_wer", VI_WER_RULE], default="term_acc_macro",
                     help="tiêu chí chọn trong các ứng viên đạt ràng buộc WER dev VI (đăng ký trước, ghi vào <out>.json)")
     ap.add_argument("--dev-ref-cs", help="release của dev CS (vd dev/dev_v2_cs@1): kiểm flags.independent")
     ap.add_argument("--dev-ref-vi", help="release của dev VI")
@@ -118,6 +156,11 @@ def main():
     ap.add_argument("--allow-bench-catalog", action="store_true", help="cho phép catalog from_bench (chẩn đoán oracle)")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
+    if args.rule == VI_WER_RULE:
+        if args.dev_cs or args.dev_ref_cs or not args.dev_ref_vi or args.allow_legacy_dev:
+            ap.error(f"{VI_WER_RULE} requires an independent --dev-ref-vi and no CS development set")
+    elif not args.dev_cs:
+        ap.error(f"{args.rule} requires --dev-cs")
     limits = {key: getattr(args, key) for key in ("max_vi_ci_upper", "max_vi_hallucination_delta", "max_cs_domain_delta")}
     strict = any(limit is not None for limit in limits.values())
     try:
@@ -141,6 +184,9 @@ def main():
                 sys.exit(3)
             print("CẢNH BÁO", msg)
     cat = Catalog.load(args.catalog)
+    if args.rule == VI_WER_RULE:
+        select_vi_wer(args, cat, args.dev_ref_vi, dev_flags["vi"], cat_flags)
+        return
     reserved = {tuple(normalize_hyp(term, cat)) for term in read_lines(args.reserved_terms)}
     cs_rows, vi_rows = read_jsonl(args.dev_cs), read_jsonl(args.dev_vi)
     res, vi_scores, cs_records = {}, {}, {}
@@ -226,10 +272,7 @@ def main():
         out["rule"].update(bootstrap_iters=1000, bootstrap_seed=0)
         L += ["", "Additional retention thresholds", "",
               *[f"- {key} ≤ {value:g}" for key, value in limits.items() if value is not None]]
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out + ".md").write_text("\n".join(L) + "\n", encoding="utf-8")
-    Path(args.out + ".json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
-    print("\n".join(L))
+    write_selection(args.out, L, out)
 
 
 if __name__ == "__main__":

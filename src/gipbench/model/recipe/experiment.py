@@ -20,6 +20,7 @@ REQUIRED = ["name", "base_model", "catalog", "leak_guard", "dev", "pools", "outp
 # Luật chọn không cần dev (đăng ký trước): checkpoint cuối, WiSE-FT một alpha cố định (select.fixed_wise_alpha, mặc định
 # 1.0 = không nội suy). dev: null. Checkpoint vẫn được giữ (keep_last_k) để chọn lại trên dev sau này nếu cần.
 FIXED_RULE = "fixed_last"
+VI_WER_RULE = "vi_wer"
 
 
 def _set(d, dotted, value):
@@ -75,6 +76,11 @@ def load(path, overrides=()):
         raise SystemExit(f"{path}: dev rỗng chỉ dùng được với select.rule: {FIXED_RULE} (luật chọn cố định đăng ký trước)")
     if exp["dev"] and rule == FIXED_RULE:
         raise SystemExit(f"{path}: select.rule {FIXED_RULE} không dùng dev; đặt dev: null cho rõ")
+    if rule == VI_WER_RULE:
+        if not isinstance(exp["dev"], dict) or set(exp["dev"]) != {"vi"} or not exp["dev"]["vi"]:
+            raise SystemExit(f"{path}: select.rule {VI_WER_RULE} requires only dev.vi")
+        if not (exp.get("leak_gate") or {}).get("check_dev"):
+            raise SystemExit(f"{path}: select.rule {VI_WER_RULE} requires leak_gate.check_dev: true")
     ctx = {"exp_root": paths.get("exp_root"), "results_root": paths.get("results_root"),
            "icefall": paths.get("icefall"), "repo": str(REPO), "name": exp["name"]}
     exp = _expand(exp, ctx)
