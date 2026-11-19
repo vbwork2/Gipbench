@@ -121,8 +121,8 @@ Secret `GH_TOKEN`. Giữ `RUN_EXPERIMENT = False` để kiểm CUDA/k2, giải n
 Notebook chép `configs/paths.colab.yaml` thành `configs/paths.yaml`: data ở local, checkpoint / kết quả trên Drive;
 ba Python dùng chung môi trường Colab (biến môi trường trỏ tới đường dẫn tuyệt đối của `python3`).
 
-Gói gốc ở `D:/gipbench_ft_bundle`. Chép các shard 006–007 từ `data/tmp/colab_x0_bundle` vào cùng thư mục chứa các shard
-000–005 trên Drive, rồi dùng `bundle_index.json` mới trong thư mục bổ sung. Shard 006 chứa hai manifest bench v1.1 đã khoá
+Gói ở `D:/gipbench_ft_bundle` (19/11 đã gộp shard 000–008 cùng một `bundle_index.json`; 008 = `pool/vivos_train@v3`
+cho X0). Chép nguyên thư mục lên Drive `My Drive/gipbench_ft`. Shard 006 chứa hai manifest bench v1.1 đã khoá
 và model ONNX INT8 cho baseline. Shard 007 chứa catalog train và file thuật ngữ đã chốt. Có thể chạy dry-run cục bộ trước
 khi tải gói lên.
 
@@ -132,7 +132,8 @@ python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 -
 ```
 
 Lệnh đầu in cả hai seed. Lượt thật chạy lần lượt với `SEED = 0` và `SEED = 1`. Mỗi seed có thư mục làm việc, checkpoint,
-kết quả dev và artifact riêng. Chỉ bật `RUN_EXPERIMENT` khi đã bổ sung dev_v2, catalog train và `reserved_terms_v1.txt`.
+kết quả dev và artifact riêng. Bật `RUN_EXPERIMENT` khi cell dry-run không còn báo đầu vào thiếu.
+X0 không cần dev (`dev: null`, `select.rule: fixed_last`); catalog train và `reserved_terms_v1.txt` nằm ở shard 007.
 Notebook chạy cổng rò rỉ trước stage 1–6. Watchdog dùng `/content` và chừa 5 GiB.
 
 ## 3. Bench: system -> kết quả -> leaderboard
