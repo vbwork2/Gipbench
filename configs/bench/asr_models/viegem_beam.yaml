@@ -1,0 +1,8 @@
+# VieGem CTC prefix beam with the same search and pruning as the LM decode, with LM weights disabled.
+system: viegem_beam
+engine: viegem
+model: {id: 5CD-AI/VieGem-ASR, revision: 95eae70b21fb0ef640e3ac4ea8cfa2380872ed20,
+        dir: "${models_root}/viegem", encoder_dir: "${models_root}/embeddinggemma-2"}
+inference_mode: open_vocab
+decode: {method: beam, beam_width: 32, device: auto, max_chunk_sec: 30}
+batch: 8

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Bước 1 của chuỗi TTS: sinh KỊCH BẢN (văn bản) cho dữ liệu code-switching tổng hợp.
 
-  python -m gipbench.dataset.synth.make_text --catalog data/bench_v0_draft/catalog_v0_draft.tsv \
+  python -m gipbench.dataset.synth.make_text --catalog data/releases/catalog/train-v1/catalog.tsv \
+      --reserved-terms configs/dataset/reserved_terms_v1.txt \
       --bench data/bench_v0_draft/bench_v0_draft.jsonl --out-dir data/tts/script \
       [--terms extra_terms.tsv] [--sentences cau_viet_san.jsonl] [--contexts-per-term 5] [--readings-per-term 2] \
       [--holdout-frac 0.3] [--seed 0] [--require-lexicon]
@@ -14,6 +15,10 @@ Thuật ngữ KHÔNG có trong lexicon: sinh cách đọc dự phòng bằng lu�
 và Việt; còn lại đưa nguyên chính tả) và gắn cờ `reading_fallback`; --require-lexicon bỏ hẳn các thuật ngữ đó.
 
 Chống rò rỉ / giữ đối chứng:
+  - --catalog có span lấy từ chính bench (release flags.from_bench, vd catalog/v0-draft) bị TỪ CHỐI (thoát mã 1; --allow-bench-catalog
+    chỉ để chẩn đoán oracle): lexicon E3 v2 dựng từ catalog đó có 65 / 107 thuật ngữ là thuật ngữ C1 (audit R05);
+  - --reserved-terms (BẮT BUỘC, không rỗng) = thuật ngữ giữ riêng của dự án (configs/dataset/reserved_terms_v1.txt): coi như
+    reserved_b3, không bao giờ có trong kịch bản, kể cả trong câu mẫu / câu --sentences; kiểm lại ở cuối, lọt thì thoát mã 1;
   - thuật ngữ reserved_b3 của catalog KHÔNG BAO GIỜ có trong kịch bản;
   - một phần thuật ngữ (--holdout-frac, chọn theo hash ỔN ĐỊNH của chính tả thuật ngữ + --holdout-salt, không phụ thuộc --seed)
     không bao giờ được tổng hợp: ghi ra tts_holdout_terms.txt; bench còn lát "chưa thấy" để đo TTS có giúp thật không;
@@ -21,7 +26,8 @@ Chống rò rỉ / giữ đối chứng:
 Vào thêm: --sentences FILE = JSONL {"text": "...", "terms": ["meeting"], "domain": "tech"} do người / LLM viết sẵn (công cụ
 KHÔNG gọi LLM). Câu này được ưu tiên hơn mẫu; công cụ tự gắn <en> vào các thuật ngữ khai báo và KIỂM: đủ thuật ngữ khai báo,
 không có thuật ngữ catalog nào khác (đặc biệt reserved_b3 / đối chứng), không còn chữ số, tag đúng. Câu sai bị loại, lý do ghi trong report.
-Ra: <out-dir>/tts_script.jsonl, tts_holdout_terms.txt, tts_script.report.md. Cùng --seed -> cùng kịch bản (byte-by-byte).
+Ra: <out-dir>/tts_script.jsonl, tts_holdout_terms.txt, tts_text.txt (text thuần, 1 câu / dòng, cho `leak_audit --text-files` và
+leak_gate.text_files), tts_script.report.md. Cùng --seed -> cùng kịch bản (byte-by-byte).
 Dòng kịch bản: {"id","text_tagged","tts_text","terms":[...],"readings":[{"term","reading","viet_level"}],"domain","category","flags"}.
 """
 import argparse
@@ -35,6 +41,8 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from gipbench.core import release as R
+from gipbench.core.decontam import find_terms_in_texts, read_lines
 from gipbench.core.paths import REPO as G
 from gipbench.core.leak import norm_text
 from gipbench.core.manifest import read_jsonl
@@ -125,6 +133,11 @@ def tag_sentence(text0, declared):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--catalog", required=True, help="catalog.tsv: thuật ngữ + category + reserved_b3")
+    ap.add_argument("--reserved-terms", required=True,
+                    help="BẮT BUỘC: thuật ngữ giữ riêng (FT-unseen; 1 dòng / thuật ngữ, bỏ dòng '#'): không bao giờ vào kịch bản, "
+                         "kể cả khi xuất hiện trong câu mẫu hay câu --sentences (audit R05 / R23)")
+    ap.add_argument("--allow-bench-catalog", action="store_true",
+                    help="cho phép catalog có span lấy từ chính bench (from_bench): chỉ để chẩn đoán oracle")
     ap.add_argument("--terms", help="file thuật ngữ thêm: mỗi dòng `term` hoặc `term<TAB>category` (bỏ dòng '#')")
     ap.add_argument("--bench", nargs="*", default=[], help="manifest bench: chặn câu trùng text")
     ap.add_argument("--sentences", help="JSONL câu viết sẵn {text, terms, domain?}: ưu tiên hơn mẫu")
@@ -145,6 +158,13 @@ def main():
     ap.add_argument("--max-terms", type=int, default=0, help="chỉ lấy N thuật ngữ đầu (theo thứ tự hash ổn định); 0 = hết")
     args = ap.parse_args()
 
+    try:  # kịch bản TTS dựng từ catalog có span bench = dạy model đúng thuật ngữ sẽ bị chấm (60.7% lexicon E3 v2 là thuật ngữ C1)
+        R.forbid_bench_catalog(args.catalog, "make_text", allow=args.allow_bench_catalog)
+    except R.ReleaseError as e:
+        sys.exit(f"LỖI {e}")
+    reserved_list = read_lines(args.reserved_terms)
+    if not reserved_list:
+        sys.exit(f"LỖI --reserved-terms {args.reserved_terms} rỗng: danh sách thuật ngữ giữ riêng phải có ít nhất 1 mục")
     cat = Catalog.load(args.catalog)
     lex, lex_problems = load_lexicon(args.lexicon)
     templates = [] if args.no_templates else load_templates(args.templates)
@@ -166,6 +186,8 @@ def main():
 
     for canon, v in cat.terms.items():
         add_term(" ".join(canon), v.category, "catalog", v.reserved_b3)
+    for raw in reserved_list:  # thuật ngữ giữ riêng: như reserved_b3 (cấm tuyệt đối), kể cả khi không có trong catalog
+        add_term(raw, "", "reserved_terms", True)
     if args.terms:
         for line in open(args.terms, encoding="utf-8"):
             if line.startswith("#") or not line.strip():
@@ -425,6 +447,13 @@ def main():
     with open(out / "tts_holdout_terms.txt", "w", encoding="utf-8", newline="\n") as f:
         for k in sorted(held):
             f.write(k + "\n")
+    # text thuần của kịch bản (1 câu / dòng) để `leak_audit --text-files` / cổng rò rỉ kiểm lại với bench và reserved_terms
+    with open(out / "tts_text.txt", "w", encoding="utf-8", newline="\n") as f:
+        for r in lines:
+            f.write(plain_text(r["text_tagged"]) + "\n")
+    leaked = find_terms_in_texts(reserved_list, (plain_text(r["text_tagged"]) for r in lines))
+    if leaked:  # kiểm lại độc lập với bộ lọc lúc sinh (đóng khi lỗi)
+        sys.exit(f"LỖI {len(leaked)} thuật ngữ giữ riêng lọt vào kịch bản: {sorted(leaked)[:10]}")
 
     used = {k for r in lines for k in r["terms"]}
     n_lex = sum(1 for k in used if k in lex)
@@ -487,7 +516,7 @@ def main():
           f"được sinh câu {len(used)} (lexicon {n_lex}, dự phòng {len(fb_terms)})")
     print(f"Câu: {len(lines)} (từ --sentences {stat['from_sentences']}); loại do trùng bench {stat['bench_dup']}; "
           f"--sentences bị loại {sum(srej.values())}")
-    print(f"Đã ghi {out / 'tts_script.jsonl'}, {out / 'tts_holdout_terms.txt'}, {out / 'tts_script.report.md'}")
+    print(f"Đã ghi {out / 'tts_script.jsonl'}, {out / 'tts_holdout_terms.txt'}, {out / 'tts_text.txt'}, {out / 'tts_script.report.md'}")
     if not lines:
         sys.exit("LỖI: kịch bản rỗng (kiểm --catalog / --holdout-frac / --require-lexicon)")
 

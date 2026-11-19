@@ -91,6 +91,52 @@ def resolve(ref: str, verify: bool = True) -> Release:
     return Release(ref, d, meta)
 
 
+def releases_config() -> Path:
+    """configs/dataset/releases.yaml (công thức mọi release); GIPBENCH_RELEASES_YAML ghi đè (dùng trong test)."""
+    return Path(os.environ.get("GIPBENCH_RELEASES_YAML") or paths.REPO / "configs" / "dataset" / "releases.yaml")
+
+
+def locked_bench_refs(config: Optional[Path] = None) -> List[str]:
+    """Mọi release `bench/*` khai báo `flags.locked: true` trong releases.yaml (bench đã khoá: G0, C0, C1, E0...).
+    Cổng rò rỉ của model.run kiểm train / dev với TẤT CẢ các bench này, không chỉ bench ghi trong `leak_guard`."""
+    import yaml
+    cfg = yaml.safe_load(Path(config or releases_config()).read_text(encoding="utf-8")) or {}
+    return [ref for ref, spec in (cfg.get("releases") or {}).items()
+            if ref.startswith("bench/") and ((spec or {}).get("flags") or {}).get("locked") is True]
+
+
+def catalog_flags(path_or_ref) -> Dict:
+    """Cờ của catalog release (vd {"from_bench": true}). Tham chiếu `catalog/<tên>` thì đọc release.json. Đường dẫn file
+    thì so sha256 với catalog.tsv của mọi catalog release đã đăng ký (cả file nguồn gốc của release cũng khớp, vì cùng
+    nội dung). Không khớp release nào thì {} (không biết)."""
+    s = str(path_or_ref)
+    if s.startswith("catalog/"):
+        return dict(resolve(s, verify=False).meta.get("flags") or {})
+    p = Path(s)
+    base = root() / "catalog"
+    if not p.is_file() or not base.is_dir():
+        return {}
+    want = sha256(p)
+    for d in sorted(base.iterdir()):
+        rj = d / "release.json"
+        if rj.is_file():
+            meta = json.loads(rj.read_text(encoding="utf-8"))
+            if (meta.get("files") or {}).get("catalog.tsv", {}).get("sha256") == want:
+                return dict(meta.get("flags") or {})
+    return {}
+
+
+def forbid_bench_catalog(path_or_ref, what: str, allow: bool = False) -> Dict:
+    """Từ chối catalog có span lấy từ chính bench (`from_bench: true`) khi dùng cho curate / chọn checkpoint / TTS: cải thiện
+    trên bench khi đó là ghi nhớ (audit R05). allow=True = cố ý dùng làm chẩn đoán oracle. Trả về cờ catalog."""
+    flags = catalog_flags(path_or_ref)
+    if flags.get("from_bench") and not allow:
+        raise ReleaseError(f"{what}: catalog {path_or_ref} có span lấy từ chính bench (from_bench). Dựng catalog từ text train "
+                           "(python -m gipbench.dataset.release.build_train_catalog) hoặc khai báo dùng làm chẩn đoán oracle "
+                           "(catalog_use: oracle_diagnostic / --allow-bench-catalog; kết quả khi đó không được xếp hạng)")
+    return flags
+
+
 def git_commit() -> str:
     try:
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=paths.REPO, capture_output=True, text=True,
@@ -133,7 +179,7 @@ def write_release(ref: str, *, manifest_rows: Optional[List[Dict]] = None, catal
                     if k.startswith("_"):
                         continue
                     if k == "audio" and r.get("_audio_path"):
-                        v = os.path.relpath(os.path.normpath(r["_audio_path"]), base)
+                        v = os.path.relpath(os.path.normpath(r["_audio_path"]), base).replace(os.sep, "/")
                     out[k] = v
                 f.write(json.dumps(out, ensure_ascii=False) + "\n")
         files["manifest.jsonl"] = {"sha256": sha256(d / "manifest.jsonl"), "rows": len(manifest_rows),

@@ -152,7 +152,9 @@ def fetch_evalset(key, files, rows, out_dir: Path):
         if why or "_path" not in row:
             continue
         r = by_up[row["upstream_id"]]
-        if r.get("text_redistributable") is False:  # bản share không có lời thoại: lấy lại đúng giá trị từ nguồn
+        # bản share không có lời thoại (cờ text_redistributable: false, hoặc share_policy.text_not_redistributable):
+        # lấy lại đúng giá trị từ nguồn. Chỉ dòng đã bị bỏ lời thoại (không còn text_tagged); dòng có lời thoại giữ nguyên.
+        if r.get("text_redistributable") is False or "text_tagged" not in r:
             for k in TEXT_FIELDS:
                 if k in row and k not in r:
                     r[k] = row[k]

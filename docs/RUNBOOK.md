@@ -21,7 +21,9 @@ python tests/golden/capture.py --layout new --out /tmp/g && python tests/golden/
 | vss_cs (nhãn giả + đồng thuận ASR) | `bash scripts/dataset/vss_cs_pilot.sh`, `python -m gipbench.dataset.pseudolabel.vss_cs_run …`, dựng lại từ cache: `bash scripts/dataset/rebuild_vss_cs.sh --bench … --catalog …` |
 | Hyps ASR (venv ASR) | `~/.venvs/gipbench-asr/bin/python -m gipbench.infer.asr_hyps --engine faster-whisper …` |
 | Distill / confusable | `gipbench.dataset.pseudolabel.distill`, `gipbench.dataset.derive.confusables` |
-| TTS | `gipbench.dataset.synth.{make_text,synth,verify}` (`docs/tts_pipeline.md`) |
+| TTS | `gipbench.dataset.synth.{make_text,synth,verify}` (`docs/tts_pipeline.md`); `make_text` BẮT BUỘC `--reserved-terms` và từ chối catalog `from_bench`; ra thêm `tts_text.txt` cho `leak_gate.text_files` |
+| Thuật ngữ giữ riêng (FT-unseen) | đề xuất: `python -m gipbench.dataset.release.propose_reserved_terms [--fraction 0.5]` -> `configs/dataset/reserved_terms_v1.proposal.txt`; người dùng duyệt / sửa rồi đổi tên thành `reserved_terms_v1.txt` (chốt TRƯỚC khi dựng dữ liệu FT) |
+| Catalog train (không có span bench) | `python -m gipbench.dataset.release.build_train_catalog --source pool/vimedcss_train@v2:text_tagged_orig --source pool/vss_cs@e3_v1:text_tagged --reserved-terms configs/dataset/reserved_terms_v1.txt --out data/catalogs/train_v1/catalog.tsv` (`--preview` chỉ in số liệu), rồi thêm `catalog/train-v1` (`flags: {from_bench: false}`) vào `releases.yaml` và `register`. **Đã dựng 18/11/2026**: `reserved_terms_v1.txt` chốt (820), `catalog/train-v1` 727 thuật ngữ |
 | Bench từ phiếu duyệt | `python -m gipbench.dataset.release.build_bench …` |
 | Dev / pool cho FT | `gipbench.dataset.release.{prep_e3_v1,build_dev_cs,make_dev_split}` |
 | Kiểm rò rỉ bench ↔ train | `python -m gipbench.dataset.release.validate --bench … --catalog … --train … --dev …` |
@@ -30,6 +32,73 @@ python tests/golden/capture.py --layout new --out /tmp/g && python tests/golden/
 
 Release đã có (16/11/2026): `catalog/v0-draft`, `bench/v0-draft`, `pool/{vimedcss_train@full, vss_cs@e3_v1,
 vivos_train@e3_v1, cv_train@v1, distill@e3_v1, confusable_train@e3_v1}`, `dev/{dev_cs@e3_v1, dev_vi@e3_v1}`.
+Thêm 17/11/2026: `catalog/vimedcss-v1.0`, `bench/{general-v1.0, code-switch-v1.0, cs-ggroup-v1.0, external-v1.0}` (bench khoá: cổng rò rỉ
+của `model.run` đọc danh sách này từ `releases.yaml`, nên phải `register` trước khi chạy experiment).
+
+### Dev độc lập
+
+Chuẩn bị manifest nguồn nói tự nhiên có nhãn và id người nói ổn định. Ví dụ dưới đây kiểm trước phần ViMedCSS.
+Bổ sung manifest CS ngoài y khoa vào `--candidates` và liệt kê tất cả pool train liên quan trong `--exclude-from`.
+Công cụ tự bổ sung mọi bench khoá. Kiểm tra trùng audio dùng SHA-256 có sẵn trong manifest.
+
+```bash
+python -m gipbench.dataset.release.make_dev_split \
+  --kind cs --candidates data/raw/vimedcss_full/dev_vimedcss.jsonl \
+  --exclude-from pool/vimedcss_train@full pool/vimedcss_train@v2 \
+  --out-dev data/tmp/dev_vimedcss_filtered.jsonl
+```
+
+Đọc `<out-dev>.report.json` để xem số câu, domain, người nói và phát hiện critical. ID video ViMedCSS chỉ được tính là
+đơn vị nguồn. Dev CS đạt khi có ít nhất 1.500 câu, 4 domain và 100 người nói. Dùng `--kind vi` với nguồn thuần Việt nói tự
+nhiên, ngưỡng ít nhất 1 giờ. Thêm `--release dev/dev_v2_cs@1` hoặc `--release dev/dev_v2_vi@1` để đăng ký release đủ điều
+kiện, có audio và kèm `flags.independent` / `flags.exclusion_sets`. Sau đó đối chiếu `ck4132` với model gốc trên dev_v2.
+
+**Dev tạm (18/11, đang dùng cho `e4_x0`).** Chưa có nguồn đạt ngưỡng trên (TODO 2e), nên dev tạm được cắt theo video từ
+`vss_cs@v3` (CS) và `distill@v4` (VI). Pool train tương ứng đã bỏ các video này (`vss_cs@v4`, `distill@v5`). Nhãn giả
+phải qua người nghe. Dev tạm chỉ dùng cho smoke test / X0 / chọn checkpoint. Nó không đại diện 4 domain, đơn vị người nói
+là video, và **không được chấm checkpoint đã train trên `carved_from`** (E3, `ck4132`).
+
+```bash
+# đã chạy: data/listen/dev_interim_{cs,vi}/ (heldout.jsonl, candidates.jsonl, listen.csv, audio/)
+python -m gipbench.dataset.release.holdout_dev select --pool pool/vss_cs@v3 --kind cs --frac 0.3 \
+  --reuse data/listen/vss_cs_v1/listen_A_reviewed.csv --out data/listen/dev_interim_cs
+python -m gipbench.dataset.release.holdout_dev select --pool pool/distill@v4 --kind vi --frac 0.2 --out data/listen/dev_interim_vi
+# 👤 nghe listen.csv bằng review_bench.html, xuất thành listen_reviewed.csv trong cùng thư mục, rồi:
+python -m gipbench.dataset.release.holdout_dev apply --dir data/listen/dev_interim_cs
+python -m gipbench.dataset.release.holdout_dev apply --dir data/listen/dev_interim_vi
+POOLS="pool/vimedcss_train@v4 pool/vivos_train@v3 pool/confusable_train@v3 pool/cv_other@v3 pool/vss_cs@v4 pool/distill@v5"
+python -m gipbench.dataset.release.make_dev_split --candidates data/listen/dev_interim_cs/verified.jsonl --kind cs \
+  --interim --carved-from pool/vss_cs@e3_v1 pool/vss_cs@v3 --exclude-from $POOLS \
+  --release dev/dev_interim_cs@1 --out-dev data/dev/dev_interim_cs.jsonl
+python -m gipbench.dataset.release.make_dev_split --candidates data/listen/dev_interim_vi/verified.jsonl --kind vi \
+  --interim --carved-from pool/distill@e3_v1 pool/distill@v3 pool/distill@v4 --exclude-from $POOLS \
+  --release dev/dev_interim_vi@1 --out-dev data/dev/dev_interim_vi.jsonl
+```
+
+Trước khi nghe (đã chạy 18/11): `holdout_dev triage --hyps <qwen3> <whisper>` nhận luôn câu mà nhãn khớp từng token với
+mọi ASR khác họ (VI chỉ có 6 / 365 câu nên giữ lại cả để kiểm mù). `holdout_dev hint --hyps qwen3=… whisper=…` ghi cột
+`hint`, trang duyệt hiện cột này dưới câu, từ lệch bọc trong ⟦ ⟧. Hyp chạy trong WSL: `data/listen/dev_interim_{cs,vi}/run_asr.sh`.
+Phiếu gộp để nghe một lượt: `data/listen/pending_all/listen.csv`. Nghe phiếu gộp thì chạy `apply` cho từng thư mục với
+`--review "$(pwd)/data/listen/pending_all/listen_reviewed.csv"` (mỗi `apply` chỉ lấy id của mình).
+
+LLM rà ngữ cảnh một lượt (tuỳ chọn, trước hoặc giữa lúc nghe): đánh dấu từ không hợp nghĩa với từ trước / sau, từ Anh lạ
+ngữ cảnh, và từ trông như tiếng Anh mà chưa gắn `<en>`. Ghi cột `llm_suspects`; trang duyệt gạch chân sóng các từ đó, câu có
+dấu ◆ ở danh sách, phím `F` nhảy tới câu kế tiếp. LLM chỉ đánh dấu, không sửa nhãn. Cache ở `llm_check.jsonl` cạnh phiếu,
+chạy lại chỉ hỏi câu mới / đổi nhãn.
+
+```bash
+export OPENAI_API_KEY=...            # PowerShell: $env:OPENAI_API_KEY = "..."; OPENAI_MODEL / --model để đổi model
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all --dry-run      # xem prompt, không gọi API
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all --limit 20     # thử 20 câu, đọc kết quả
+python -m gipbench.dataset.label.llm_context_check --dir data/listen/pending_all \
+  --skip-decided data/listen/pending_all/listen_reviewed.csv                                    # bỏ câu đã nghe
+```
+
+Đã nghe một phần trong trình duyệt thì xuất CSV trước rồi dùng `--skip-decided`. Mở lại `listen.csv` trên trang: tiến độ
+vẫn còn (lưu theo tên file + số câu).
+
+`--interim` đòi mọi câu có `label_source: human:*` (hoặc `auto:asr_agree` từ `triage`). Ngưỡng: CS ≥ 300 câu, VI ≥ 0,75 giờ (dev tạm VI, chọn 19/11; dev VI đạt chuẩn vẫn ≥ 1 giờ). Release gắn
+`interim: true, representative: false, speaker_unit: video, carved_from`.
 
 ## 2. Model: experiment -> artifact
 
@@ -42,9 +111,105 @@ MIX_SYNTH=0.35 python -m gipbench.model.run … --stages 3                      
 python -m gipbench.model.recipe.mix_plan --mix configs/model/experiments/e3_v2.yaml --manifest … --fit-cap
 ```
 
+Stage 0 là **cổng rò rỉ đóng khi lỗi** (thoát mã 3 nếu còn critical chưa miễn trừ; xem `docs/CONTRACTS.md` §5 khoá `leak_gate`,
+`catalog_use`). Xem riêng cổng, không chạm gì khác: `--stages 0 --set output.work_dir=data/work/model/_probe` rồi đọc
+`<work_dir>/leak_report.md`. Catalog `from_bench` (vd `catalog/v0-draft`) bị từ chối: dùng `catalog/train-v1`, hoặc khai báo
+`catalog_use: oracle_diagnostic` (kết quả không xếp hạng). `e3_v1` / `e3_v1b` / `e3_v2` giữ nguyên làm lịch sử nên bị từ chối.
+
 Thí nghiệm mới = chép một file trong `configs/model/experiments/`, đổi `name`, `output`, rồi sửa tham số. Không chép
 shell. Stage 6 ghi artifact (`output.artifact`) và các system YAML cho bench (`configs/bench/systems/<system>.yaml`).
 Các file thuộc `docs/history/run_e3*.sh` chỉ để tham khảo, không chạy được với cấu trúc mới.
+
+### 2b. Fine-tune trên Colab: gói dữ liệu qua Google Drive
+
+Code lấy bằng `git clone` (token GitHub trong Colab Secrets); dữ liệu + model gốc đi qua Drive dưới dạng gói tar ~1 GB giữ
+nguyên đường dẫn tương đối theo gốc repo. Không có audio bench trong gói (chỉ manifest text cho cổng rò rỉ).
+
+```bash
+# máy local: đóng gói (chạy lại được, chỉ gói file mới / đổi), rồi chép thư mục gói vào thư mục Drive đồng bộ
+python scripts/colab/pack_ft_bundle.py --out D:/gipbench_ft_bundle [--refs dev/<dev_v2>@v1 catalog/train-v1]
+# Colab: sau khi mount Drive và clone repo vào /content/gipbench
+python scripts/colab/unpack_ft_bundle.py --bundle /content/drive/MyDrive/gipbench_ft --dest /content/gipbench
+```
+
+Mở `scripts/colab/colab_ft.ipynb` trên Colab GPU. Đặt `BRANCH` trỏ tới nhánh chứa cấu hình X0 và cấp quyền đọc repo bằng
+Secret `GH_TOKEN`. Giữ `RUN_EXPERIMENT = False` để kiểm CUDA/k2, giải nén gói Drive và chạy dry-run.
+Notebook chép `configs/paths.colab.yaml` thành `configs/paths.yaml`: data ở local, checkpoint / kết quả trên Drive;
+ba Python dùng chung môi trường Colab (biến môi trường trỏ tới đường dẫn tuyệt đối của `python3`).
+
+Gói ở `D:/gipbench_ft_bundle` có `bundle_index.json` và shard 000–009. Shard 008 chứa `pool/vivos_train@v3` cho X0,
+009 chứa hai release dev tạm. Chép index hiện hành và đủ các shard nó liệt kê lên Drive `My Drive/gipbench_ft`.
+Notebook kiểm danh sách file ngay sau khi mount Drive. Shard 006 chứa hai manifest bench v1.1 đã khoá
+và model ONNX INT8 cho baseline. Shard 007 chứa catalog train và file thuật ngữ đã chốt. Có thể chạy dry-run cục bộ trước
+khi tải gói lên.
+
+```bash
+python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 --dry-run
+python -m gipbench.model.run configs/model/experiments/e4_x0.yaml --stages 0-6 --seed 1 --dry-run
+```
+
+Lệnh đầu in cả hai seed. Lượt thật chạy lần lượt với `SEED = 0` và `SEED = 1`. Mỗi seed có thư mục làm việc, checkpoint,
+kết quả dev và artifact riêng. Bật `RUN_EXPERIMENT` khi cell dry-run không còn báo đầu vào thiếu.
+X0 gốc không cần dev (`dev: null`, `select.rule: fixed_last`); catalog train và `reserved_terms_v1.txt` nằm ở shard 007.
+Notebook chạy cổng rò rỉ trước stage 1–6. Watchdog dùng `/content` và chừa 5 GiB.
+
+#### Thử X0 với learning rate thấp hơn trên dev VI
+
+Notebook mặc định chọn `e4_x0_lr1e4_vi.yaml`, chạy seed 0 với LR `0.0001` và cùng ngân sách 2.400 batch như X0 gốc.
+Bổ sung `dev/dev_v2_vi@1` vào gói Drive hiện có trước khi chạy.
+
+```bash
+python scripts/colab/pack_ft_bundle.py --out D:/gipbench_ft_bundle --refs dev/dev_v2_vi@1 --no-bench-catalog --model-files
+```
+
+Chép các shard mới và `bundle_index.json` cập nhật vào `My Drive/gipbench_ft`. Trong notebook, dùng `BRANCH` chứa code mới,
+đặt `RUN_EXPERIMENT = True` và chọn Run all. Lượt chạy tự chấm model gốc và các checkpoint còn giữ trên dev VI.
+Chọn checkpoint có WER thấp nhất trong số các checkpoint giảm WER và có cận trên CI 95% của ΔWER ≤ 0.
+Nếu không có checkpoint đạt điều kiện, kết quả chọn `base`. Xem `select_ckpt.md` hoặc `select_ckpt.json` trong
+`My Drive/gipbench_results/e4_x0_lr1e4_vi_dev/seed-0/`. Lượt thử này chỉ giải mã dev VI.
+
+### 2c. Chạy ablation E4
+
+X0–X5 dùng hai seed, 2.400 batch train mỗi seed và tối đa 8 lượt mỗi audio nguồn, tính cả speed perturb. Recipe yêu cầu
+đủ batch trước khi export. `model_card.json` ghi số lượt trong mix, seed, sampler state của checkpoint cuối và SHA-256
+của các YAML cấu thành cấu hình. Khi chạy một biến thể, đặt `name` riêng để checkpoint và kết quả không lẫn nhau.
+
+- Chấm X0 mỗi seed sau khi đã có artifact và audio G0. Script dùng beam 4, batch 1 giống Gipformer gốc, rồi ghi
+  `acceptance.json` theo ngưỡng ΔWER ≤ +0,3 và cận trên CI95 ≤ +0,5.
+
+  ```bash
+  python scripts/diagnostics/e4_x0_check.py --artifact <artifact>/seed-0 \
+      --baseline-hyps results/general_asr/general_v1/gip15_mbs4_open/hyps.jsonl --out results/e4_x0/seed-0
+  ```
+
+- Với X1, chạy ba LR `0.0001`, `0.0003`, `0.001` trên mỗi seed. Dùng LR lớn nhất đáp ứng ràng buộc giữ tiếng Việt ở cả hai
+  seed. `EXPERIMENT_OVERRIDES` trong notebook nhận cùng các cặp `--set` như CLI.
+
+  ```bash
+  python -m gipbench.model.run configs/model/experiments/e4_x1.yaml --seed 0 \
+      --set name=e4_x1_lr1e4 --set train.lr=0.0001
+  ```
+
+- X2–X5 cần `--set train.lr=<LR đã chọn ở X1>` và `pool/cs_natural@1` đã lọc, có `dataset: cs_natural`. X2 và X3 dùng cùng
+  mix 65% replay, 35% CS thật. X4 thay 10% mix bằng `pool/vss_cs@v4`. X5 mặc định 10% TTS. Lượt 30% cần các override
+  `name=e4_x5_tts30`, `pools.replay_human.weight=0.455`, `pools.cs_real.weight=0.245`, `pools.synth.weight=0.30`.
+  Kiểm tỷ trọng thực tế trong `model_card.mix.groups` vì trần lặp có thể làm giảm tỷ trọng yêu cầu.
+- Dev chuẩn cho X1–X5 là `dev/dev_v2_cs@1` và `dev/dev_v2_vi@1`. Smoke test có thể ghi đè hai `dev.cs` / `dev.vi` bằng dev tạm
+  và `pools.cs_real.refs=[pool/vimedcss_train@v4]` ở X2–X5. Đặt tên run riêng có chữ `interim`. Kết quả smoke chỉ dùng để kiểm
+  pipeline. Khi chạy lại stage 5–6 của X0 với dev, chạy stage 0 với cùng override trước, thêm `leak_gate.check_dev=true`,
+  và đặt `output.dev_results` và `output.artifact` riêng để giữ kết quả X0 đã chấm.
+- X5 dùng `dataset.synth.make_text` với catalog train, `reserved_terms_v1.txt`, manifest tất cả bench khoá và
+  `--out-dir data/tts/e4`. Dùng `dataset.synth.synth` với danh sách giọng đã được phép dùng, chạy `dataset.synth.verify`
+  với các kết quả ASR và `--out data/tts/e4/train_tts.jsonl`, rồi `dataset.release.register pool/tts_train@e4_v1`.
+  Bổ sung release âm thanh và text gốc vào Drive với `pack_ft_bundle.py --refs pool/tts_train@e4_v1 --no-bench-catalog
+  --model-files data/tts/e4/tts_text.txt --out D:/gipbench_ft_bundle`.
+- X6 giải mã cùng artifact đã chọn bằng greedy, beam 4 và ba LM scale đã đăng ký. Chốt benchmark trước khi chạy và báo
+  cả lưới, với Δ so cặp so với beam 4. Giữ file LM đã kiểm text rò rỉ theo Phần 4.
+
+  ```bash
+  python scripts/diagnostics/e4_x6_decode.py --artifact <artifact>/seed-0 --benchmark general_v1 cs_ggroup_v1 \
+      --lm results/phase4/lm/gip15_rnnlm/gip15_rnnlm_e2.onnx --out results/e4_x6/seed-0
+  ```
 
 ## 3. Bench: system -> kết quả -> leaderboard
 
@@ -79,6 +244,22 @@ python -m gipbench.dataset.release.fetch --manifest <gói>/manifests/<x>.jsonl -
 ```
 
 Benchmark đã khoá (`evidence_level: locked`): đổi câu / nhãn / chuẩn hoá = phiên bản mới, không sửa yaml / manifest cũ.
+
+Phiên bản benchmark v1.1 (dựng 17/11/2026, **khoá 18/11/2026**, release `bench/{code-switch,external}-v1.1`; `docs/datasheet_bench_v1.md` mục 9):
+
+```bash
+python -m gipbench.dataset.release.derive_v1_1 --which code_switch   # C0 + train_video_overlap (lát video chưa thấy)
+python -m gipbench.dataset.release.derive_v1_1 --which external      # E0 + audio_sha256 / duration; chạy lại khi ViMD tải xong
+# E0 khi còn bộ đang tải: giải mã phần đã có audio, sau đó chạy lại với manifest đủ (transcribe resume theo id)
+python -m gipbench.bench.transcribe --model <m>.yaml --benchmark external_v1_1 --manifest <data>/benchmarks/external_v1_1/manifest_with_audio.jsonl --out <dir>
+# Whisper (faster-whisper / ctranslate2, venv gipbench-asr): cần cuBLAS 12 + cuDNN 9 của torch trong venv
+SITE=$(python -c "import site; print(site.getsitepackages()[0])")
+export LD_LIBRARY_PATH=$SITE/nvidia/cublas/lib:$SITE/nvidia/cudnn/lib:$LD_LIBRARY_PATH
+```
+
+VieGem + KenLM (`viegem_lm.yaml`) cần module Python `kenlm` trong venv gipbench-viegem; build từ mã nguồn nên cần
+trình biên dịch: `sudo apt install build-essential cmake` rồi `uv pip install --python ~/.venvs/gipbench-viegem/bin/python kenlm`
+(`pypi-kenlm` không có wheel cho Python 3.11).
 
 ## Đổi hướng thì sửa ở đâu
 

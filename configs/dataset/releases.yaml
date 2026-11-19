@@ -54,6 +54,138 @@ releases:
     built_by: gipbench.dataset.derive.confusables, rồi prep_e3_v1 bỏ người nói của dev_vi
     flags: {label_source: "pseudo:Zipformer-30M-RNNT-6000h"}
 
+  # --- pool v2 (17/11/2026, TODO 2c / audit IP-06): sạch với mọi bench khoá; mục cũ giữ nguyên làm lịch sử ---
+  pool/vimedcss_train@v2:
+    manifest: data/pools/vimedcss_train_v2/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vimedcss_train@full (báo cáo cạnh manifest)
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vimedcss_train@full}
+    notes: "ViMedCSS train bỏ MỌI video có trong bench khoá (C0 + E0 ViMedCSS test, theo source_key) và câu trùng text:
+      3 945 câu / 7.64 h / 1 219 video (từ 11 832 / 22.95 h). Chưa loại video của dev_v2 (chưa có): dựng dev_v2 xong thì
+      chạy lại clean_pool --exclude <dev_v2> ra version mới."
+
+  pool/cv_other@v2:
+    manifest: data/pools/cv_other_v2/manifest.jsonl
+    built_by: gipbench.dataset.ingest.local commonvoice_pool (CV27 validated + other, trừ client_id test / dev, trần 30 câu / người
+      nói), rồi gipbench.dataset.release.clean_pool
+    flags: {label_source: "human_prompt:cv27 (phần lớn chưa có phiếu xác nhận)", clean_against: locked_benches}
+    notes: "Thay cv_train@v1 (1 người nói). CV27 validated trừ người nói test / dev chỉ còn đúng 1 người nói, nên lấy thêm
+      other.tsv (down_votes = 0). 859 câu / 1.04 h / 170 người nói; bỏ 170 câu có câu nhắc trùng CV17 test (E0). Nhãn = câu
+      nhắc, đa số câu chưa có phiếu xác nhận: dùng trọng số thấp, hoặc bỏ nếu X0 cho thấy hại."
+
+  pool/confusable_train@e3_v1b:
+    manifest: data/e3_v1/train_confusable.jsonl
+    built_by: gipbench.dataset.derive.confusables, rồi prep_e3_v1 bỏ người nói của dev_vi (cùng file với @e3_v1)
+    flags: {label_source: "human:vivos_train", audio_duplicate_of: pool/vivos_train@e3_v1, errata_for: pool/confusable_train@e3_v1}
+    notes: "Đính chính @e3_v1: nhãn là nhãn người của VIVOS train, không phải nhãn giả. 590 / 590 câu cùng audio với
+      vivos_train@e3_v1: curate (dedupe audio, mặc định bật) chỉ giữ một bản; dùng như trọng số lấy mẫu, không phải dữ liệu mới."
+
+  pool/vivos_train@v2:
+    manifest: data/pools/vivos_train_v2/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vivos_train@e3_v1
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vivos_train@e3_v1}
+    notes: "vivos_train@e3_v1 bỏ 2 câu trùng text với G0 / E0 ngoài luật bộ đọc ('cà phê', 'khải huyền'): 10 557 câu, 42 người nói.
+      Trùng câu chữ VIVOS train / test trong cùng bộ đọc vẫn còn (review, báo lát text_unseen), không phải critical."
+
+  pool/confusable_train@v2:
+    manifest: data/pools/confusable_train_v2/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/confusable_train@e3_v1b
+    flags: {label_source: "human:vivos_train", audio_duplicate_of: pool/vivos_train@v2, clean_against: locked_benches,
+            parent: pool/confusable_train@e3_v1b}
+    notes: "e3_v1b bỏ 4 câu trùng text với G0 (domain confusable không được luật bộ đọc miễn): 586 câu. Vẫn trùng audio
+      100% với vivos_train: curate dedupe chỉ giữ một bản."
+
+  # --- pool v3 (18/11/2026): clean_pool có audio_sha256 (đọc file), bỏ audio rỗng / im lặng số, bỏ text gần trùng
+  # (Jaccard >= 0.6; >= 2 câu gần trùng trong một video thì bỏ cả video). Bắt video ViMedCSS đăng lại dưới YouTube ID khác
+  # mà source_key không thấy. Manifest có audio_sha256 nên cổng chế độ metadata cũng kiểm được trùng audio.
+  pool/vimedcss_train@v3:
+    manifest: data/pools/vimedcss_train_v3/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vimedcss_train@v2 (báo cáo cạnh manifest)
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vimedcss_train@v2, audio_screened: true}
+    notes: "v2 bỏ 39 câu audio im lặng / rỗng (33 im lặng số, 6 file 44 byte) và 25 câu trùng E0 ViMedCSS test: 17 gần
+      trùng text (video đăng lại 5189 / 2337_2 / 643 / 745 / ..., cả câu mở đầu theo mẫu của kênh), 1 trùng audio từng byte
+      (5189-55 = test 5190-56), 8 câu cùng video. 3 881 câu / 7.55 h / 1 206 video."
+
+  pool/vivos_train@v3:
+    manifest: data/pools/vivos_train_v3/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vivos_train@v2
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vivos_train@v2, audio_screened: true}
+    notes: "v2 bỏ 2 câu gần trùng text với G0 / E0 ngoài luật bộ đọc: 10 555 câu, 42 người nói, 0 audio im lặng."
+
+  pool/confusable_train@v3:
+    manifest: data/pools/confusable_train_v3/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/confusable_train@v2
+    flags: {label_source: "human:vivos_train", audio_duplicate_of: pool/vivos_train@v3, clean_against: locked_benches,
+            parent: pool/confusable_train@v2, audio_screened: true}
+    notes: "Như v2 (586 câu), thêm audio_sha256."
+
+  pool/cv_other@v3:
+    manifest: data/pools/cv_other_v3/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/cv_other@v2
+    flags: {label_source: "human_prompt:cv27 (phần lớn chưa có phiếu xác nhận)", clean_against: locked_benches,
+            parent: pool/cv_other@v2, audio_screened: sha_only}
+    notes: "Như v2 (859 câu), thêm audio_sha256. Audio mp3: không kiểm được im lặng số (audio_check 'unchecked')."
+
+  pool/vss_cs@v3:
+    manifest: data/pools/vss_cs_v3/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vss_cs@e3_v1
+    flags: {train_only: true, label_source: "pseudo:Zipformer-30M-RNNT-6000h", clean_against: locked_benches,
+            parent: pool/vss_cs@e3_v1, audio_screened: true}
+    notes: "Như e3_v1 (1 566 câu): 0 trùng, 0 gần trùng, 0 audio im lặng; thêm audio_sha256."
+
+  pool/distill@v3:
+    manifest: data/pools/distill_v3/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/distill@e3_v1
+    flags: {label_source: "distill:gip15", clean_against: locked_benches, parent: pool/distill@e3_v1, audio_screened: true}
+    notes: "Như e3_v1 (1 889 câu): 0 trùng, 0 gần trùng, 0 audio im lặng; thêm audio_sha256."
+
+  # --- pool v4 (18/11/2026): clean_pool thêm dấu vân tay âm thanh (core.audiofp, dataset.release.acoustic_audit). Chỉ hai
+  # pool có khớp; 4 pool còn lại (vivos / confusable / cv_other / vss_cs) giữ @v3 (0 khớp, reports/leak/acoustic_v3).
+  pool/vimedcss_train@v4:
+    manifest: data/pools/vimedcss_train_v4/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vimedcss_train@v3 (báo cáo cạnh manifest)
+    flags: {label_source: human, clean_against: locked_benches, parent: pool/vimedcss_train@v3, audio_screened: true,
+            acoustic_checked: true}
+    notes: "v3 bỏ 13 câu: 3656_2-28 cùng audio với E0 test 3655_2-27 (BER 0.025, video đăng lại) nên bỏ cả video 3656_2
+      (7 câu); 6 câu có câu mở đầu theo mẫu đọc bằng cùng giọng của kênh với C0 / E0 ('Nội dung trong video này sẽ tìm hiểu
+      về...', 'Tổng quan bệnh hội chứng...', 'Công ty hóa chất Trần Tiến...'). 3 868 câu / 7.53 h / 1 205 video."
+
+  pool/distill@v4:
+    manifest: data/pools/distill_v4/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/distill@v3
+    flags: {label_source: "distill:gip15", clean_against: locked_benches, parent: pool/distill@v3, audio_screened: true,
+            acoustic_checked: true}
+    notes: "v3 bỏ cả video VSS 'Lan_dau_lam_me_cua_moi_nguoi_khac_nhau_nhu_the_nao' (22 câu): vss_0037945 cắt từ cùng audio
+      với một câu Bud500 test của E0 (BER 0.045). vss_cs@v3 không có video này. 1 867 câu / 6.70 h / 118 nguồn."
+
+  # --- pool v4 / v5 (18/11/2026): bỏ các video VSS giữ lại cho dev tạm (dataset.release.holdout_dev, TODO Phần 3).
+  # Dùng hai pool này với dev/dev_interim_*; pool cũ (vss_cs@v3, distill@v4) vẫn đúng nhưng chung video với dev tạm.
+  pool/vss_cs@v4:
+    manifest: data/pools/vss_cs_v4/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/vss_cs@v3 --exclude data/listen/dev_interim_{cs,vi}/heldout.jsonl
+    flags: {train_only: true, label_source: "pseudo:Zipformer-30M-RNNT-6000h", clean_against: locked_benches,
+            parent: pool/vss_cs@v3, audio_screened: true, acoustic_checked: true,
+            excludes_dev: [data/listen/dev_interim_cs/heldout.jsonl, data/listen/dev_interim_vi/heldout.jsonl]}
+    notes: "v3 bỏ 95 video giữ lại cho dev_interim_cs (476 câu) + 3 câu trùng / gần trùng text dev ở video khác.
+      1 087 câu / 4.01 h / 241 video."
+
+  pool/distill@v5:
+    manifest: data/pools/distill_v5/manifest.jsonl
+    built_by: gipbench.dataset.release.clean_pool --pool pool/distill@v4 --exclude data/listen/dev_interim_{cs,vi}/heldout.jsonl
+    flags: {label_source: "distill:gip15", clean_against: locked_benches, parent: pool/distill@v4, audio_screened: true,
+            acoustic_checked: true,
+            excludes_dev: [data/listen/dev_interim_cs/heldout.jsonl, data/listen/dev_interim_vi/heldout.jsonl]}
+    notes: "v4 bỏ 24 video giữ lại cho dev_interim_vi (383 câu) + 1 video có >= 2 câu gần trùng text dev, cùng các câu
+      cùng nguồn (tổng 473 câu). 1 394 câu / 5.02 h / 93 nguồn."
+
+  pool/tts_train@e4_v1:
+    manifest: data/tts/e4/train_tts.jsonl
+    catalog: catalog/train-v1
+    built_by: gipbench.dataset.synth.verify
+    flags: {train_only: true, label_source: synthetic}
+
   dev/dev_cs@e3_v1:
     manifest: data/e3_v1/dev_cs.jsonl
     catalog: catalog/v0-draft
@@ -70,6 +202,16 @@ releases:
     built_by: gipbench.dataset.ingest.vimedcss (split hard; thuật ngữ theo cs_terms_list của dataset)
     flags: {from_bench: false}
     notes: "Catalog chấm C0 (= catalog_sha256 a21c590e của code_switch_v1)."
+
+  # catalog/train-v1 (18/11/2026): thuật ngữ <en> của text train, trừ span mọi bench khoá và reserved_terms_v1 (chốt 18/11, fraction 0.5).
+  catalog/train-v1:
+    catalog: data/catalogs/train_v1/catalog.tsv
+    built_by: >-
+      gipbench.dataset.release.build_train_catalog --source pool/vimedcss_train@v2:text_tagged_orig
+      --source pool/vss_cs@e3_v1:text_tagged --reserved-terms configs/dataset/reserved_terms_v1.txt
+      (meta: data/catalogs/train_v1/catalog.tsv.meta.json)
+    flags: {from_bench: false}
+    notes: "727 thuật ngữ. Không chứa span của 6 bench khoá và 820 thuật ngữ giữ riêng (reserved_terms_v1.txt, sha256 trong meta)."
 
   bench/general-v1.0:
     manifest: data/benchmarks/general_v1/manifest.jsonl
@@ -95,3 +237,47 @@ releases:
     built_by: gipbench.dataset.release.build_general --which external --name external_v1 --bench-version external-v1.0
     flags: {locked: true, manifest_sha256: f074d27fb646d2fb376eca1189b3fb05374860276c1463657286d35c26e0a1dd}
     notes: "E0: 11 bộ test công khai (32 203 câu); 7 bộ khoá bằng metadata (chưa có audio cho tới khi tải)."
+
+  # --- bench v1.1 (17/11/2026, audit IP-07): bản mới, v1.0 giữ nguyên. Khoá 18/11/2026 ---
+  bench/code-switch-v1.1:
+    manifest: data/benchmarks/code_switch_v1_1/manifest.jsonl
+    catalog: catalog/vimedcss-v1.0
+    built_by: gipbench.dataset.release.derive_v1_1 --which code_switch
+    flags: {locked: true, derived_from: bench/code-switch-v1.0, manifest_sha256: 3af637ffa603b0259268c98ec4432ff56d23d16f014cc575d90a347199d079ba}
+    notes: "C0 + train_video_overlap (388 câu / 248 video trùng ViMedCSS train; lát video_unseen 270 câu / 156 video)."
+
+  bench/external-v1.1:
+    manifest: data/benchmarks/external_v1_1/manifest.jsonl
+    built_by: gipbench.dataset.release.derive_v1_1 --which external
+    flags: {locked: true, derived_from: bench/external-v1.0, manifest_sha256: 2960680ca6b8476ec73b20f0c8c9295e617e7e0a3533a949afb1a2cae9c26be3}
+    notes: "E0 + audio_sha256 / duration đủ 32 203 câu (dựng lại 17/11 21:31 sau khi ViMD tải xong), speaker ViMedCSS test chuẩn hoá, train_video_overlap."
+
+# Đính chính cho release đã phát hành (release bất biến: không sửa mục cũ, chỉ trỏ tới mục thay thế). register.py không đọc
+# khoá này; nó là ghi chép cho người và cho các experiment mới.
+errata:
+  pool/confusable_train@e3_v1:
+    date: 2026-11-17
+    issue: "flags.label_source ghi nhầm là nhãn giả; thực tế là nhãn người VIVOS train, và 590 / 590 câu trùng audio với vivos_train@e3_v1"
+    use_instead: pool/confusable_train@e3_v1b
+  pool/cv_train@v1:
+    date: 2026-11-17
+    issue: "chỉ 1 người nói (CV27 train.tsv): replay không đa dạng (audit R15)"
+    use_instead: pool/cv_other@v2
+  pool/vimedcss_train@full:
+    date: 2026-11-17
+    issue: "chung video với bench khoá (C0 388 câu / 248 video, E0 ViMedCSS test 1 514 câu / 898 video): cổng rò rỉ chặn"
+    use_instead: pool/vimedcss_train@v3
+  pool/vimedcss_train@v2:
+    date: 2026-11-18
+    issue: "video đăng lại dưới YouTube ID khác vẫn trùng E0 ViMedCSS test (1 câu trùng audio từng byte 5189-55 = 5190-56,
+      17 câu gần trùng text, 2 câu thuộc lát video chưa thấy); 39 câu audio im lặng / rỗng có nhãn"
+    use_instead: pool/vimedcss_train@v4
+  pool/vimedcss_train@v3:
+    date: 2026-11-18
+    issue: "dấu vân tay âm thanh: 3656_2-28 cùng audio với E0 test 3655_2-27 (video đăng lại), 6 câu chung câu mở đầu theo
+      mẫu đọc bằng cùng giọng của kênh với C0 / E0 (reports/leak/acoustic_v3)"
+    use_instead: pool/vimedcss_train@v4
+  pool/distill@v3:
+    date: 2026-11-18
+    issue: "dấu vân tay âm thanh: vss_0037945 cắt từ cùng audio với một câu Bud500 test (E0) (reports/leak/acoustic_v3)"
+    use_instead: pool/distill@v4

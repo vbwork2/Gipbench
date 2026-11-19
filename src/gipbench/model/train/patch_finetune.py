@@ -46,6 +46,13 @@ ARGS = '''
         help="tiền tố tên tham số cần đóng băng, ngăn bằng dấu phẩy "
         "(vd encoder_embed.,encoder.encoders.0.,encoder.encoders.1.)",
     )
+
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=0,
+        help="Checkpoint and stop after this many training batches (0 uses the full epoch).",
+    )
 '''
 
 FREEZE = '''    # --- gipbench: đóng băng một phần model (ScaledAdam coi grad None = 0 nên tham số đứng yên)
@@ -131,6 +138,15 @@ def main():
         sys.exit("Không thấy chỗ gọi scan_pessimistic_batches_for_oom — cần sửa tay (xem Runbook).")
     s = s.replace(scan_old, "    if not params.print_diagnostics and params.start_batch <= 0:  # gipbench\n"
                             "        scan_pessimistic_batches_for_oom(\n", 1)
+
+    checkpoint = "            and params.batch_idx_train % params.save_every_n == 0\n"
+    after_checkpoint = "        if batch_idx % 100 == 0 and params.use_fp16:\n"
+    if checkpoint not in s or after_checkpoint not in s:
+        sys.exit("Cannot locate the Icefall batch checkpoint block to set the batch budget.")
+    s = s.replace(checkpoint, "            and (params.batch_idx_train % params.save_every_n == 0\n"
+                              "                 or params.batch_idx_train == params.max_batches)\n", 1)
+    s = s.replace(after_checkpoint, "        if params.max_batches and params.batch_idx_train >= params.max_batches:\n"
+                                   "            break\n" + after_checkpoint, 1)
 
     mp_anchor = "    args = parser.parse_args()\n"
     i = s.find("def main():")

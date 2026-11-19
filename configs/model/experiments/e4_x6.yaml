@@ -1,0 +1,10 @@
+name: e4_x6
+description: Compare decoding methods on one previously selected E4 artifact
+batch: 1
+decode: {quantize: int8, beam: 4, blank_penalty: 0.0, case: upper}
+variants:
+  greedy: {decoding_method: greedy_search}
+  beam: {decoding_method: modified_beam_search}
+  lm_s01: {decoding_method: modified_beam_search, lm_scale: 0.1}
+  lm_s03: {decoding_method: modified_beam_search, lm_scale: 0.3}
+  lm_s05: {decoding_method: modified_beam_search, lm_scale: 0.5}

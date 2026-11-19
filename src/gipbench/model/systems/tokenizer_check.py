@@ -21,9 +21,14 @@ Ví dụ:
 """
 import argparse
 import csv
+import json
 import statistics
 import sys
+from collections import Counter
 from pathlib import Path
+
+from gipbench.core.manifest import read_jsonl
+from gipbench.core.textnorm import parse_tagged
 
 REPO_ID = "g-group-ai-lab/gipformer1.5-68M-rnnt"
 NON_VI_LETTERS = ["F", "J", "W", "Z"]
@@ -133,6 +138,46 @@ def export_bpe_vocab(sp, path):
             f.write(f"{sp.id_to_piece(i)}\t{sp.get_score(i)}\n")
 
 
+def check_manifest(sp, case, manifest, out):
+    refs = read_jsonl(manifest)
+    counts = Counter(
+        apply_case(" ".join(text.split()), case)
+        for row in refs for text, english in parse_tagged(row["text_tagged"])
+        if english and text.strip()
+    )
+    if not counts:
+        sys.exit(f"{manifest}: no tagged English spans")
+    rows = analyse(sp, sorted(counts), case)
+    for row in rows:
+        row["occurrences"] = counts[row["term"]]
+    n = sum(counts.values())
+    stats = {
+        "manifest": str(manifest),
+        "utterances": len(refs),
+        "vocab_size": sp.get_piece_size(),
+        "case": case,
+        "unique_terms": summary(rows) | {
+            "mean_pieces_per_term": statistics.mean(r["n_pieces"] for r in rows),
+            "median_pieces_per_term": statistics.median(r["n_pieces"] for r in rows),
+            "pct_terms_ge4_pieces": 100 * sum(r["n_pieces"] >= 4 for r in rows) / len(rows),
+        },
+        "spans": {
+            "n": n,
+            "mean_pieces_per_span": sum(r["n_pieces"] * r["occurrences"] for r in rows) / n,
+            "pct_spans_ge4_pieces": 100 * sum(r["occurrences"] for r in rows if r["n_pieces"] >= 4) / n,
+            "pct_spans_with_unk": 100 * sum(r["occurrences"] for r in rows if r["has_unk"]) / n,
+        },
+    }
+    # Benchmark references are diagnostics only. Keep them out of hotword exports.
+    with (out / "en_spans.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    output = json.dumps(stats, ensure_ascii=False, indent=2)
+    (out / "summary.json").write_text(output + "\n", encoding="utf-8")
+    print(output)
+
+
 def decode_audio(model_dir, tokens, bpe_vocab, hotwords_file, audios, quant, score):
     import sherpa_onnx
     import soundfile as sf
@@ -169,12 +214,16 @@ def decode_audio(model_dir, tokens, bpe_vocab, hotwords_file, audios, quant, sco
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model-dir", help="thư mục chứa bpe.model, tokens.txt (và *.onnx nếu dùng --audio)")
-    ap.add_argument("--terms", help="file thuật ngữ tiếng Anh của bạn, 1 dòng/thuật ngữ")
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--terms", help="file thuật ngữ tiếng Anh của bạn, 1 dòng/thuật ngữ")
+    source.add_argument("--manifest", help="chỉ đo span <en> trong text_tagged, không sinh hotwords")
     ap.add_argument("--out", default="tokenizer_report", help="thư mục ghi kết quả")
     ap.add_argument("--audio", nargs="*", help="(tuỳ chọn) file audio để so E0 vs E1")
     ap.add_argument("--quantize", choices=["int8", "fp32"], default="int8")
     ap.add_argument("--hotwords-score", type=float, default=1.5)
     args = ap.parse_args()
+    if args.manifest and args.audio is not None:
+        ap.error("--manifest cannot be used with --audio")
 
     import sentencepiece as spm
     bpe_path, tokens_path, model_dir = load_files(args.model_dir)
@@ -183,6 +232,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     case = detect_case(sp)
+    if args.manifest:
+        check_manifest(sp, case, args.manifest, out)
+        return
     n_tokens_txt = sum(1 for _ in open(tokens_path, encoding="utf-8"))
     pieces = [sp.id_to_piece(i) for i in range(sp.get_piece_size())]
     byte_fallback = any(p.startswith("<0x") for p in pieces)

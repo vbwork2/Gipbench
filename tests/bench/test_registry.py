@@ -40,6 +40,21 @@ def main():
           and R.check_frozen({"manifest_sha256": h}, rows) is None)
     from gipbench.dataset.release.build_general import manifest_sha256 as bg_sha
     check("build_general và registry cùng định nghĩa manifest_sha256", bg_sha(rows) == h)
+    # IP-07: bench require_audio_sha không khoá được khi còn câu thiếu audio_sha256 (E0 v1.0 khoá bằng metadata)
+    ra = {"require_audio_sha": True, "evidence_level": "locked"}
+    check("require_audio_sha + locked: thiếu audio_sha256 -> lỗi",
+          "thiếu audio_sha256" in (R.check_frozen(ra, [dict(rows[0], audio_sha256="a" * 64), rows[1]]) or ""))
+    check("require_audio_sha + locked: đủ audio_sha256 -> không lỗi",
+          R.check_frozen(ra, [dict(r, audio_sha256="a" * 64) for r in rows]) is None)
+    check("require_audio_sha + draft: thiếu sha vẫn chấm được (chưa khoá)",
+          R.check_frozen({"require_audio_sha": True, "evidence_level": "draft"}, rows) is None)
+    bad = dict(R.load_benchmark("external_v1_1"), boot_units=None)
+    check("boot_unit per_dataset cần boot_units", any("boot_units" in e for e in R.validate_benchmark(bad, reg)))
+    from gipbench.bench.evaluate import resolve_boot_unit, unit_of
+    bu = resolve_boot_unit(R.load_benchmark("external_v1_1"))
+    check("per_dataset: FLEURS theo sentence_id, bộ khác theo speaker",
+          unit_of({"id": "a", "dataset": "fleurs_vi", "sentence_id": "7", "speaker": "a"}, {}, bu) == "7"
+          and unit_of({"id": "b", "dataset": "lsvsc", "speaker": "s1"}, {}, bu) == "s1", bu)
     for n in ("general_v1", "code_switch_v1", "cs_ggroup_v1"):
         b = R.load_benchmark(n)
         check(f"{n} đã khoá (locked + manifest_sha256)",

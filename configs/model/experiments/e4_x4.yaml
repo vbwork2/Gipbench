@@ -1,0 +1,7 @@
+extends: e4_x3.yaml
+name: e4_x4
+description: Replace ten percent of the training mix with reviewed pseudo-labels
+pools:
+  replay_human: {weight: 0.585}
+  cs_real: {weight: 0.315}
+  cs_pseudo: {weight: 0.10, datasets: [vss_cs], refs: [pool/vss_cs@v4]}

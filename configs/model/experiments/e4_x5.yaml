@@ -1,0 +1,9 @@
+extends: e4_x3.yaml
+name: e4_x5
+description: Add verified synthetic code-switching speech at ten or thirty percent
+leak_gate:
+  text_files: [data/tts/e4/tts_text.txt]
+pools:
+  replay_human: {weight: 0.585}
+  cs_real: {weight: 0.315}
+  synth: {weight: 0.10, datasets: [tts], refs: [pool/tts_train@e4_v1]}

@@ -19,6 +19,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict
 
 _TAG = re.compile(r"(</?en(?:\s[^>]*)?>)")
@@ -101,6 +102,20 @@ class Profile:
 
     def sha256(self) -> str:
         return hashlib.sha256(json.dumps(self.spec(), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+    def code_sha256(self) -> str:
+        """sha256 mã nguồn cài đặt hồ sơ (normprofiles.py + textnorm.py; \\r\\n -> \\n). Chỉ để ghi provenance: sha256()
+        chỉ băm spec nên code đổi mà hash hồ sơ không đổi (audit R13). Cố ý KHÔNG đưa vào spec() để không đổi
+        sha256() của các hồ sơ đã dùng trong bản khoá."""
+        return code_sha256([Path(__file__).with_name(n) for n in ("normprofiles.py", "textnorm.py")])
+
+
+def code_sha256(paths) -> str:
+    """sha256 của các file nguồn nối theo thứ tự cho trước, đọc bytes, \\r\\n -> \\n (cùng kết quả trên Windows / Linux)."""
+    h = hashlib.sha256()
+    for p in paths:
+        h.update(Path(p).read_bytes().replace(b"\r\n", b"\n"))
+    return h.hexdigest()
 
 
 PROFILES = {

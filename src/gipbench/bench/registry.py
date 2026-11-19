@@ -95,6 +95,8 @@ def validate_benchmark(bm: Dict, reg: Dict) -> List[str]:
         errs.append(f"{n}: status active nhưng không có manifest")
     if bm.get("evidence_level") == "locked" and not bm.get("manifest_sha256"):
         errs.append(f"{n}: locked nhưng chưa ghi manifest_sha256")
+    if bm.get("boot_unit") == "per_dataset" and not isinstance(bm.get("boot_units"), dict):
+        errs.append(f"{n}: boot_unit per_dataset cần boot_units: {{default: ..., <bộ>: ...}}")
     return errs
 
 
@@ -121,7 +123,12 @@ def file_sha256(path) -> Optional[str]:
 
 
 def check_frozen(bm: Dict, rows: List[Dict]) -> Optional[str]:
-    """Lỗi nếu benchmark đã khoá (có manifest_sha256) mà manifest hiện tại khác."""
+    """Lỗi nếu benchmark đã khoá (có manifest_sha256) mà manifest hiện tại khác; hoặc benchmark `require_audio_sha`
+    ở mức locked mà còn câu thiếu audio_sha256 (khoá bằng metadata không đủ: audio sau fetch có thể lệch)."""
+    if bm.get("require_audio_sha") and bm.get("evidence_level") == "locked":
+        miss = sum(1 for r in rows if not r.get("audio_sha256"))
+        if miss:
+            return f"benchmark require_audio_sha nhưng {miss} / {len(rows)} câu thiếu audio_sha256: chưa khoá được"
     want = bm.get("manifest_sha256")
     if not want:
         return None

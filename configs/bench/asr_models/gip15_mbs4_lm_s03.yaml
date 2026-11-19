@@ -1,0 +1,11 @@
+# Gipformer 1.5 gốc + RNN LM token-level (BPE 2000) train trên text pool train đã lọc bench (Phần 4, 18/11/2026).
+# LM: scripts/diagnostics/gip15_lm_text.py + train_gip15_rnnlm.sh, chọn epoch 2 theo ppl valid (112.8, valid tách từ text train).
+# Lưới lm_scale 0.1 / 0.3 / 0.5 báo cáo đủ, KHÔNG chọn trên bench (không rankable). Mọi tham số khác = gip15_mbs4_open.
+system: gip15_mbs4_lm_s03
+engine: sherpa_transducer
+model: {id: g-group-ai-lab/gipformer1.5-68M-rnnt, revision: dd9227dcd8705c13f33bdbe59728d546ab94480f,
+        dir: "${models_root}/gip15"}
+inference_mode: lm
+decode: {quantize: int8, decoding_method: modified_beam_search, beam: 4, threads: 16, blank_penalty: 0.0, case: upper,
+         lm: results/phase4/lm/gip15_rnnlm/gip15_rnnlm_e2.onnx, lm_scale: 0.3}
+batch: 1

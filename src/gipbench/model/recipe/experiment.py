@@ -4,7 +4,7 @@
   groups(exp)       -> [{"group", "weight", "env", "datasets", "note", "refs"}]  (cùng dạng mix_plan.load_mix cũ)
   input_refs(exp)   -> pool ref theo thứ tự nhóm (= thứ tự --manifest của curate)
 
-Chuỗi ${exp_root}, ${icefall}, ${name}, ${repo} được thay bằng giá trị trong gipbench.core.paths / chính file. Trọng số
+Chuỗi ${exp_root}, ${results_root}, ${icefall}, ${name}, ${repo} được thay bằng giá trị trong gipbench.core.paths / chính file. Trọng số
 nhóm vẫn ghi đè được bằng biến môi trường ở khoá `env` (MIX_CS_REAL, MIX_SYNTH, ... như configs/train_mix.tsv cũ).
 """
 import os
@@ -17,6 +17,10 @@ from gipbench.core import paths
 from gipbench.core.paths import REPO
 
 REQUIRED = ["name", "base_model", "catalog", "leak_guard", "dev", "pools", "output"]
+# Luật chọn không cần dev (đăng ký trước): checkpoint cuối, WiSE-FT một alpha cố định (select.fixed_wise_alpha, mặc định
+# 1.0 = không nội suy). dev: null. Checkpoint vẫn được giữ (keep_last_k) để chọn lại trên dev sau này nếu cần.
+FIXED_RULE = "fixed_last"
+VI_WER_RULE = "vi_wer"
 
 
 def _set(d, dotted, value):
@@ -36,9 +40,29 @@ def _expand(o, ctx):
     return o
 
 
+def _merge(base, changes):
+    result = dict(base)
+    for key, value in changes.items():
+        previous = result.get(key)
+        result[key] = _merge(previous, value) if isinstance(previous, dict) and isinstance(value, dict) else value
+    return result
+
+
+def _read(path, chain=()):
+    path = path.resolve()
+    if path in chain:
+        raise SystemExit(f"Cyclic experiment inheritance: {path}")
+    exp = yaml.safe_load(path.read_text(encoding="utf-8"))
+    parent = exp.pop("extends", None)
+    if parent is None:
+        return exp, [path]
+    base, sources = _read(path.parent / parent, (*chain, path))
+    return _merge(base, exp), [*sources, path]
+
+
 def load(path, overrides=()):
     path = Path(path)
-    exp = yaml.safe_load(path.read_text(encoding="utf-8"))
+    exp, sources = _read(path)
     for ov in overrides:
         k, sep, v = ov.partition("=")
         if not sep:
@@ -47,11 +71,39 @@ def load(path, overrides=()):
     missing = [k for k in REQUIRED if k not in exp]
     if missing:
         raise SystemExit(f"{path}: thiếu khoá {missing}")
-    ctx = {"exp_root": paths.get("exp_root"), "icefall": paths.get("icefall"), "repo": str(REPO), "name": exp["name"]}
+    rule = (exp.get("select") or {}).get("rule")
+    if not exp["dev"] and rule != FIXED_RULE:
+        raise SystemExit(f"{path}: dev rỗng chỉ dùng được với select.rule: {FIXED_RULE} (luật chọn cố định đăng ký trước)")
+    if exp["dev"] and rule == FIXED_RULE:
+        raise SystemExit(f"{path}: select.rule {FIXED_RULE} không dùng dev; đặt dev: null cho rõ")
+    if rule == VI_WER_RULE:
+        if not isinstance(exp["dev"], dict) or set(exp["dev"]) != {"vi"} or not exp["dev"]["vi"]:
+            raise SystemExit(f"{path}: select.rule {VI_WER_RULE} requires only dev.vi")
+        if not (exp.get("leak_gate") or {}).get("check_dev"):
+            raise SystemExit(f"{path}: select.rule {VI_WER_RULE} requires leak_gate.check_dev: true")
+    ctx = {"exp_root": paths.get("exp_root"), "results_root": paths.get("results_root"),
+           "icefall": paths.get("icefall"), "repo": str(REPO), "name": exp["name"]}
     exp = _expand(exp, ctx)
     exp["_path"] = str(path)
     exp["_overrides"] = list(overrides)
+    exp["_sources"] = [str(source) for source in sources]
     return exp  # tổng trọng số không bắt buộc = 1 (quét MIX_SYNTH=0 ...); mix_plan kiểm, mix_cuts chuẩn hoá
+
+
+def run_seeds(exp, selected, dry):
+    seeds = exp.get("seeds")
+    if seeds is None and selected is None:
+        return [None]
+    if (not isinstance(seeds, list) or not seeds or any(type(seed) is not int or seed < 0 for seed in seeds)
+            or len(set(seeds)) != len(seeds)):
+        raise SystemExit("Experiment seeds must be a list of distinct non-negative integers")
+    if selected is not None:
+        if selected not in seeds:
+            raise SystemExit(f"--seed must be one of {seeds}")
+        return [selected]
+    if not dry and len(seeds) > 1:
+        raise SystemExit(f"Select one run with --seed from {seeds}")
+    return seeds
 
 
 def groups(exp):
@@ -66,6 +118,24 @@ def groups(exp):
 
 def input_refs(exp):
     return [r for g in groups(exp) for r in g["refs"]]
+
+
+CATALOG_USES = ("train", "oracle_diagnostic")
+
+
+def catalog_use(exp):
+    """`catalog_use`: train (mặc định; catalog dựng từ text train, không có span của bench) | oracle_diagnostic (cố ý dùng
+    catalog có span bench làm chẩn đoán: artifact + system YAML gắn inference_mode oracle_bias, không được xếp hạng)."""
+    u = exp.get("catalog_use", "train")
+    if u not in CATALOG_USES:
+        raise SystemExit(f"catalog_use phải thuộc {CATALOG_USES}, không phải {u!r}")
+    return u
+
+
+def system_hotword_catalogs(exp):
+    """[(tên system, catalog ref, đã khai báo inference_mode oracle_bias)] của các system có hotwords."""
+    return [(s["system"], (s.get("hotwords") or {})["catalog"], s.get("inference_mode") == "oracle_bias")
+            for s in exp.get("systems", []) if (s.get("hotwords") or {}).get("catalog")]
 
 
 def abspath(p):

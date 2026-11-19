@@ -15,7 +15,7 @@ E0 chỉ có kết quả của chính bạn: gói không kèm hyps của model g
 
 ## Các bộ trong gói
 
-C1 là tập con của G0 nên số câu không trùng là 37 261 (4 400 + 658 + 32 203). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng.
+Số câu không trùng là 36 236 (4 400 + 658 + 32 203 − 1 024 − 1; `release.json` ghi `distinct_utterances`): C1 là tập con của G0, 1 024 clip CV17 test (E0) cũng có trong CV27 test (G0), và hai câu ViMedCSS test có audio giống hệt nhau (lời thoại khác nhau, lỗi của nguồn: datasheet mục 7 ý 13). Giờ "–": bộ được khoá chỉ bằng metadata, chưa đo thời lượng. Lời thoại "**không**": gói không kèm text, `fetch` lấy lại đúng lời thoại từ nguồn (bộ gated, bản đăng lại, hoặc license ND chưa rà xong).
 
 | Track | Bộ | Nguồn | Split | Câu | Giờ | Người nói | License | Lời thoại trong gói | Train VieGem (model card) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -28,16 +28,16 @@ C1 là tập con của G0 nên số câu không trùng là 37 261 (4 400 + 658 +
 | C0 | `vimedcss` | tensorxt/ViMedCSS | hard | 658 | 1.29 | 404 video | CC-BY-4.0 | có | có (train) |
 | C1 | `ggroup_tech` / `edu` / `finance` / `pubadmin` | tập con của G0 (câu có từ Anh) | test | 465 / 346 / 294 / 155 | 0.46 / 0.39 / 0.30 / 0.16 | – | CC-BY-NC-4.0 | có | không nêu |
 | E0 | `fleurs_vi` | google/fleurs vi_vn | test | 857 | 3.00 | – | CC-BY-4.0 | có | có |
-| E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | có | có |
+| E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | **không** | có |
 | E0 | `vietmed` | leduckhai/VietMed | test | 3 437 | 6.02 | 27 | MIT | có | không |
 | E0 | `phoaudiobook` | thivux/phoaudiobook (gated) | test | 383 | 1.24 | 40 | điều khoản riêng | **không** | có |
-| E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | có | có |
-| E0 | `bud500` | linhtran92/viet_bud500 (gated) | test | 7 500 | – | – | CC-BY-NC-SA-4.0 | có | có |
+| E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | **không** | có |
+| E0 | `bud500` | linhtran92/viet_bud500 (gated) | test | 7 500 | – | – | CC-BY-NC-SA-4.0 | **không** | có |
 | E0 | `gigaspeech2_vi` | speechcolab/gigaspeech2 vi (gated) | test | 4 422 | – | – | điều khoản riêng | **không** | có |
-| E0 | `vimd` | nguyendv02/ViMD_Dataset | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 | có | có |
+| E0 | `vimd` | nguyendv02/ViMD_Dataset | test | 2 026 | – | 1 344 | CC-BY-NC-ND-4.0 | **không** | có |
 | E0 | `vimedcss_test` | tensorxt/ViMedCSS | test | 1 614 | – | 995 video | CC-BY-4.0 | có | có |
 | E0 | `speech_massive_vi` | FBK-MT/Speech-MASSIVE vi-VN | validation | 2 033 | – | 28 | CC-BY-NC-SA-4.0 | có | không |
-| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 | có | không |
+| E0 | `speech_massive_test_vi` | FBK-MT/Speech-MASSIVE-test vi-VN (gated) | test | 2 974 | – | 30 | CC-BY-NC-SA-4.0 | **không** | không |
 
 Cột cuối lấy từ model card VieGem-ASR. Bộ ghi "có" nằm trong dữ liệu train của VieGem, nên không dùng để kết luận VieGem tổng quát hoá tốt; bộ "không nêu" chỉ nghĩa là model card không liệt kê, chưa phải bằng chứng bộ đó sạch. Mức trùng của Gipformer: chưa rõ (không công bố dữ liệu train).
 
@@ -51,9 +51,13 @@ Gói này đã kèm code chấm điểm trong thư mục `code/` (tải audio `f
 
 ```bash
 G=<đường dẫn tới thư mục gói này>
-pip install -e "$G/code[audio]" huggingface_hub pyarrow soundfile soxr
+pip install -e "$G/code[audio,hf]"
 export HF_HUB_DISABLE_XET=1     # nếu tải từ Hugging Face bị treo
 ```
+
+CLI `gipbench-eval` có các lệnh `fetch`, `verify`, `score`, `compare`, `decontam` và `card`. Chạy từ gốc gói hoặc truyền
+`--kit /path/to/kit`. Dùng `gipbench-eval <lệnh> --help` để xem tham số. Tên benchmark là tên file trong `manifests/`,
+ví dụ `code_switch_v1_1` hoặc `external_v1_1` khi dùng bản v1.1.
 
 Các lệnh bên dưới chạy từ một thư mục làm việc bất kỳ, và `bench_data/`, `my_system/`, `leak/` được tạo ngay tại đó. Python 3.10 trở lên.
 
@@ -85,7 +89,7 @@ python -m gipbench.dataset.release.fetch --manifest $G/manifests/cs_ggroup_v1.js
   - Nếu chưa muốn lấy bộ gated, chỉ tải các bộ còn lại bằng `--datasets fleurs_vi cv17_vi vietmed lsvsc vimd vimedcss_test speech_massive_vi`.
     Khi đó chỉ chấm được ở chế độ chẩn đoán, không chấm được final.
 - **PhoAudiobook và GigaSpeech2 cấm phân phối lại lời thoại.** Vì vậy gói không chứa lời thoại của hai bộ này; `fetch` lấy cả audio lẫn lời thoại từ nguồn sau khi bạn đã đồng ý điều khoản.
-- **7 bộ E0 được khoá chỉ bằng metadata:** manifest không có sha256 của từng file audio. `fetch` kiểm sha256 của từng file nguồn (parquet / tar) theo bản khoá trước khi tách audio, rồi ghi số câu được kiểm theo cách này vào `fetch_report.json`.
+- Một số bản benchmark chỉ khoá bằng metadata. Với câu thiếu SHA-256 audio, `fetch` dùng SHA-256 file nguồn nếu nguồn có giá trị đã khoá. `gipbench-eval verify` báo riêng các câu thiếu SHA-256 audio.
 - Kết quả: `bench_data/<x>/manifest.jsonl` (có trường `audio`, là đường dẫn tương đối so với manifest) và thư mục `bench_data/<x>/audio/`.
 
 ## 3. Kiểm dữ liệu FT không chứa câu test (bắt buộc trước khi báo số)
@@ -106,7 +110,7 @@ Chạy lại lệnh này cho cả `code_switch_v1` và `cs_ggroup_v1`.
   - Các trường hợp "gần trùng" cần người xem lại trong `leak/<x>/leak_report.md`.
 - **Trùng lặp đã biết sẵn:**
   - VIVOS train và test dùng lại khoảng 194 câu đọc.
-  - ViMedCSS train và hard có chung 201 video.
+  - ViMedCSS train và hard có chung 248 video (388 / 658 câu hard); ViMedCSS train và test chung 898 video (1 514 / 1 614 câu).
   - Nếu bạn FT trên VIVOS train hoặc ViMedCSS train, hãy ghi rõ khi báo số.
 
 ## 4. Chạy model để ra hyps.jsonl

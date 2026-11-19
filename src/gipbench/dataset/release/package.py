@@ -12,23 +12,124 @@ license test_only / nguồn riêng tư, hoặc nguồn không có trong gipbench
 Người nhận: python -m gipbench.dataset.release.fetch --manifest manifests/<x>.jsonl --out ... (xem README trong gói).
 Gói kèm code/ (src gipbench tối thiểu + configs + pyproject, tính bằng AST từ fetch / leak_audit / evaluate / transcribe):
 người nhận cài bằng `pip install -e code/`, không cần repo. Đóng gói dừng nếu code đó import module train / dữ liệu train
-(CODE_FORBIDDEN).
+(`forbidden` trong configs/dataset/share_code.yaml).
+
+Chính sách nội dung (configs/dataset/share_policy.yaml, IP-08): gói được dựng ở `.<name>.partial/`, rồi kiểm (1) mọi file
+khớp allowlist, (2) không file text nào chạm regex cấm (đường dẫn máy, tên module train, bộ riêng tư, token). Đạt thì
+đổi tên thành <name>, không đạt thì xoá thư mục tạm và dừng. datasets.yaml trong gói chỉ giữ các bộ có trong benchmark
+được đóng gói. Bộ trong `text_not_redistributable` bị bỏ lời thoại (fetch lấy lại từ nguồn). release.json ghi
+`distinct_utterances` (hợp theo mã clip / audio_sha256 / (họ bộ, upstream_id)) và `scorer_code_sha256` của code kèm gói.
 """
 import argparse
 import hashlib
 import json
+import re
 import shutil
+import subprocess
+import tempfile
 import time
 from pathlib import Path
 
 from gipbench.core import paths as P
+from gipbench.core.decontam import clip_key, dataset_family
 from gipbench.core.manifest import read_jsonl
+from gipbench.core.normprofiles import code_sha256
 from gipbench.dataset.release.build_general import manifest_sha256
 from gipbench.dataset.release.fetch import DERIVED, SOURCES, sha256_file
 
 PRIVATE_LICENSES = {"test_only"}
-DOCS = ["docs/datasheet_bench_v1.md", "docs/benchmark_protocol_v1.md", "docs/evaluation_metrics_v1.md"]
-CONFIGS = ["configs/bench/datasets.yaml", "configs/dataset/labeling/term_decisions.tsv"]  # term_decisions: nguồn tag <en> của C1
+SHARE_POLICY_CONFIG = P.REPO / "configs" / "dataset" / "share_policy.yaml"
+# bỏ khi chép docs vào gói: (1) khối <!-- share:omit --> ... <!-- /share:omit --> (marker đầu dòng: bỏ luôn xuống dòng),
+# (2) cùng cặp marker nằm giữa dòng, (3) cả dòng có <!-- share:omit-line --> (hàng bảng markdown)
+OMIT = re.compile(r"^[ \t]*<!--\s*share:omit\s*-->.*?<!--\s*/share:omit\s*-->[ \t]*(?:\n|\Z)"
+                  r"|<!--\s*share:omit\s*-->.*?<!--\s*/share:omit\s*-->", re.S | re.M)
+OMIT_LINE = re.compile(r"^.*<!--\s*share:omit-line\s*-->.*(?:\n|\Z)", re.M)
+
+
+def share_policy(path=SHARE_POLICY_CONFIG):
+    """Đọc share_policy.yaml. Trả {allow, docs, configs, text_not_redistributable: set, forbidden: [re.Pattern]}."""
+    import yaml
+    cfg = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    return {"allow": list(cfg["allow"]), "docs": list(cfg["docs"]), "configs": list(cfg["configs"]),
+            "text_not_redistributable": set(cfg.get("text_not_redistributable") or ()),
+            "forbidden": [re.compile(p) for p in cfg["forbidden"]]}
+
+
+def omit_share_blocks(text: str) -> str:
+    """Bản docs cho gói share: bỏ các đoạn đánh dấu share:omit / share:omit-line (xem OMIT)."""
+    return OMIT_LINE.sub("", OMIT.sub("", text))
+
+
+def filtered_datasets_yaml(text: str, keep) -> str:
+    """datasets.yaml chỉ giữ mục `datasets:` có trong `keep` (bỏ bộ riêng tư / không đóng gói). Giữ khối comment đầu file."""
+    import yaml
+    lines = text.splitlines(keepends=True)
+    n = next((i for i, l in enumerate(lines) if l.strip() and not l.lstrip().startswith("#")), len(lines))
+    cfg = yaml.safe_load(text)
+    keep = set(keep)
+    missing = sorted(keep - set(cfg["datasets"]))
+    if missing:
+        raise SystemExit(f"datasets.yaml thiếu bộ có trong benchmark được đóng gói: {missing}")
+    cfg["datasets"] = {k: v for k, v in cfg["datasets"].items() if k in keep}
+    return "".join(lines[:n]) + yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False, width=120)
+
+
+def glob_re(g: str):
+    """Glob đường dẫn -> regex: `*` / `?` không vượt qua `/`, `**/` khớp 0 hoặc nhiều thư mục."""
+    out, i = "", 0
+    while i < len(g):
+        if g.startswith("**/", i):
+            out, i = out + "(?:[^/]+/)*", i + 3
+        elif g[i] == "*":
+            out, i = out + "[^/]*", i + 1
+        elif g[i] == "?":
+            out, i = out + "[^/]", i + 1
+        else:
+            out, i = out + re.escape(g[i]), i + 1
+    return re.compile(out + r"\Z")
+
+
+def scan_package(root: Path, policy) -> list:
+    """Vi phạm chính sách trong cây gói: file ngoài allowlist, và dòng text chạm regex cấm. Trả list chuỗi mô tả."""
+    bad = []
+    allow = [glob_re(g) for g in policy["allow"]]
+    for p in sorted(x for x in Path(root).rglob("*") if x.is_file()):
+        rel = p.relative_to(root).as_posix()
+        if not any(rx.match(rel) for rx in allow):
+            bad.append(f"{rel}: không có trong allowlist")
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            bad.append(f"{rel}: không phải text UTF-8")
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            for rx in policy["forbidden"]:
+                if rx.search(line):
+                    bad.append(f"{rel}:{i}: chạm /{rx.pattern}/: {line.strip()[:100]}")
+    return bad
+
+
+def distinct_utterances(rows) -> int:
+    """Số câu không trùng giữa mọi manifest của gói: hai dòng là một câu nếu chung mã clip gốc (CV / VIVOS, kể cả bản
+    resample), chung audio_sha256, hoặc chung (họ bộ dữ liệu, upstream_id). Vd C1 là tập con của G0, CV17 ∩ CV27."""
+    parent = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, r in enumerate(rows):
+        me = find(("row", i))
+        ck = clip_key(r)
+        for k in (ck and f"clip:{ck}", r.get("audio_sha256") and f"sha:{r['audio_sha256']}",
+                  r.get("upstream_id") and f"up:{dataset_family(r)}:{r['upstream_id']}"):
+            if k:
+                parent[find(k)] = me
+    return len({find(("row", i)) for i in range(len(rows))})
 
 
 def manifest_path(name: str) -> Path:
@@ -52,26 +153,34 @@ def share_rows(rows):
     return sorted(out, key=lambda x: x["id"])
 
 
-def strip_text(rows):
-    """Bộ không cho phân phối lại lời thoại (text_redistributable = false, vd PhoAudiobook, GigaSpeech2): bỏ các trường
-    lời thoại khỏi bản share; người nhận chạy fetch (đã đồng ý điều khoản trên HF) để lấy lại đúng giá trị từ nguồn."""
+def strip_text(rows, datasets=()):
+    """Bộ không cho phân phối lại lời thoại (text_redistributable = false, vd PhoAudiobook, GigaSpeech2), hoặc có trong
+    `datasets` (share_policy.text_not_redistributable: license chưa rà xong): bỏ các trường lời thoại khỏi bản share;
+    người nhận chạy fetch (đã đồng ý điều khoản trên HF) để lấy lại đúng giá trị từ nguồn. Không thêm trường nào vào dòng,
+    nên manifest sau fetch vẫn trùng manifest_sha256 bản khoá."""
     from gipbench.dataset.ingest.evalsets import TEXT_FIELDS
-    return [{k: v for k, v in r.items() if not (r.get("text_redistributable") is False and k in TEXT_FIELDS)}
-            for r in rows]
+    datasets = set(datasets)
+    out = []
+    for r in rows:
+        drop = r.get("text_redistributable") is False or r.get("dataset") in datasets
+        out.append({k: v for k, v in r.items() if not (drop and k in TEXT_FIELDS)})
+    return out
 
 
 # --- code chấm điểm kèm gói (--with-code) ---
 # Gói chạy độc lập: người nhận không cần repo. Chỉ copy các module mà fetch / leak_audit / evaluate / transcribe import
 # (tính bằng AST lúc đóng gói, nên không lệch khi code đổi), và DỪNG nếu có module thuộc phần train / dữ liệu train.
-CODE_ROOTS = ["gipbench.bench.evaluate", "gipbench.bench.transcribe",
-              "gipbench.dataset.release.fetch", "gipbench.dataset.release.leak_audit"]
-CODE_FORBIDDEN = ("gipbench.model", "gipbench.dataset.pseudolabel", "gipbench.dataset.label", "gipbench.dataset.derive",
-                  "gipbench.dataset.synth", "gipbench.dataset.report")
-CODE_CONFIGS = ["configs/bench/datasets.yaml", "configs/dataset/labeling/term_decisions.tsv"] + [
-    f"configs/bench/asr_models/{n}.yaml" for n in ("gip15_mbs4_open", "gip15_greedy_open", "viegem_greedy", "viegem_lm")]
-# Adapter whisper / qwen3 (chỉ để chẩn đoán) kéo theo infer/asr_hyps.py và cache.py, có docstring về nguồn dữ liệu nội bộ:
-# không kèm. Người nhận chấm model khác bằng script tự viết (README mục 4a) hoặc adapter Gipformer / VieGem.
-CODE_SKIP = {"gipbench.infer.adapters.hf_multilingual"}
+# Danh sách module nằm ở configs/dataset/share_code.yaml (tầng dataset không được nhắc tên module bench / model trong code).
+SHARE_CODE_CONFIG = P.REPO / "configs" / "dataset" / "share_code.yaml"
+
+
+def share_code(path=SHARE_CODE_CONFIG):
+    """Đọc share_code.yaml (lúc gọi, không lúc import: import module này không cần pyyaml).
+    Trả {roots: list, forbidden: tuple, configs: list, skip: set}."""
+    import yaml
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {"roots": list(cfg["roots"]), "forbidden": tuple(cfg["forbidden"]),
+            "configs": list(cfg["configs"]), "skip": set(cfg.get("skip") or ())}
 # core/paths.py của repo có đường dẫn máy, khoá của pipeline train (icefall, exp_root) và file chặn bộ test-only:
 # bản kèm gói chỉ có các khoá bench dùng.
 CODE_PATHS = '''"""Đường dẫn gốc của gói code (REPO = thư mục chứa src/ và configs/) và thư mục dữ liệu / kết quả.
@@ -109,6 +218,10 @@ dependencies = ["numpy", "pyyaml"]
 [project.optional-dependencies]
 audio = ["soundfile", "soxr"]
 asr = ["faster-whisper"]
+hf = ["huggingface_hub", "pyarrow"]
+
+[project.scripts]
+gipbench-eval = "gipbench.eval_kit:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -124,13 +237,18 @@ def _module_file(src: Path, mod: str):
     return None
 
 
-def code_closure(src: Path, roots=CODE_ROOTS):
-    """Tập module gipbench.* mà `roots` import (kể cả gián tiếp, và các package cha). Trả {tên: file}."""
+def code_closure(src: Path, roots=None, skip=None):
+    """Tập module gipbench.* mà `roots` import (kể cả gián tiếp, và các package cha). Trả {tên: file}.
+    Mặc định `roots` / `skip` lấy từ share_code.yaml."""
     import ast
+    if roots is None or skip is None:
+        cfg = share_code()
+        roots = cfg["roots"] if roots is None else roots
+        skip = cfg["skip"] if skip is None else skip
     seen, todo = {}, list(roots)
     while todo:
         m = todo.pop()
-        if m in seen or m in CODE_SKIP:
+        if m in seen or m in skip:
             continue
         f = _module_file(src, m)
         if f is None:
@@ -146,10 +264,12 @@ def code_closure(src: Path, roots=CODE_ROOTS):
     return {m: f for m, f in seen.items() if m == "gipbench" or m.startswith("gipbench.")}
 
 
-def copy_code(dst: Path, version: str):
+def copy_code(dst: Path, version: str, keep_datasets=None):
+    """Chép code chấm điểm vào dst/code. `keep_datasets`: datasets.yaml kèm code chỉ giữ các bộ này (None: giữ nguyên)."""
     src = P.REPO / "src"
-    mods = code_closure(src)
-    bad = sorted(m for m in mods if m.startswith(CODE_FORBIDDEN))
+    cfg = share_code()
+    mods = code_closure(src, cfg["roots"], cfg["skip"])
+    bad = sorted(m for m in mods if m.startswith(cfg["forbidden"]))
     if bad:
         raise SystemExit(f"code chấm điểm import module không được share: {bad}")
     out = dst / "code"
@@ -157,15 +277,26 @@ def copy_code(dst: Path, version: str):
         t = out / "src" / f.relative_to(src)
         t.parent.mkdir(parents=True, exist_ok=True)
         t.write_bytes((CODE_PATHS.encode("utf-8") if m == "gipbench.core.paths" else f.read_bytes()).replace(b"\r\n", b"\n"))
-    for rel in CODE_CONFIGS:
+    for rel in cfg["configs"]:
         s = P.REPO / rel
         if not s.exists():
             raise SystemExit(f"thiếu {rel} để kèm trong code/")
         t = out / rel
         t.parent.mkdir(parents=True, exist_ok=True)
-        t.write_bytes(s.read_bytes().replace(b"\r\n", b"\n"))
+        data = s.read_bytes().replace(b"\r\n", b"\n")
+        if keep_datasets is not None and s.name == "datasets.yaml":
+            data = filtered_datasets_yaml(data.decode("utf-8"), keep_datasets).encode("utf-8")
+        t.write_bytes(data)
     (out / "pyproject.toml").write_text(CODE_PYPROJECT.format(version=version), encoding="utf-8", newline="\n")
     return sorted(mods)
+
+
+def packaged_scorer_sha256(code_dir: Path) -> str:
+    """scorer_code_sha256 của code kèm gói (cùng cách băm với evaluate: file theo share_code.scorer_files, \\r\\n -> \\n).
+    Người nhận chấm bằng code này thì summary.json phải có đúng hash này."""
+    import yaml
+    files = yaml.safe_load(SHARE_CODE_CONFIG.read_text(encoding="utf-8"))["scorer_files"]
+    return code_sha256([Path(code_dir) / "src" / "gipbench" / f for f in files])
 
 
 def clean_meta(m):
@@ -184,6 +315,7 @@ def main(argv=None):
     ap.add_argument("--benchmarks", nargs="+", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--out", help="mặc định: <data_root>/share")
+    ap.add_argument("--emit-repo", type=Path, metavar="DIR", help="Export the checked package as a fresh, one-commit Git repository.")
     ap.add_argument("--baselines", nargs="*", default=[], metavar="DIR",
                     help="thư mục kết quả <results>/<benchmark>/<hệ> (hyps.jsonl + run_meta.json): chép vào baselines/ để "
                          "người nhận so ghép cặp (evaluate --baseline-hyps); bỏ mọi trường đường dẫn máy")
@@ -191,7 +323,13 @@ def main(argv=None):
     dst = Path(args.out or P.path("data_root") / "share") / args.name
     if dst.exists():
         raise SystemExit(f"{dst} đã có: bản share không được ghi đè (đổi --name / version)")
-    for b in args.benchmarks:  # kiểm trước khi ghi gì: lỗi giữa chừng không để lại gói dở
+    if args.emit_repo:
+        target = args.emit_repo.resolve()
+        if target.exists() or target.is_relative_to(dst.resolve()) or dst.resolve().is_relative_to(target):
+            ap.error("--emit-repo must name a new directory separate from the share package")
+    policy = share_policy()
+    all_rows = []
+    for b in args.benchmarks:  # kiểm trước khi ghi gì
         mp, bm = manifest_path(b)
         rows = share_rows(read_jsonl(str(mp)))
         if bm.get("evidence_level") == "locked" or bm.get("manifest_sha256"):
@@ -205,6 +343,56 @@ def main(argv=None):
             cat = Path(bm["catalog"].replace("${data_root}", str(P.path("data_root"))))
             if sha256_file(cat) != bm["catalog_sha256"]:
                 raise SystemExit(f"{b}: catalog {cat} khác bản khoá")
+        all_rows += rows
+    used = {r["dataset"] for r in all_rows}
+    no_text = policy["text_not_redistributable"] & used
+    cannot = sorted(d for d in no_text if SOURCES[d]["kind"] != "evalset")
+    if cannot:  # chỉ fetch_evalset lấy lại được lời thoại từ nguồn
+        raise SystemExit(f"text_not_redistributable: fetch không lấy lại được lời thoại của {cannot}")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{dst.name}.partial-", dir=dst.parent) as stage:
+        tmp = Path(stage) / dst.name
+        summary = build(tmp, args, policy, sorted(used), no_text)
+        release = {"name": args.name, "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                   "distinct_utterances": distinct_utterances(all_rows),
+                   "scorer_code_sha256": packaged_scorer_sha256(tmp / "code"),
+                   "share_policy_sha256": sha256_file(SHARE_POLICY_CONFIG),
+                   "text_withheld_datasets": sorted(no_text | {r["dataset"] for r in all_rows
+                                                               if r.get("text_redistributable") is False}),
+                   "benchmarks": summary}
+        (tmp / "release.json").write_text(json.dumps(release, ensure_ascii=False, indent=1), encoding="utf-8")
+        bad = scan_package(tmp, policy)
+        if bad:
+            raise SystemExit("gói vi phạm configs/dataset/share_policy.yaml (đã huỷ, không ghi gì):\n  "
+                             + "\n  ".join(bad[:50]) + (f"\n  ... và {len(bad) - 50} chỗ khác" if len(bad) > 50 else ""))
+        lines = []
+        for p in sorted(x for x in tmp.rglob("*") if x.is_file()):
+            lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(tmp).as_posix()}")
+        (tmp / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        if args.emit_repo:
+            emit_repo(tmp, target)
+        tmp.rename(dst)
+    print(f"{dst}: {sum(v['rows'] for v in summary.values())} dòng, {release['distinct_utterances']} câu không trùng, "
+          f"{len(lines)} file; chính sách share ĐẠT")
+    print(json.dumps(summary, ensure_ascii=False, indent=1))
+
+
+def emit_repo(package: Path, target: Path):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{target.name}.partial-", dir=target.parent) as stage:
+        repo = Path(stage) / target.name
+        shutil.copytree(package, repo)
+        git = ["git", "-c", "core.hooksPath=.git/no-hooks", "-c", "core.autocrlf=false", "-c", "commit.gpgsign=false",
+               "-c", "user.name=Gipbench Evaluation Kit", "-c", "user.email=gipbench-eval@example.invalid"]
+        subprocess.run([*git, "init", "--template=", "--initial-branch=main"], cwd=repo, check=True)
+        subprocess.run([*git, "add", "--force", "--", "."], cwd=repo, check=True)
+        subprocess.run([*git, "commit", "--quiet", "-m", "Initial evaluation kit release"], cwd=repo, check=True)
+        repo.rename(target)
+    print(f"Evaluation kit repository: {target}")
+
+
+def build(dst: Path, args, policy, keep_datasets, no_text):
+    """Ghi manifests / baselines / docs / configs / code / README vào dst. Trả summary theo benchmark."""
     (dst / "manifests").mkdir(parents=True)
     summary = {}
     for b in args.benchmarks:
@@ -212,11 +400,9 @@ def main(argv=None):
         rows = share_rows(read_jsonl(str(mp)))
         name = b.replace("_draft", "")
         with open(dst / "manifests" / f"{name}.jsonl", "w", encoding="utf-8") as f:
-            for r in strip_text(rows):
+            for r in strip_text(rows, no_text):
                 f.write(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n")
         shutil.copyfile(P.REPO / "configs" / "bench" / "benchmarks" / f"{b}.yaml", dst / "manifests" / f"{name}.benchmark.yaml")
-        if bm.get("catalog_from_bench"):
-            raise SystemExit(f"{b}: catalog chứa span lấy từ chính bench, không share làm catalog chấm")
         if bm.get("catalog"):
             cat = Path(bm["catalog"].replace("${data_root}", str(P.path("data_root"))))
             shutil.copyfile(cat, dst / "manifests" / f"{name}.catalog.tsv")
@@ -251,24 +437,33 @@ def main(argv=None):
         if (bdir / "report.md").exists():
             shutil.copyfile(bdir / "report.md", out / "report.md")
         summary[bench].setdefault("baselines", []).append(system)
-    for rel in DOCS + CONFIGS:
-        src = P.REPO / rel
-        if src.exists():
-            sub = dst / ("docs" if rel.startswith("docs/") else "configs")
-            sub.mkdir(exist_ok=True)
-            shutil.copyfile(src, sub / Path(rel).name)
-    print(f"code/: {len(copy_code(dst, args.name.rsplit('-v', 1)[-1]))} module")  # người nhận không cần repo
-    (dst / "README.md").write_text(README.replace("{name}", args.name).replace(
-        "{summary}", "```json\n" + json.dumps(summary, ensure_ascii=False, indent=1) + "\n```"),
-                                   encoding="utf-8")
-    (dst / "release.json").write_text(json.dumps({"name": args.name, "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-                                                  "benchmarks": summary}, ensure_ascii=False, indent=1), encoding="utf-8")
-    lines = []
-    for p in sorted(x for x in dst.rglob("*") if x.is_file()):
-        lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(dst).as_posix()}")
-    (dst / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"{dst}: {sum(v['rows'] for v in summary.values())} dòng, {len(lines)} file")
-    print(json.dumps(summary, ensure_ascii=False, indent=1))
+    for rel in policy["docs"]:
+        (dst / "docs").mkdir(exist_ok=True)
+        text = (P.REPO / rel).read_text(encoding="utf-8")
+        (dst / "docs" / Path(rel).name).write_text(omit_share_blocks(text), encoding="utf-8", newline="\n")
+    for rel in policy["configs"]:
+        (dst / "configs").mkdir(exist_ok=True)
+        data = (P.REPO / rel).read_bytes().replace(b"\r\n", b"\n")
+        if Path(rel).name == "datasets.yaml":
+            data = filtered_datasets_yaml(data.decode("utf-8"), keep_datasets).encode("utf-8")
+        (dst / "configs" / Path(rel).name).write_bytes(data)
+    # người nhận không cần repo
+    print(f"code/: {len(copy_code(dst, args.name.rsplit('-v', 1)[-1], keep_datasets))} module")
+    readme = README.replace("{name}", args.name).replace(
+        "{summary}", "```json\n" + json.dumps(summary, ensure_ascii=False, indent=1) + "\n```")
+    for original in ("code_switch_v1", "external_v1"):
+        latest = f"{original}_1"
+        if latest in summary and original not in summary:
+            readme = re.sub(rf"\b{original}\b", latest, readme)
+    (dst / "README.md").write_text(readme, encoding="utf-8")
+    licenses = {name: info.get("license") for bench in summary.values() for name, info in bench["by_dataset"].items()}
+    lines = ["# Dataset licenses", "", "Register of license labels recorded in the benchmark manifests.",
+             "See the datasheet for upstream sources, attribution, and usage terms.", "", "| Dataset | License label |",
+             "| --- | --- |"]
+    lines.extend(f"| {name} | {license or 'Unknown'} |" for name, license in sorted(licenses.items()))
+    (dst / "DATA_LICENSES.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (dst / ".gitignore").write_text("__pycache__/\n*.egg-info/\nbench_data/\nmy_system/\nleak/\n", encoding="utf-8")
+    return summary
 
 
 README = (Path(__file__).with_name("share_readme.md")).read_text(encoding="utf-8")

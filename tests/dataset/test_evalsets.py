@@ -136,6 +136,21 @@ def main():
     got3 = [json.loads(l) for l in open(d / "recv3" / "manifest.jsonl", encoding="utf-8")]
     check("fetch lấy lại lời thoại từ nguồn", [r.get("text_tagged") for r in got3] == [r["text_tagged"] for r in full])
     check("manifest sau fetch trùng manifest_sha256 bản khoá", manifest_sha256(got3) == manifest_sha256(full))
+    # bộ cho phân phối lại nhưng nằm trong share_policy.text_not_redistributable: package bỏ text (không thêm cờ),
+    # fetch vẫn lấy lại, manifest trùng bản khoá
+    pol_rows = share_rows([dict(r) for r in mrows])
+    shared5 = strip_text(pol_rows, {"fake_pq"})
+    check("strip_text theo policy: bỏ text, không thêm trường cờ",
+          all("text_tagged" not in r and "text_redistributable" not in r for r in shared5))
+    man5 = d / "m5.jsonl"
+    man5.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in shared5), encoding="utf-8")
+    try:
+        F.main(["--manifest", str(man5), "--out", str(d / "recv5"), "--local-source", f"fake_pq={p0}", f"fake_pq={p1}"])
+    except SystemExit:
+        pass
+    got5 = [json.loads(l) for l in open(d / "recv5" / "manifest.jsonl", encoding="utf-8")]
+    check("fetch lấy lại lời thoại bộ thuộc policy, manifest trùng bản khoá",
+          manifest_sha256(got5) == manifest_sha256(pol_rows) and all("text_tagged" in r for r in got5))
     # dòng metadata-only (không audio_sha256 / duration): fetch dựng audio, kiểm bằng sha256 file nguồn
     meta_rows = [{k: v for k, v in r.items() if k not in ("audio_sha256", "duration", "_path")} for r in rows]
     for r in meta_rows:

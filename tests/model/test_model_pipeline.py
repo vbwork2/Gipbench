@@ -151,15 +151,59 @@ def test_icefall_runner(T):
 
 def test_dry_run():
     print("model.run --dry-run")
+    # e3_v1b dùng catalog/v0-draft (có span bench): từ 17/11/2026 model.run từ chối trừ khi khai báo chẩn đoán oracle
+    # (test ngữ nghĩa từ chối: tests/model/test_gate_run.py); ở đây chỉ kiểm lệnh dry-run sinh ra
     p = subprocess.run([sys.executable, "-m", "gipbench.model.run", str(G / "configs/model/experiments/e3_v1b.yaml"),
-                        "--stages", "0-6", "--dry-run"], capture_output=True, text=True, encoding="utf-8", cwd=G)
-    out = p.stdout
+                        "--stages", "0-6", "--dry-run", "--set", "catalog_use=oracle_diagnostic"], capture_output=True, text=True,
+                       encoding="utf-8", cwd=G)
+    out = p.stdout.replace("\\", "/")
     check("dry-run chạy được", p.returncode == 0, p.stderr[-500:])
     for k in ["--holdout-domain finance", "--max-domain-share 0.5", "--cap-exempt other", "cs_real=", ":0.35",
               "--epoch-hours 160 --epochs 6", "--speed-perturb --phone-sim 0.3", "--freeze-modules encoder_embed.",
               "--base-lr 0.002 --max-duration 150", "--save-every-n 1033", "--alphas 0.3 0.5 0.7 1.0", "wise_1/onnx"]:
         check(f"dry-run có `{k}`", k in out)
     check("model pipeline không gọi bench", "gipbench.bench" not in out)
+
+
+def test_x0_dry_run():
+    config = G / "configs/model/experiments/e4_x0.yaml"
+    command = [sys.executable, "-m", "gipbench.model.run", str(config), "--stages", "0-6", "--dry-run"]
+    p = subprocess.run(command, capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 dry-run previews both seeds", p.returncode == 0 and p.stdout.count("== 6.") == 2, p.stderr)
+    train = [line for line in p.stdout.splitlines() if "./zipformer/finetune_cs.py" in line]
+    check("X0 passes both seeds to Icefall and keeps separate output paths",
+          len(train) == 2 and all(f"--seed {seed}" in line and f"seed-{seed}" in line
+                                  for seed, line in enumerate(train)))
+    # X0 (18/11): luật cố định đăng ký trước, không dev -> không decode dev / select_ckpt; valid loss trên mẫu train
+    check("X0 dry-run: luật cố định, replay cap, không chọn trên dev", all(flag in p.stdout for flag in (
+        "--epoch-hours 20 --epochs 2 --max-views 8", "luật cố định (fixed_last)", "--name valid",
+        "valid_cuts_raw.jsonl.gz", "--iter <N>")) and "select_ckpt" not in p.stdout and "dev_cs" not in p.stdout,
+        p.stderr[-500:])
+    p2 = subprocess.run(command + ["--seed", "0", "--set", "dev={cs: dev/dev_interim_cs@1, vi: dev/dev_interim_vi@1}",
+                                   "--set", "select.rule=cs_wer"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 chọn lại trên dev tạm (không train lại) giữ các ngưỡng giữ tiếng Việt", p2.returncode == 0 and all(
+        flag in p2.stdout for flag in ("--max-vi-ci-upper 0.5", "--max-vi-hallucination-delta 0.0",
+                                       "--max-cs-domain-delta 1.0", "--rule cs_wer")), p2.stderr[-500:])
+    p3 = subprocess.run(command + ["--set", "dev=null", "--set", "select.rule=cs_wer"], capture_output=True,
+                        encoding="utf-8", cwd=G)
+    check("dev rỗng mà luật cần dev -> từ chối", p3.returncode != 0 and "fixed_last" in (p3.stderr + p3.stdout))
+    p = subprocess.run(command + ["--seed", "1"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 previews one seed when selected", p.returncode == 0 and p.stdout.count("== 6.") == 1
+          and "== e4_x0 seed 1" in p.stdout and "seed-0" not in p.stdout, p.stderr)
+    p = subprocess.run(command + ["--seed", "2"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 rejects an undeclared seed", p.returncode != 0 and "--seed must be one of" in p.stderr)
+
+
+def test_x0_vi_dry_run():
+    config = G / "configs/model/experiments/e4_x0_lr1e4_vi.yaml"
+    command = [sys.executable, "-m", "gipbench.model.run", str(config), "--stages", "0-6", "--dry-run"]
+    result = subprocess.run(command, capture_output=True, encoding="utf-8", cwd=G)
+    check("Lower-LR X0 previews one VI-only run", result.returncode == 0
+          and result.stdout.count("./zipformer/finetune_cs.py") == 1
+          and all(flag in result.stdout for flag in ("--seed 0", "--base-lr 0.0001", "--max-batches 2400",
+                                                      "--dev-ref-vi dev/dev_v2_vi@1", "--rule vi_wer"))
+          and all(flag not in result.stdout for flag in ("dev_cs", "seed-1", "interpolate_ckpt", "gipbench.bench")),
+          result.stderr)
 
 
 def test_release(T):
@@ -220,7 +264,7 @@ def main():
     with tempfile.TemporaryDirectory() as t:
         T = Path(t)
         cases = [test_experiments, lambda: test_split_groups(T / "sg"), lambda: test_icefall_runner(T / "ir"),
-                 test_dry_run, lambda: test_release(T / "rel"), test_bench_systems]
+                 test_dry_run, test_x0_dry_run, test_x0_vi_dry_run, lambda: test_release(T / "rel"), test_bench_systems]
         for d in ("sg", "ir", "rel"):
             (T / d).mkdir()
         for i, fn in enumerate(cases):

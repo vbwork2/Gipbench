@@ -1,0 +1,9 @@
+# Colab: clone ở /content/gipbench; chép thành configs/paths.yaml trước khi chạy pipeline.
+data_root: data  # gói giải nén vào gốc clone, giữ đúng đường dẫn audio tương đối
+results_root: /content/drive/MyDrive/gipbench_results  # giữ kết quả dev khi Colab thu hồi runtime
+exp_root: /content/drive/MyDrive/gipbench_exp  # checkpoint + artifact sống trên Drive để chạy tiếp
+icefall: /content/icefall  # clone recipe trên đĩa local, cài lại khi đổi runtime
+python_cpu: python3  # dùng Python có sẵn; notebook đặt GIPBENCH_PY tới đường dẫn tuyệt đối
+python_ft: python3  # cùng Python / torch Colab; notebook đặt GIPBENCH_FT_PY tương ứng
+python_asr: python3  # cùng môi trường; notebook đặt GIPBENCH_ASR_PY tương ứng
+leak_block_files: [data/raw/consensus/leak_block.txt]  # giữ mặc định: chặn text bộ chỉ được test

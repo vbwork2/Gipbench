@@ -1,0 +1,57 @@
+# Chính sách nội dung gói share (package.py, IP-08). Gói được dựng ở thư mục tạm, kiểm theo file này, đạt thì mới đổi tên
+# thành tên gói. Vi phạm thì DỪNG và không để lại gói dở.
+#
+# allow:      glob (tính từ gốc gói) của mọi file được phép có trong gói. File nào không khớp glob nào thì dừng.
+# docs:       tài liệu chép vào docs/. Khối <!-- share:omit --> ... <!-- /share:omit --> bị bỏ khi chép (lịch sử
+#             nội bộ, lệnh có đường dẫn máy); file gốc trong repo giữ nguyên.
+# configs:    file cấu hình chép vào configs/ (datasets.yaml chỉ giữ các bộ có trong benchmark được đóng gói).
+# text_not_redistributable:
+#             bộ chưa rà xong license lời thoại (audit G.4): package bỏ text_tagged / text_orig / text_norm_upstream,
+#             người nhận chạy fetch để lấy lại đúng giá trị từ nguồn. Bổ sung cho cờ text_redistributable: false có sẵn
+#             trong manifest (PhoAudiobook, GigaSpeech2). Rà xong bộ nào thì bỏ bộ đó khỏi danh sách.
+# forbidden:  regex (Python, phân biệt hoa thường) quét mọi file text trong gói. Có kết quả thì dừng và in vị trí.
+allow:
+  - README.md
+  - release.json
+  - DATA_LICENSES.md
+  - .gitignore
+  - SHA256SUMS
+  - manifests/*.jsonl
+  - manifests/*.benchmark.yaml
+  - manifests/*.catalog.tsv
+  - baselines/*/*/hyps.jsonl
+  - baselines/*/*/run_meta.json
+  - baselines/*/*/report.md
+  - docs/*.md
+  - configs/*.yaml
+  - configs/*.tsv
+  - code/pyproject.toml
+  - code/src/gipbench/**/*.py
+  - code/configs/**/*.yaml
+  - code/configs/**/*.tsv
+docs:
+  - docs/datasheet_bench_v1.md
+  - docs/benchmark_protocol_v1.md
+  - docs/evaluation_metrics_v1.md
+configs:
+  - configs/bench/datasets.yaml
+  - configs/dataset/labeling/term_decisions.tsv   # nguồn tag <en> của C1
+text_not_redistributable:
+  - cv17_vi                  # Community mirror pending upstream license verification.
+  - vimd                     # CC-BY-NC-ND-4.0: manifest có là bản phái sinh không?
+  - lsvsc                    # CC-BY-4.0 trên bản đăng lại, chưa xác minh license gốc
+  - bud500                   # gated
+  - speech_massive_test_vi   # gated
+forbidden:
+  - 'gipbench[./]model\b'
+  - 'gipbench[./]dataset[./](pseudolabel|synth|derive|label|report)\b'
+  - 'pseudolabel'
+  - 'distill'
+  - 'train_mix'
+  - 'consensus'
+  - 'hotword_distractors'
+  - '/mnt/[a-z]/'
+  - '[A-Za-z]:[\\/]Users[\\/]'
+  - 'hf_[A-Za-z0-9]{30,}'
+  - 'vbwork2/'
+  - 'v0_draft'

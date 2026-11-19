@@ -94,6 +94,7 @@ def build_fixtures(d: Path):
              {"id": "b1_0002", "split": "B1", "audio": "bench_audio/b1.wav", "duration": 2.0, "speaker": "bench_spk2",
               "source": "bench_src2", "domain": "tech", "text_tagged": "em đang dùng <en>zalo</en> để nhắn tin"}]
     wjl(d / "bench.jsonl", bench)
+    (d / "reserved_terms.txt").write_text("# thuật ngữ giữ riêng của test\n" + "\n".join(RESERVED) + "\n", encoding="utf-8")
     (d / "voices.tsv").write_text("voice\tbackend_voice\tref_audio\tgender\tregion\n"
                                   "v_a\t\t\tf\tnorth\nv_b\t\t\tm\tsouth\nv_c\t\t\tf\tcentral\nv_d\t\t\tm\tnorth\n", encoding="utf-8")
 
@@ -106,7 +107,8 @@ def test_make_text(d: Path):
     check(not probs, f"lexicon có cảnh báo: {probs[:3]}")
     check(len(lex) >= 80, f"lexicon chỉ có {len(lex)} thuật ngữ (cần ~80+)")
     check(all(2 <= len(v) for v in lex.values() if v[0].kind != "x"), "mỗi thuật ngữ lexicon nên có >= 2 cách đọc")
-    base = ["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--bench", d / "bench.jsonl"]
+    base = ["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--reserved-terms", d / "reserved_terms.txt",
+            "--bench", d / "bench.jsonl"]
     run(base + ["--out-dir", d / "s0", "--seed", 0])
     run(base + ["--out-dir", d / "s0b", "--seed", 0])
     run(base + ["--out-dir", d / "s1", "--seed", 1])
@@ -116,6 +118,9 @@ def test_make_text(d: Path):
     check((d / "s0/tts_holdout_terms.txt").read_bytes() == (d / "s1/tts_holdout_terms.txt").read_bytes(),
           "nhóm đối chứng phụ thuộc seed (phải ổn định)")
     script = jl(d / "s0/tts_script.jsonl")
+    txt = [l.rstrip("\n") for l in open(d / "s0/tts_text.txt", encoding="utf-8")]
+    check(len(txt) == len(script) and all("<en" not in t for t in txt), f"tts_text.txt phải có {len(script)} dòng text thuần, có {len(txt)}")
+    check(not any(r in " ".join(txt).split() for r in RESERVED), "thuật ngữ giữ riêng lọt vào tts_text.txt")
     held = {l.strip() for l in open(d / "s0/tts_holdout_terms.txt", encoding="utf-8") if l.strip()}
     check(len(held) > 0, "không có thuật ngữ đối chứng")
     check(not (held & set(RESERVED)), "thuật ngữ đối chứng lẫn reserved_b3")
@@ -165,7 +170,7 @@ def test_make_text(d: Path):
     wjl(d / "bench_dup.jsonl", read_jsonl(str(d / "bench.jsonl")) + [{"id": "b1_dup", "split": "B1", "audio": "bench_audio/b1.wav",
                                                                       "duration": 2.0, "speaker": "bench_spk9", "source": "bench_src9",
                                                                       "text_tagged": victim["text_tagged"]}])
-    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--bench", d / "bench_dup.jsonl", "--out-dir", d / "sd", "--seed", 0])
+    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--reserved-terms", d / "reserved_terms.txt", "--bench", d / "bench_dup.jsonl", "--out-dir", d / "sd", "--seed", 0])
     sd = jl(d / "sd/tts_script.jsonl")
     check(all(ln["text_tagged"] != victim["text_tagged"] for ln in sd), "câu trùng bench vẫn còn trong kịch bản")
     rep = (d / "sd/tts_script.report.md").read_text(encoding="utf-8")
@@ -194,7 +199,7 @@ def test_sentences(d: Path, script, held):
              {"text": f"hôm nay mình họp về {A} và webhook", "terms": [A]},
              {"text": f"hôm nay họp về <en>{A}</en> và <en>{B}</en>", "terms": [A]}]
     wjl(d / "sentences.jsonl", sents)
-    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--out-dir", d / "ss", "--sentences", d / "sentences.jsonl",
+    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--reserved-terms", d / "reserved_terms.txt", "--out-dir", d / "ss", "--sentences", d / "sentences.jsonl",
          "--contexts-per-term", 5])
     ss = jl(d / "ss/tts_script.jsonl")
     got = [ln for ln in ss if "from_sentences" in ln["flags"]]
@@ -211,7 +216,7 @@ def test_sentences(d: Path, script, held):
 
 def test_synth(d: Path):
     print("[3] tts_synth (mock)")
-    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--bench", d / "bench.jsonl", "--out-dir", d / "sm",
+    run(["src/gipbench/dataset/synth/make_text.py", "--catalog", d / "catalog.tsv", "--reserved-terms", d / "reserved_terms.txt", "--bench", d / "bench.jsonl", "--out-dir", d / "sm",
          "--max-terms", 14, "--seed", 0])
     script = jl(d / "sm/tts_script.jsonl")
     base = ["src/gipbench/dataset/synth/synth.py", "--script", d / "sm/tts_script.jsonl", "--voices", d / "voices.tsv", "--backend", "mock",

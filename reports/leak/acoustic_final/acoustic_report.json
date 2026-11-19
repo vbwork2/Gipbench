@@ -1,0 +1,35 @@
+{
+ "matches": [],
+ "train_ids": {},
+ "stats": {
+  "n_train_rows": 19301,
+  "n_train_fp": 19301,
+  "n_bench_rows": 71382,
+  "n_bench_readable": 45130,
+  "n_bench_unreadable": 26252,
+  "n_bench_unique_audio": 45130,
+  "n_matches": 0,
+  "pairs_by_bench_train": {},
+  "max_ber": 0.3,
+  "min_overlap_s": 1.0,
+  "sec_train_fp": 85.1,
+  "sec_bench_fp": 121.3,
+  "sec_match": 34.9
+ },
+ "train": [
+  "pool/vimedcss_train@v4",
+  "pool/vivos_train@v3",
+  "pool/confusable_train@v3",
+  "pool/cv_other@v3",
+  "pool/vss_cs@v3",
+  "pool/distill@v4"
+ ],
+ "bench": [
+  "bench/general-v1.0",
+  "bench/code-switch-v1.0",
+  "bench/cs-ggroup-v1.0",
+  "bench/external-v1.0",
+  "bench/code-switch-v1.1",
+  "bench/external-v1.1"
+ ]
+}

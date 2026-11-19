@@ -18,6 +18,11 @@ RATIOS = {
     "cs_wer": ("err_en", "n_en"),
     "n_wer": ("err_vi", "n_vi"),
     "term_recall": ("matched_terms", "ref_terms"),
+    # IP-04 (core.scoring.cs_breakdown); metric cũ ở trên giữ nguyên định nghĩa
+    "cs_wer_sd": ("err_en_sd", "n_en"),                        # CS-WER không tính lỗi chèn
+    "boundary_ins_rate": ("boundary_ins", "n_en"),             # lỗi chèn ở ranh giới Việt | Anh / 100 token Anh
+    "vi_only_wer": ("err_vi_only", "n_vi_only"),               # WER trên câu không có span Anh
+    "en_hallucination_per100": ("hyp_latin_extra", "utt_vi_only"),  # token giống từ Anh chèn / 100 câu thuần Việt
 }
 COUNT_KEYS = sorted({k for pair in RATIOS.values() for k in pair})
 

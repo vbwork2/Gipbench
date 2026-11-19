@@ -20,7 +20,13 @@ Bổ sung cho gipbench.bench.score (không thay thế; score.py giữ nguyên h�
   * Nhóm theo `group_by` (vd dataset, domain, region), `split_groups` (vd main_B1+B2), và `aggregate: macro_by_dataset`
     (trung bình đều WER từng bộ, không có CI, luôn kèm số từng bộ).
   * CI 95%: bootstrap theo cụm `boot_unit` (speaker / session / source / utt / boot_unit_legacy), seed cố định.
-  * --baseline-hyps: Δ ghép cặp trên cùng id câu (bootstrap cặp theo cụm).
+  * --baseline-hyps: Δ ghép cặp trên cùng id câu (bootstrap cặp theo cụm). Baseline được kiểm như hyps chính:
+    thiếu / thừa / trùng id -> final mode thoát mã 2, diagnostic cảnh báo (audit: baseline cắt còn 1/2 làm Δ đảo dấu).
+  * --label-field: final mode chỉ nhận `primary_label_field` của benchmark (mặc định text_tagged) hoặc trường trong
+    `alt_label_fields`; summary ghi trường đã dùng và mọi giá trị ghi đè (overrides) so với benchmark.
+  * Provenance: summary ghi scorer_code_sha256 (sha256 mã nguồn chấm điểm, \\r\\n -> \\n) và profile.code_sha256.
+  * Metric thêm (1.1.0, không đổi metric cũ): cs_wer_sd, boundary_ins_rate, vi_only_wer, en_hallucination_per100 và
+    cs_errors (S_en / D_en / I_en_left / I_en_right_only / boundary_ins); định nghĩa ở EXTRA_DEFS.
 Ghi ra: utt_scores.jsonl (hồ sơ chính), summary.json, report.md.
 """
 import argparse
@@ -35,15 +41,34 @@ from gipbench.bench import registry as R
 from gipbench.core.align import align, char_edit_distance
 from gipbench.core.evalstats import RATIOS, check_hyps, cluster_bootstrap, paired_bootstrap, ratio, sum_counts
 from gipbench.core.manifest import read_jsonl
-from gipbench.core.normprofiles import Profile, get_profile
-from gipbench.core.scoring import agg, score_utt
+from gipbench.core.normprofiles import Profile, code_sha256, get_profile
+from gipbench.core.scoring import agg, cs_breakdown, score_utt
 from gipbench.core.textnorm import Catalog, normalize_hyp, normalize_ref
 
-SCORER = {"name": "gipbench.bench.evaluate", "version": "1.0.0"}
+SCORER = {"name": "gipbench.bench.evaluate", "version": "1.1.0"}
 WER_DEF = ("space_token_v1: (S+D+I)/N trên token tách theo khoảng trắng sau hồ sơ chuẩn hoá "
            "(token ≈ âm tiết tiếng Việt, không phải từ đã tách)")
 CER_DEF = "char_v1: Levenshtein ký tự trên chuỗi token nối bằng 1 dấu cách / số ký tự ref"
-METRICS = ["wer", "cer", "cs_wer", "n_wer", "term_recall"]
+METRICS = ["wer", "cer", "cs_wer", "n_wer", "term_recall",
+           "cs_wer_sd", "boundary_ins_rate", "vi_only_wer", "en_hallucination_per100"]
+CS_ERR_KEYS = ["S_en", "D_en", "I_en_left", "I_en_right_only", "boundary_ins"]
+EXTRA_DEFS = {
+    "cs_wer": "(S_en + D_en + I_en_left + I_en_right_only) / N_en: lỗi chèn tính cho span Anh nếu token ref bên trái là "
+              "Anh, không thì bên phải là Anh (I_en_right_only: chèn giữa token Việt và token Anh)",
+    "cs_wer_sd": "(S_en + D_en) / N_en: CS-WER không tính lỗi chèn",
+    "boundary_ins_rate": "boundary_ins / N_en: lỗi chèn có token ref trái và phải khác ngôn ngữ",
+    "vi_only_wer": "lỗi / token ref trên các câu thuần Việt (không có span <en> và không có token ref giống từ Anh)",
+    "en_hallucination_per100": "100 · token hyp giống từ Anh (chữ Latin không dấu, dài >= 2, không phải âm tiết Việt, "
+                               "không có trong ref) / số câu thuần Việt",
+}
+# mã nguồn quyết định con số (cùng thứ tự mọi lần); đổi bất kỳ file nào -> scorer_code_sha256 đổi
+SCORER_FILES = ["core/textnorm.py", "core/normprofiles.py", "core/align.py", "core/scoring.py", "core/evalstats.py",
+                "bench/evaluate.py"]
+
+
+def scorer_code_sha256() -> str:
+    pkg = Path(__file__).resolve().parents[1]
+    return code_sha256([pkg / f for f in SCORER_FILES])
 
 
 def git_commit() -> Optional[str]:
@@ -54,7 +79,17 @@ def git_commit() -> Optional[str]:
         return None
 
 
-def unit_of(r: Dict, rec: Dict, boot_unit: str) -> str:
+def resolve_boot_unit(bm: Dict):
+    """`boot_unit: per_dataset` + `boot_units: {default: speaker, fleurs_vi: sentence_id}` -> dict; còn lại giữ chuỗi."""
+    b = bm.get("boot_unit", "speaker")
+    if b == "per_dataset":
+        return dict({"default": "speaker"}, **(bm.get("boot_units") or {}))
+    return b
+
+
+def unit_of(r: Dict, rec: Dict, boot_unit) -> str:
+    if isinstance(boot_unit, dict):  # đơn vị bootstrap theo từng bộ (vd FLEURS lặp câu đọc: sentence_id)
+        boot_unit = boot_unit.get(str(r.get("dataset")), boot_unit.get("default", "speaker"))
     if boot_unit == "boot_unit_legacy":
         return rec["boot_unit"]
     if boot_unit == "utt":
@@ -74,12 +109,14 @@ def score_rows(rows: List[Dict], hyps: Dict[str, str], cat: Catalog, prof: Profi
         rec = score_utt(rr, hyp, cat, "text_tagged")
         if prof.lenient:  # hồ sơ chẩn đoán: số chính lấy theo bảng phonetic
             rec["err_en"], rec["matched_terms"] = rec["err_en_len"], rec["matched_terms_len"]
-        rt = [t.tok for t in normalize_ref(ref, cat, mode)[0]]
+        rtoks = normalize_ref(ref, cat, mode)[0]
+        rt = [t.tok for t in rtoks]
         ht = normalize_hyp(hyp, cat, mode)
+        ops = align(rt, ht)
         if prof.lenient:  # WER theo cùng bảng
-            ops = align(rt, ht)
             rec["err"] = sum(o[0] != "C" for o in ops)
             rec["n"] = len(rt)
+        rec.update(cs_breakdown(ops, [t.span for t in rtoks], rt, ht))
         a, b = " ".join(rt), " ".join(ht)
         rec.update(cerr=char_edit_distance(a, b), nc=len(a), duration=r.get("duration") or 0.0,
                    unit=unit_of(rr, rec, boot_unit))
@@ -95,6 +132,8 @@ def summarize(recs: List[Dict], iters: int, seed: int, with_ci: bool = True) -> 
          "n_tok": s.get("n", 0), "n_en": s.get("n_en", 0), "units": len({r["unit"] for r in recs})}
     for m in METRICS:
         d[m] = ratio(s, m)
+    d["cs_errors"] = {k: sum(r.get(k) or 0 for r in recs) for k in CS_ERR_KEYS}
+    d["utt_vi_only"] = s.get("utt_vi_only", 0)
     if any(r.get("spans") for r in recs):
         a = agg(recs)
         d.update(span_acc=a["span_acc"], term_acc_macro=a["term_acc_macro"], span_cer=a["span_cer"],
@@ -145,9 +184,16 @@ def write_report(path: Path, summ: Dict):
     if b.get("evidence_level") != "locked":
         L += [f"> **Benchmark {b.get('evidence_level')}** (chưa khoá). Số liệu dùng để chẩn đoán, không phải kết quả cuối.", ""]
     L += [f"- Chế độ chấm: `{summ['mode']}` · hồ sơ chính: `{summ['profile']['name']}` · inference mode: "
-          f"`{summ['inference_mode']}`", f"- WER: {WER_DEF}", f"- CER: {CER_DEF}",
+          f"`{summ['inference_mode']}` · nhãn: `{summ['label_field']}`", f"- WER: {WER_DEF}", f"- CER: {CER_DEF}",
+          f"- CS-WER: {EXTRA_DEFS['cs_wer']}",
           f"- CI 95%: bootstrap theo `{summ['boot_unit']}`, {summ['iters']} lần, seed {summ['seed']}",
-          f"- manifest_sha256 `{summ['manifest_sha256'][:16]}`, hyps_sha256 `{(summ['hyps_sha256'] or '')[:16]}`", ""]
+          f"- manifest_sha256 `{summ['manifest_sha256'][:16]}`, hyps_sha256 `{(summ['hyps_sha256'] or '')[:16]}`, "
+          f"scorer_code_sha256 `{summ['scorer_code_sha256'][:16]}` (scorer {summ['scorer']['version']})"]
+    if summ.get("overrides"):
+        L.append("- **Ghi đè so với benchmark:** " + ", ".join(f"`{k}` = `{v}`" for k, v in summ["overrides"].items()))
+    if summ.get("baseline_hyps"):
+        L.append(f"- Baseline: `{summ['baseline_hyps']}` (sha256 `{(summ['baseline_hyps_sha256'] or '')[:16]}`)")
+    L.append("")
     for w in summ["warnings"]:
         L.append(f"- **Cảnh báo:** {w}")
     if summ["warnings"]:
@@ -163,6 +209,16 @@ def write_report(path: Path, summ: Dict):
         mac = groups.get("macro_by_dataset")
         if mac:
             L += ["", f"Macro theo bộ ({mac['metric']}): **{mac['value']:.2f}** trên {mac['n_datasets']} bộ ({mac['note']})."]
+        rows = [(g, v) for g, v in groups.items() if g != "macro_by_dataset" and (v.get("n_en") or v.get("utt_vi_only"))]
+        if rows:
+            L += ["", "Phân rã CS-WER và giữ tiếng Việt (định nghĩa: `summary.json` → `metric_definitions`):", "",
+                  "| Nhóm | CS-WER | CS-WER S+D | S / D / I trái / I chỉ phải | Chèn ranh giới /100 EN | Câu thuần Việt | "
+                  "WER câu thuần Việt | Từ Anh chèn /100 câu Việt |", "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+            for g, v in rows:
+                c = v["cs_errors"]
+                L.append(f"| {g} | {fmt(v['cs_wer'])} | {fmt(v['cs_wer_sd'])} | {c['S_en']} / {c['D_en']} / {c['I_en_left']} / "
+                         f"{c['I_en_right_only']} | {fmt(v['boundary_ins_rate'])} | {v['utt_vi_only']} | "
+                         f"{fmt(v['vi_only_wer'])} | {fmt(v['en_hallucination_per100'])} |")
         L.append("")
     if summ.get("paired"):
         L += ["## So cặp với baseline (cùng id câu)", "", "| Nhóm | Metric | Baseline | Hệ này | Δ | CI95 Δ | Câu chung |",
@@ -217,11 +273,30 @@ def main(argv=None):
 
     rows = read_jsonl(manifest)
     hrows, hyps = load_hyps(args.hyps)
-    chk = check_hyps([r["id"] for r in rows], [h["id"] for h in hrows], [h.get("hyp", "") for h in hrows])
-    if not chk["ok"]:
-        msg = (f"hyps không khớp manifest: thiếu {len(chk['missing'])}, thừa {len(chk['extra'])}, trùng id hyps "
-               f"{len(chk['duplicate_hyp_ids'])}, trùng id manifest {len(chk['duplicate_manifest_ids'])}")
-        (errors if args.mode == "final" else warnings).append(msg + ("" if args.mode == "final" else " (hyp thiếu tính là rỗng)"))
+    ids = [r["id"] for r in rows]
+
+    def hyp_check(name, hr):
+        c = check_hyps(ids, [h["id"] for h in hr], [h.get("hyp", "") for h in hr])
+        if not c["ok"]:
+            msg = (f"{name} không khớp manifest: thiếu {len(c['missing'])}, thừa {len(c['extra'])}, trùng id hyps "
+                   f"{len(c['duplicate_hyp_ids'])}, trùng id manifest {len(c['duplicate_manifest_ids'])}")
+            (errors if args.mode == "final" else warnings).append(msg + ("" if args.mode == "final" else " (hyp thiếu tính là rỗng)"))
+        return c
+    chk = hyp_check("hyps", hrows)
+    bchk = bh = None
+    if args.baseline_hyps:  # baseline kiểm như hyps chính: thiếu câu làm Δ lệch (có thể đảo dấu) mà không báo
+        brows, bh = load_hyps(args.baseline_hyps)
+        bchk = hyp_check("baseline hyps", brows)
+    primary_label = bm.get("primary_label_field", "text_tagged")
+    if args.label_field != primary_label and args.label_field not in (bm.get("alt_label_fields") or []):
+        (errors if args.mode == "final" else warnings).append(
+            f"label_field {args.label_field} không phải nhãn chính ({primary_label}) và không có trong alt_label_fields "
+            f"của benchmark: số không so được với kết quả chấm theo nhãn chính")
+    # câu mà score_rows phải lấy nhãn từ trường khác (trường yêu cầu rỗng / thiếu nhưng text_tagged / text có nội dung)
+    n_nolabel = sum(1 for r in rows if not r.get(args.label_field) and (r.get("text_tagged") or r.get("text")))
+    if n_nolabel:
+        (errors if args.mode == "final" else warnings).append(
+            f"{n_nolabel} câu không có trường {args.label_field} (đã dùng text_tagged / text thay thế)")
     frozen = R.check_frozen(bm, rows)
     if frozen:
         errors.append(frozen)
@@ -266,14 +341,23 @@ def main(argv=None):
     out = Path(args.out or Path(args.hyps).parent)
     out.mkdir(parents=True, exist_ok=True)
     system = args.system or Path(args.hyps).parent.name
+    # giá trị dùng khác mặc định của benchmark (manifest / catalog / hồ sơ / nhãn): ghi rõ để hai kết quả không trộn lẫn
+    default = {"manifest": R.expand(bm.get("manifest")), "catalog": R.expand(bm.get("catalog")),
+               "profile": bm.get("profile"), "label_field": primary_label}
+    used = {"manifest": str(manifest), "catalog": catalog, "profile": prof.name, "label_field": args.label_field}
+    overrides = {k: v for k, v in used.items() if (str(v) if v is not None else None) != (str(default[k]) if default[k] is not None else None)}
+
+    def counts(c):
+        return {k: (len(v) if isinstance(v, list) else v) for k, v in c.items()}
     summ = {"system": system, "scorer": SCORER, "git_commit": git_commit(), "mode": args.mode,
             "benchmark": {"id": bm.get("benchmark_id"), "version": bm.get("version"), "track": bm.get("track"),
                           "evidence_level": bm.get("evidence_level"), "config": bm.get("_path")},
             "manifest": str(manifest), "manifest_sha256": R.manifest_sha256(rows), "hyps": str(args.hyps),
             "hyps_sha256": R.file_sha256(args.hyps), "catalog": catalog, "catalog_sha256": R.file_sha256(catalog),
-            "profile": prof.spec() | {"sha256": prof.sha256()}, "wer_definition": WER_DEF, "cer_definition": CER_DEF,
-            "boot_unit": bm.get("boot_unit", "speaker"), "iters": iters, "seed": seed, "hyp_check": {
-                k: (len(v) if isinstance(v, list) else v) for k, v in chk.items()},
+            "profile": prof.spec() | {"sha256": prof.sha256(), "code_sha256": prof.code_sha256()},
+            "scorer_code_sha256": scorer_code_sha256(), "scorer_files": SCORER_FILES, "label_field": args.label_field,
+            "overrides": overrides, "wer_definition": WER_DEF, "cer_definition": CER_DEF, "metric_definitions": EXTRA_DEFS,
+            "boot_unit": resolve_boot_unit(bm), "iters": iters, "seed": seed, "hyp_check": counts(chk),
             "inference_mode": imode, "run_meta": run_meta, "warnings": warnings, "profiles": {}}
     main_recs = None
     for p in profiles:
@@ -288,11 +372,11 @@ def main(argv=None):
         for r in main_recs:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     if args.baseline_hyps:
-        _, bh = load_hyps(args.baseline_hyps)
         base = score_rows(rows, bh, cat, prof, args.label_field, summ["boot_unit"], keys)
-        summ["baseline_hyps"] = args.baseline_hyps
+        summ.update(baseline_hyps=args.baseline_hyps, baseline_hyps_sha256=R.file_sha256(args.baseline_hyps),
+                    baseline_hyp_check=counts(bchk))
         pm = bm.get("primary_metric", "wer")
-        ms = [pm] + [m for m in ("wer", "cer") if m != pm]
+        ms = [pm] + [m for m in ("wer", "cer") if m != pm] + (["cs_wer_sd"] if pm == "cs_wer" else [])
         paired = {"overall": [paired_bootstrap(base, main_recs, m, "unit", iters, seed) for m in ms]}
         for v in sorted({r["dataset"] for r in main_recs}):
             a = [r for r in base if r["dataset"] == v]
@@ -303,6 +387,14 @@ def main(argv=None):
             b = [r for r in main_recs if r["split"] in splits]
             if a:
                 paired[f"split_group:{name}"] = [paired_bootstrap(a, b, m, "unit", iters, seed) for m in ms]
+        for k in keys:  # Δ cặp theo từng lát group_by (vd train_video_overlap của C0 v1.1); khoá < 2 giá trị bỏ qua
+            vals = sorted({str(r.get(k, "unk")) for r in main_recs})
+            if k == "dataset" or len(vals) < 2:
+                continue
+            for v in vals:
+                a = [r for r in base if str(r.get(k, "unk")) == v]
+                b = [r for r in main_recs if str(r.get(k, "unk")) == v]
+                paired[f"{k}:{v}"] = [paired_bootstrap(a, b, m, "unit", iters, seed) for m in ms]
         summ["paired"] = {g: [p for p in ps if p["delta"] is not None] for g, ps in paired.items()}
     (out / "summary.json").write_text(json.dumps(summ, ensure_ascii=False, indent=1), encoding="utf-8")
     write_report(out / "report.md", summ)

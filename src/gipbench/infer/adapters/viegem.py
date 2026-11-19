@@ -9,7 +9,8 @@ Yêu cầu (đã kiểm từ model card + code upstream, revision 95eae70b):
   * transformers đủ mới để có model_type `embedding_gemma2` (config ghi 5.18.0.dev0; venv gipbench-asr có 4.57.6 là
     KHÔNG đủ) -> dùng venv riêng, xem docs/viegem_integration.md;
   * audio 16 kHz mono, mỗi lần <= 30 s (model card). Audio dài hơn bị cắt thành đoạn 30 s liên tiếp rồi nối text.
-Giải mã: `greedy` (CTC greedy, như README) hoặc `lm` (KenLM 4-gram đi kèm, alpha 0.35, beta 1.5, beam 32 như README;
+Giải mã: `greedy` (CTC greedy, như README), `beam` (CTC prefix beam không điểm LM) hoặc
+`lm` (KenLM 4-gram đi kèm, alpha 0.35, beta 1.5, beam 32 như README;
 cần `pip install kenlm`). LM train trên transcript train của VieGem (theo model card), không phải text test của gipbench.
 """
 import importlib
@@ -44,18 +45,20 @@ class VieGemAdapter(ASRAdapter):
         self.repo = Path(cfg["model"]["dir"])
         self.encoder_dir = cfg["model"].get("encoder_dir")
         self.method = d.get("method", "greedy")
-        if self.method not in ("greedy", "lm"):
-            raise ValueError("decode.method: greedy | lm")
-        if self.method == "lm" and cfg["inference_mode"] != "lm":
-            raise ValueError("decode.method lm cần inference_mode: lm")
+        if self.method not in ("greedy", "beam", "lm"):
+            raise ValueError("decode.method: greedy | beam | lm")
+        if (self.method == "lm") != (cfg["inference_mode"] == "lm"):
+            raise ValueError("decode.method lm requires inference_mode: lm and vice versa")
         self.lm_cfg = {"alpha": float(d.get("alpha", 0.35)), "beta": float(d.get("beta", 1.5)),
                        "beam_width": int(d.get("beam_width", 32))}
+        if self.method == "beam":
+            self.lm_cfg.update(alpha=0.0, beta=0.0)
         self.device_req = d.get("device", "auto")
         # pad_sec > 0: đệm im lặng hai đầu audio (ablation CHẨN ĐOÁN độ nhạy với clip cắt sát; mặc định 0 = như upstream)
         self.pad_sec = float(d.get("pad_sec", 0.0))
         self.info = AdapterInfo(system=cfg["system"], engine="viegem", model_id=cfg["model"]["id"],
                                 revision=cfg["model"].get("revision", "unknown"), inference_mode=cfg["inference_mode"],
-                                sample_rate=16000, decoding={"method": self.method, **(self.lm_cfg if self.method == "lm" else {}),
+                                sample_rate=16000, decoding={"method": self.method, **(self.lm_cfg if self.method != "greedy" else {}),
                                                               "streaming": False, "pad_sec": self.pad_sec},
                                 batch_size=int(cfg.get("batch", 8)), max_chunk_sec=float(d.get("max_chunk_sec", 30.0)))
         self.model = None
@@ -93,12 +96,16 @@ class VieGemAdapter(ASRAdapter):
             self.info.extra["transformers"] = transformers.__version__
         except Exception:
             pass
-        if self.method == "lm":
-            words = (self.repo / "lm" / "viegem_lm.unigrams.txt").read_text(encoding="utf-8").split()
-            self.lm = L.LMDecoder(str(self.repo / "lm" / "viegem_lm.bin"), unigrams=words,
+        if self.method != "greedy":
+            lm_path = self.repo / "lm" / "viegem_lm.bin"
+            words = ((self.repo / "lm" / "viegem_lm.unigrams.txt").read_text(encoding="utf-8").split()
+                     if self.method == "lm" else None)
+            # Reuse the upstream beam and pruning with all LM scores disabled for the beam control.
+            self.lm = L.LMDecoder(str(lm_path), unigrams=words,
                                   alpha=self.lm_cfg["alpha"], beta=self.lm_cfg["beta"])
             self.pieces = ["", ""] + self.tok.convert_ids_to_tokens(self.units.gemma_ids)
-            self.info.extra["lm_sha256"] = file_sha256(self.repo / "lm" / "viegem_lm.bin")
+            if self.method == "lm":
+                self.info.extra["lm_sha256"] = file_sha256(lm_path)
 
     def _decode_wavs(self, wavs: List[np.ndarray]) -> List[str]:
         torch = self.torch
