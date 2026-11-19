@@ -22,17 +22,19 @@ catalog_flags; dev không có flags.independent: true (không chứng minh độ
 import argparse
 import json
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from gipbench.core import release as R
 from gipbench.core.align import align
+from gipbench.core.decontam import read_lines
 from gipbench.core.evalstats import check_hyps, paired_bootstrap, ratio, sum_counts
 from gipbench.core.manifest import read_jsonl
 from gipbench.core.textnorm import Catalog, normalize_hyp, normalize_ref
-from gipbench.core.scoring import agg, cs_breakdown, score_utt
+from gipbench.core.scoring import agg, count_occ, cs_breakdown, score_utt
 
 
-def evaluate(rows, hyp_path, cat, strict=False):
+def evaluate(rows, hyp_path, cat, strict=False, reserved=()):
     hyp_rows = read_jsonl(str(hyp_path))
     if strict:
         ids = check_hyps([r["id"] for r in rows], [h["id"] for h in hyp_rows])
@@ -44,11 +46,16 @@ def evaluate(rows, hyp_path, cat, strict=False):
         r = dict(r)
         r.setdefault("text_tagged", r.get("text", ""))
         rec = score_utt(r, hyps.get(r["id"], ""), cat)
-        if strict:
-            ref = normalize_ref(r["text_tagged"], cat)[0]
+        if strict or reserved:
+            ref, spans = normalize_ref(r["text_tagged"], cat)
             ref_tokens = [token.tok for token in ref]
             hyp_tokens = normalize_hyp(hyps[r["id"]], cat)
-            rec.update(cs_breakdown(align(ref_tokens, hyp_tokens), [token.span for token in ref], ref_tokens, hyp_tokens))
+            if strict:
+                rec.update(cs_breakdown(align(ref_tokens, hyp_tokens), [token.span for token in ref], ref_tokens, hyp_tokens))
+            if reserved:
+                terms = Counter(term for term in spans if term in reserved)
+                rec["ft_unseen_terms"] = sum(terms.values())
+                rec["ft_unseen_matched"] = sum(min(count, count_occ(hyp_tokens, term)) for term, count in terms.items())
         recs.append(rec)
         by_ds.setdefault(str(r.get("dataset") or "?").split(":")[0], []).append(rec)
     return agg(recs), {d: agg(group) for d, group in sorted(by_ds.items())}, recs
@@ -59,6 +66,16 @@ def cs_by_domain(records):
     for rec in records:
         domains.setdefault(rec["domain"] or "unknown", []).append(rec)
     return {name: ratio(sum_counts(group), "cs_wer") for name, group in sorted(domains.items())}
+
+
+def paired_cs_by_domain(base, candidate):
+    groups = defaultdict(lambda: ([], []))
+    for before, after in zip(base, candidate):
+        pair = groups[after["domain"]]
+        pair[0].append(before)
+        pair[1].append(after)
+    return {domain: paired_bootstrap(before, after, "cs_wer", "boot_unit", iters=1000, seed=0)
+            for domain, (before, after) in sorted(groups.items())}
 
 
 def retention_checks(metrics, base, vi_rows, base_vi_rows, limits):
@@ -92,6 +109,7 @@ def main():
     ap.add_argument("--max-vi-ci-upper", type=float)
     ap.add_argument("--max-vi-hallucination-delta", type=float)
     ap.add_argument("--max-cs-domain-delta", type=float)
+    ap.add_argument("--reserved-terms", help="Frozen list for reporting FT-unseen term recall on CS development data")
     ap.add_argument("--rule", choices=["term_acc_macro", "cs_wer"], default="term_acc_macro",
                     help="tiêu chí chọn trong các ứng viên đạt ràng buộc WER dev VI (đăng ký trước, ghi vào <out>.json)")
     ap.add_argument("--dev-ref-cs", help="release của dev CS (vd dev/dev_v2_cs@1): kiểm flags.independent")
@@ -123,8 +141,9 @@ def main():
                 sys.exit(3)
             print("CẢNH BÁO", msg)
     cat = Catalog.load(args.catalog)
+    reserved = {tuple(normalize_hyp(term, cat)) for term in read_lines(args.reserved_terms)}
     cs_rows, vi_rows = read_jsonl(args.dev_cs), read_jsonl(args.dev_vi)
-    res, vi_scores = {}, {}
+    res, vi_scores, cs_records = {}, {}, {}
     base_name = Path(args.base).name
     for d in [args.base] + args.cand:
         p = Path(d)
@@ -133,7 +152,7 @@ def main():
                 raise SystemExit(f"{p}: missing development hypotheses")
             print(f"BỎ {p.name}: thiếu hyps dev")
             continue
-        cs, cs_ds, cs_scores = evaluate(cs_rows, p / "dev_cs/hyps.jsonl", cat, strict)
+        cs, cs_ds, cs_scores = evaluate(cs_rows, p / "dev_cs/hyps.jsonl", cat, strict, reserved)
         vi, _, vi_records = evaluate(vi_rows, p / "dev_vi/hyps.jsonl", cat, strict)
         res[p.name] = {"term_acc_macro": cs["term_acc_macro"], "span_acc": cs["span_acc"], "span_cer": cs["span_cer"],
                        "cs_wer": cs["cs_wer"], "wer_cs": cs["wer"], "n_wer_cs": cs["n_wer"], "term_recall": cs["term_recall"],
@@ -141,9 +160,17 @@ def main():
                        "by_dataset": {d: {"n_span": a["n_span"], "term_acc_macro": a["term_acc_macro"],
                                           "span_acc": a["span_acc"], "cs_wer": a["cs_wer"]} for d, a in cs_ds.items()}}
         if strict:
+            sd = ratio(sum_counts(cs_scores), "cs_wer_sd")
             res[p.name].update(cs_wer_by_domain=cs_by_domain(cs_scores),
+                               cs_wer_sd=sd, cs_recall=100.0 - sd if sd is not None else None,
                                en_hallucination_per100=ratio(sum_counts(vi_records), "en_hallucination_per100"))
             vi_scores[p.name] = vi_records
+            cs_records[p.name] = cs_scores
+        if reserved:
+            count = sum(row["ft_unseen_terms"] for row in cs_scores)
+            matched = sum(row["ft_unseen_matched"] for row in cs_scores)
+            res[p.name]["ft_unseen"] = {"term_recall": 100.0 * matched / count if count else None,
+                                        "ref_terms": count, "matched_terms": matched}
     base = res[base_name]
     rows = []
     for name, m in res.items():
@@ -152,7 +179,8 @@ def main():
         if strict and name != base_name:
             deltas, within_limits = retention_checks(m, base, vi_scores[name], vi_scores[base_name], limits)
             ok = dv <= args.max_vi_delta + 1e-9 and within_limits and m["cs_wer"] is not None
-            m.update(retention=deltas, eligible=ok)
+            m.update(retention=deltas, eligible=ok,
+                     paired_cs_wer_by_domain=paired_cs_by_domain(cs_records[base_name], cs_records[name]))
         rows.append((name, m, dv, ok))
     elig = [(n, m) for n, m, dv, ok in rows if ok and n != Path(args.base).name]
     if not elig:

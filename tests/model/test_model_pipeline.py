@@ -156,7 +156,7 @@ def test_dry_run():
     p = subprocess.run([sys.executable, "-m", "gipbench.model.run", str(G / "configs/model/experiments/e3_v1b.yaml"),
                         "--stages", "0-6", "--dry-run", "--set", "catalog_use=oracle_diagnostic"], capture_output=True, text=True,
                        encoding="utf-8", cwd=G)
-    out = p.stdout
+    out = p.stdout.replace("\\", "/")
     check("dry-run chạy được", p.returncode == 0, p.stderr[-500:])
     for k in ["--holdout-domain finance", "--max-domain-share 0.5", "--cap-exempt other", "cs_real=", ":0.35",
               "--epoch-hours 160 --epochs 6", "--speed-perturb --phone-sim 0.3", "--freeze-modules encoder_embed.",

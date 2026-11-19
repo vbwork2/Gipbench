@@ -28,7 +28,7 @@ Số câu không trùng là 36 236 (4 400 + 658 + 32 203 − 1 024 − 1; `relea
 | C0 | `vimedcss` | tensorxt/ViMedCSS | hard | 658 | 1.29 | 404 video | CC-BY-4.0 | có | có (train) |
 | C1 | `ggroup_tech` / `edu` / `finance` / `pubadmin` | tập con của G0 (câu có từ Anh) | test | 465 / 346 / 294 / 155 | 0.46 / 0.39 / 0.30 / 0.16 | – | CC-BY-NC-4.0 | có | không nêu |
 | E0 | `fleurs_vi` | google/fleurs vi_vn | test | 857 | 3.00 | – | CC-BY-4.0 | có | có |
-| E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | có | có |
+| E0 | `cv17_vi` | Common Voice 17.0 (mirror) | test | 1 274 | 1.35 | 146 | CC0-1.0 | **không** | có |
 | E0 | `vietmed` | leduckhai/VietMed | test | 3 437 | 6.02 | 27 | MIT | có | không |
 | E0 | `phoaudiobook` | thivux/phoaudiobook (gated) | test | 383 | 1.24 | 40 | điều khoản riêng | **không** | có |
 | E0 | `lsvsc` | doof-ferb/LSVSC | test | 5 683 | – | – | CC-BY-4.0 | **không** | có |
@@ -51,9 +51,13 @@ Gói này đã kèm code chấm điểm trong thư mục `code/` (tải audio `f
 
 ```bash
 G=<đường dẫn tới thư mục gói này>
-pip install -e "$G/code[audio]" huggingface_hub pyarrow soundfile soxr
+pip install -e "$G/code[audio,hf]"
 export HF_HUB_DISABLE_XET=1     # nếu tải từ Hugging Face bị treo
 ```
+
+CLI `gipbench-eval` có các lệnh `fetch`, `verify`, `score`, `compare`, `decontam` và `card`. Chạy từ gốc gói hoặc truyền
+`--kit /path/to/kit`. Dùng `gipbench-eval <lệnh> --help` để xem tham số. Tên benchmark là tên file trong `manifests/`,
+ví dụ `code_switch_v1_1` hoặc `external_v1_1` khi dùng bản v1.1.
 
 Các lệnh bên dưới chạy từ một thư mục làm việc bất kỳ, và `bench_data/`, `my_system/`, `leak/` được tạo ngay tại đó. Python 3.10 trở lên.
 
@@ -85,7 +89,7 @@ python -m gipbench.dataset.release.fetch --manifest $G/manifests/cs_ggroup_v1.js
   - Nếu chưa muốn lấy bộ gated, chỉ tải các bộ còn lại bằng `--datasets fleurs_vi cv17_vi vietmed lsvsc vimd vimedcss_test speech_massive_vi`.
     Khi đó chỉ chấm được ở chế độ chẩn đoán, không chấm được final.
 - **PhoAudiobook và GigaSpeech2 cấm phân phối lại lời thoại.** Vì vậy gói không chứa lời thoại của hai bộ này; `fetch` lấy cả audio lẫn lời thoại từ nguồn sau khi bạn đã đồng ý điều khoản.
-- **7 bộ E0 được khoá chỉ bằng metadata:** manifest không có sha256 của từng file audio. `fetch` kiểm sha256 của từng file nguồn (parquet / tar) theo bản khoá trước khi tách audio, rồi ghi số câu được kiểm theo cách này vào `fetch_report.json`.
+- Một số bản benchmark chỉ khoá bằng metadata. Với câu thiếu SHA-256 audio, `fetch` dùng SHA-256 file nguồn nếu nguồn có giá trị đã khoá. `gipbench-eval verify` báo riêng các câu thiếu SHA-256 audio.
 - Kết quả: `bench_data/<x>/manifest.jsonl` (có trường `audio`, là đường dẫn tương đối so với manifest) và thư mục `bench_data/<x>/audio/`.
 
 ## 3. Kiểm dữ liệu FT không chứa câu test (bắt buộc trước khi báo số)

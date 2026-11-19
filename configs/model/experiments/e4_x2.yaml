@@ -1,0 +1,5 @@
+extends: e4_x3.yaml
+name: e4_x2
+description: Train only the prediction network and joiner on the same data as X3
+train:
+  freeze: "encoder_embed.,encoder.,simple_am_proj.,simple_lm_proj."

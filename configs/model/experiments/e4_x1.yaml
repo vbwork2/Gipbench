@@ -1,0 +1,7 @@
+extends: e4_x0.yaml
+name: e4_x1
+description: Replay-only learning-rate sweep with independent development sets
+dev: {cs: dev/dev_v2_cs@1, vi: dev/dev_v2_vi@1}
+leak_gate: {check_dev: true}
+select:
+  rule: cs_wer

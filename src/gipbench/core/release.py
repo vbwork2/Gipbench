@@ -179,7 +179,7 @@ def write_release(ref: str, *, manifest_rows: Optional[List[Dict]] = None, catal
                     if k.startswith("_"):
                         continue
                     if k == "audio" and r.get("_audio_path"):
-                        v = os.path.relpath(os.path.normpath(r["_audio_path"]), base)
+                        v = os.path.relpath(os.path.normpath(r["_audio_path"]), base).replace(os.sep, "/")
                     out[k] = v
                 f.write(json.dumps(out, ensure_ascii=False) + "\n")
         files["manifest.jsonl"] = {"sha256": sha256(d / "manifest.jsonl"), "rows": len(manifest_rows),

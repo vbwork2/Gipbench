@@ -25,7 +25,7 @@ from gipbench.core.manifest import read_jsonl
 
 AUDIO_SHA_MODES = ("hash", "metadata", "skip")
 DEFAULTS = {"mode": "fail", "exemptions": None, "reserved_terms": None, "text_files": [], "audio_sha": "metadata",
-            "require_audio_sha": False, "near": False}
+            "require_audio_sha": False, "near": False, "check_dev": False}
 
 
 def gate_config(exp: Dict) -> Dict:
@@ -60,7 +60,7 @@ def _compact(rep: Dict) -> Dict:
 def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]], *, locked: Optional[Sequence[str]] = None,
              mode: str = "fail", exemptions: Optional[str] = None, reserved_terms: Optional[str] = None,
              text_files: Sequence[str] = (), audio_sha: str = "metadata", require_audio_sha: bool = False,
-             near: bool = False, out_dir: Optional[Path] = None) -> Dict:
+             near: bool = False, dev_refs: Sequence[str] = (), out_dir: Optional[Path] = None) -> Dict:
     """inputs: [(nhãn, đường dẫn manifest)] của pool + dev (audio tuyệt đối). Trả về dict kết quả; `blocking` = nên dừng."""
     t0 = time.time()
     locked = R.locked_bench_refs() if locked is None else list(locked)
@@ -71,7 +71,8 @@ def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]],
                  "guard_refs": list(guard), "locked_refs": locked, "extra_locked": extra,
                  "exemptions": exemptions, "exemptions_sha256": R.sha256(exemptions) if exemptions else None,
                  "reserved_terms": reserved_terms, "reserved_terms_sha256": R.sha256(reserved_terms) if reserved_terms else None,
-                 "inputs": [], "text_files": list(text_files), "benches": {}, "unresolved": {}, "reserved": None}
+                 "inputs": [], "text_files": list(text_files), "text_file_sha256": {f: R.sha256(f) for f in text_files},
+                 "benches": {}, "dev": {}, "unresolved": {}, "reserved": None}
     train: List[Dict] = []
     per_input: List[Tuple[str, List[Dict]]] = []
     for label, path in inputs:
@@ -90,7 +91,9 @@ def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]],
             p = r.get("_audio_path")
             if not r.get("audio_sha256") and p and Path(p).exists():
                 r["audio_sha256"] = sha256_file(p)
-    for ref in refs:
+    pool_inputs = [(label, rows) for label, rows in per_input if label not in dev_refs]
+    pool_rows = [row for _, rows in pool_inputs for row in rows] if dev_refs else []
+    for ref in dict.fromkeys([*refs, *dev_refs]):
         try:
             rel = R.resolve(ref)
             if rel.manifest is None:
@@ -99,23 +102,27 @@ def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]],
             res["unresolved"][ref] = str(e)
             continue
         test = read_jsonl(str(rel.manifest))
-        rep = audit(test, train, check_audio_sha=audio_sha != "skip", hash_files=audio_sha == "hash",
+        is_dev = ref in dev_refs
+        against, against_inputs = (pool_rows, pool_inputs) if is_dev else (train, per_input)
+        rep = audit(test, against, check_audio_sha=audio_sha != "skip", hash_files=audio_sha == "hash",
                     require_audio_sha=require_audio_sha and audio_sha != "skip", near=near, exemptions=ex)
         b = _compact(rep)
-        b["n_test"], b["n_train"] = len(test), len(train)
-        b["by_input"] = [dict(input=label, **overlap_counts(test, rows)) for label, rows in per_input]
-        res["benches"][ref] = b
+        b["n_test"], b["n_train"] = len(test), len(against)
+        b["by_input"] = [dict(input=label, **overlap_counts(test, rows)) for label, rows in against_inputs]
+        res["dev" if is_dev else "benches"][ref] = b
     if reserved_terms:
         terms = read_lines(reserved_terms)
         if not terms:
             res["unresolved"]["reserved_terms"] = f"{reserved_terms} rỗng: danh sách thuật ngữ giữ riêng phải có ít nhất 1 mục"
         else:
-            rep = audit([], train, check_audio_sha=False, near=False, reserved_terms=terms, exemptions=ex)
+            rep = audit([], pool_rows if dev_refs else train, check_audio_sha=False, near=False,
+                        reserved_terms=terms, exemptions=ex)
             res["reserved"] = dict(_compact(rep), n_terms=len(terms))
-    crit = (sum(b["critical"] for b in res["benches"].values()) + len(res["unresolved"])
+    checks = [*res["benches"].values(), *res["dev"].values()]
+    crit = (sum(b["critical"] for b in checks) + len(res["unresolved"])
             + (res["reserved"]["critical"] if res["reserved"] else 0))
-    res.update(critical=crit, review=sum(b["review"] for b in res["benches"].values()),
-               exempted=sum(b["exempted"] for b in res["benches"].values()) + (res["reserved"]["exempted"] if res["reserved"] else 0),
+    res.update(critical=crit, review=sum(b["review"] for b in checks),
+               exempted=sum(b["exempted"] for b in checks) + (res["reserved"]["exempted"] if res["reserved"] else 0),
                passed=crit == 0, blocking=mode == "fail" and crit > 0, sec=round(time.time() - t0, 1))
     if out_dir is not None:
         write_report(res, out_dir)
@@ -144,9 +151,10 @@ def render_md(res: Dict) -> str:
          "Đầu vào so với bench: " + ", ".join(f"{i['label']} ({i['rows']})" for i in res["inputs"]), ""]
     if res["unresolved"]:
         L += ["## Bench khoá CHƯA được kiểm (critical)", "", *[f"- `{k}`: {v}" for k, v in res["unresolved"].items()], ""]
-    for ref, b in res["benches"].items():
+    for ref, b in {**res["benches"], **res.get("dev", {})}.items():
+        against = "train / text" if ref in res.get("dev", {}) else "train / dev / text"
         L += [f"## {ref}: {b['critical']} critical, {b['review']} cần xem, {b['exempted']} miễn trừ "
-              f"({b['n_test']} câu test × {b['n_train']} dòng train / dev / text)", "",
+              f"({b['n_test']} câu test × {b['n_train']} dòng {against})", "",
               "| Loại | Mức | Số giá trị | Câu test bị ảnh hưởng | Ví dụ |", "| --- | --- | --- | --- | --- |"]
         L += [_row(f) for f in b["findings"]] or ["| (không phát hiện) | | | | |"]
         hot = [x for x in b["by_input"] if any(x[k] for k in ("id", "source_norm", "clip", "text_exact"))]
@@ -156,7 +164,8 @@ def render_md(res: Dict) -> str:
         L.append("")
     if res["reserved"]:
         r = res["reserved"]
-        L += [f"## reserved_terms ({r['n_terms']} thuật ngữ) trong train / dev / text: {r['critical']} critical", "",
+        against = "train / text" if res.get("dev") else "train / dev / text"
+        L += [f"## reserved_terms ({r['n_terms']} thuật ngữ) trong {against}: {r['critical']} critical", "",
               "| Loại | Mức | Số giá trị | Câu | Ví dụ |", "| --- | --- | --- | --- | --- |",
               *([_row(f) for f in r["findings"]] or ["| (không phát hiện) | | | | |"]), ""]
     return "\n".join(L) + "\n"
@@ -174,6 +183,7 @@ def write_report(res: Dict, out_dir) -> Dict[str, Path]:
 def card_summary(res: Dict, report_json: Path) -> Dict:
     """Phần ghi vào model_card.json: báo cáo cổng đã dùng + sha256 của nó."""
     return {"mode": res["mode"], "passed": res["passed"], "critical": res["critical"], "review": res["review"],
-            "exempted": res["exempted"], "benches_checked": sorted(res["benches"]), "unresolved": sorted(res["unresolved"]),
+            "exempted": res["exempted"], "benches_checked": sorted(res["benches"]), "dev_checked": sorted(res.get("dev", {})),
+            "unresolved": sorted(res["unresolved"]),
             "audio_sha": res["audio_sha"], "reserved_terms_sha256": res["reserved_terms_sha256"],
             "exemptions_sha256": res["exemptions_sha256"], "report_sha256": hashlib.sha256(Path(report_json).read_bytes()).hexdigest()}

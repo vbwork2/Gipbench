@@ -13,6 +13,8 @@
 allow:
   - README.md
   - release.json
+  - DATA_LICENSES.md
+  - .gitignore
   - SHA256SUMS
   - manifests/*.jsonl
   - manifests/*.benchmark.yaml
@@ -35,6 +37,7 @@ configs:
   - configs/bench/datasets.yaml
   - configs/dataset/labeling/term_decisions.tsv   # nguồn tag <en> của C1
 text_not_redistributable:
+  - cv17_vi                  # Community mirror pending upstream license verification.
   - vimd                     # CC-BY-NC-ND-4.0: manifest có là bản phái sinh không?
   - lsvsc                    # CC-BY-4.0 trên bản đăng lại, chưa xác minh license gốc
   - bud500                   # gated

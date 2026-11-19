@@ -11,6 +11,7 @@
 # scorer_files: file (tính từ src/gipbench/) mà scorer_code_sha256 băm, theo đúng thứ tự. Phải trùng
 #            gipbench.bench.evaluate.SCORER_FILES (tests/dataset/test_package.py kiểm); package ghi hash này vào release.json.
 roots:
+  - gipbench.eval_kit
   - gipbench.bench.evaluate
   - gipbench.bench.transcribe
   - gipbench.dataset.release.fetch

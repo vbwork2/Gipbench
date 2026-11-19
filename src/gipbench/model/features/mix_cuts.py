@@ -20,6 +20,7 @@ thể vượt trần ở vòng sau). Nếu MỌI nhóm chạm trần thì epoch 
 """
 import argparse
 import json
+import math
 import random
 import re
 from pathlib import Path
@@ -91,20 +92,29 @@ def main():
     for wmsg in warns:
         print("CẢNH BÁO", wmsg)
     stats = {"epoch_hours": round(epoch_hours, 4), "epoch_hours_requested": args.epoch_hours, "epochs": args.epochs,
-             "max_views": args.max_views, "warnings": warns, "groups": []}
+             "max_views": args.max_views, "warnings": warns, "groups": [], "seed": args.seed}
+    view_limit = math.floor(args.max_views) if args.max_views else None
+    if view_limit is not None and view_limit < 1:
+        ap.error("--max-views must be zero or at least one")
     out_cuts = []
     for e in range(args.epochs):
         block = []
         for g in groups:
             need = share[g["name"]] * epoch_hours * 3600
             got = 0.0
-            while got < need:
+            skipped = 0
+            while got < need and skipped < len(g["cuts"]):
                 c = g["cuts"][g["pos"] % len(g["cuts"])]
                 k = g["pos"] // len(g["cuts"])
                 g["pos"] += 1
-                block.append(c.with_id(f"{c.id}__e{e}_{k}"))
                 s = source_id(c.id)
-                g["uses"][s] = g["uses"].get(s, 0) + 1
+                uses = g["uses"].get(s, 0)
+                if view_limit is not None and uses >= view_limit:
+                    skipped += 1
+                    continue
+                skipped = 0
+                block.append(c.with_id(f"{c.id}__e{e}_{k}"))
+                g["uses"][s] = uses + 1
                 got += c.duration
             g["taken"] += got / 3600
         rnd.shuffle(block)
@@ -122,8 +132,9 @@ def main():
         print(f"  {st['group']:12s} w={st['weight']:.3f}{' (trần, yêu cầu %.3f)' % req if st['capped'] else ''}"
               f"  pool {st['pool_h']:7.2f} h  mỗi epoch {st['per_epoch_h']:7.2f} h"
               f"  lượt / cut ~{st['views_total']:.1f}  lượt / audio gốc ~{vps:.1f} (max {max(u)})")
-        if args.max_views and vps > args.max_views * 1.05:
-            msg = f"{g['name']}: {vps:.1f} lượt / audio gốc > trần {args.max_views:g} (làm tròn theo cut)"
+        expected = share[g["name"]] * epoch_hours * args.epochs
+        if g["taken"] + 1e-6 < expected:
+            msg = f"{g['name']}: actual {g['taken']:.3f} h / planned {expected:.3f} h at the per-recording view cap"
             stats["warnings"].append(msg)
             print("CẢNH BÁO", msg)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)

@@ -39,9 +39,29 @@ def _expand(o, ctx):
     return o
 
 
+def _merge(base, changes):
+    result = dict(base)
+    for key, value in changes.items():
+        previous = result.get(key)
+        result[key] = _merge(previous, value) if isinstance(previous, dict) and isinstance(value, dict) else value
+    return result
+
+
+def _read(path, chain=()):
+    path = path.resolve()
+    if path in chain:
+        raise SystemExit(f"Cyclic experiment inheritance: {path}")
+    exp = yaml.safe_load(path.read_text(encoding="utf-8"))
+    parent = exp.pop("extends", None)
+    if parent is None:
+        return exp, [path]
+    base, sources = _read(path.parent / parent, (*chain, path))
+    return _merge(base, exp), [*sources, path]
+
+
 def load(path, overrides=()):
     path = Path(path)
-    exp = yaml.safe_load(path.read_text(encoding="utf-8"))
+    exp, sources = _read(path)
     for ov in overrides:
         k, sep, v = ov.partition("=")
         if not sep:
@@ -60,6 +80,7 @@ def load(path, overrides=()):
     exp = _expand(exp, ctx)
     exp["_path"] = str(path)
     exp["_overrides"] = list(overrides)
+    exp["_sources"] = [str(source) for source in sources]
     return exp  # tổng trọng số không bắt buộc = 1 (quét MIX_SYNTH=0 ...); mix_plan kiểm, mix_cuts chuẩn hoá
 
 

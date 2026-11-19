@@ -25,6 +25,8 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -216,6 +218,10 @@ dependencies = ["numpy", "pyyaml"]
 [project.optional-dependencies]
 audio = ["soundfile", "soxr"]
 asr = ["faster-whisper"]
+hf = ["huggingface_hub", "pyarrow"]
+
+[project.scripts]
+gipbench-eval = "gipbench.eval_kit:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -309,6 +315,7 @@ def main(argv=None):
     ap.add_argument("--benchmarks", nargs="+", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--out", help="mặc định: <data_root>/share")
+    ap.add_argument("--emit-repo", type=Path, metavar="DIR", help="Export the checked package as a fresh, one-commit Git repository.")
     ap.add_argument("--baselines", nargs="*", default=[], metavar="DIR",
                     help="thư mục kết quả <results>/<benchmark>/<hệ> (hyps.jsonl + run_meta.json): chép vào baselines/ để "
                          "người nhận so ghép cặp (evaluate --baseline-hyps); bỏ mọi trường đường dẫn máy")
@@ -316,6 +323,10 @@ def main(argv=None):
     dst = Path(args.out or P.path("data_root") / "share") / args.name
     if dst.exists():
         raise SystemExit(f"{dst} đã có: bản share không được ghi đè (đổi --name / version)")
+    if args.emit_repo:
+        target = args.emit_repo.resolve()
+        if target.exists() or target.is_relative_to(dst.resolve()) or dst.resolve().is_relative_to(target):
+            ap.error("--emit-repo must name a new directory separate from the share package")
     policy = share_policy()
     all_rows = []
     for b in args.benchmarks:  # kiểm trước khi ghi gì
@@ -338,10 +349,9 @@ def main(argv=None):
     cannot = sorted(d for d in no_text if SOURCES[d]["kind"] != "evalset")
     if cannot:  # chỉ fetch_evalset lấy lại được lời thoại từ nguồn
         raise SystemExit(f"text_not_redistributable: fetch không lấy lại được lời thoại của {cannot}")
-    tmp = dst.parent / f".{dst.name}.partial"  # dựng ở đây, kiểm chính sách xong mới đổi tên
-    if tmp.exists():
-        shutil.rmtree(tmp)  # thư mục tạm của lần đóng gói trước bị dừng giữa chừng
-    try:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{dst.name}.partial-", dir=dst.parent) as stage:
+        tmp = Path(stage) / dst.name
         summary = build(tmp, args, policy, sorted(used), no_text)
         release = {"name": args.name, "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                    "distinct_utterances": distinct_utterances(all_rows),
@@ -358,14 +368,27 @@ def main(argv=None):
         lines = []
         for p in sorted(x for x in tmp.rglob("*") if x.is_file()):
             lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(tmp).as_posix()}")
-        (tmp / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except BaseException:
-        shutil.rmtree(tmp, ignore_errors=True)
-        raise
-    tmp.rename(dst)
+        (tmp / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        if args.emit_repo:
+            emit_repo(tmp, target)
+        tmp.rename(dst)
     print(f"{dst}: {sum(v['rows'] for v in summary.values())} dòng, {release['distinct_utterances']} câu không trùng, "
           f"{len(lines)} file; chính sách share ĐẠT")
     print(json.dumps(summary, ensure_ascii=False, indent=1))
+
+
+def emit_repo(package: Path, target: Path):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{target.name}.partial-", dir=target.parent) as stage:
+        repo = Path(stage) / target.name
+        shutil.copytree(package, repo)
+        git = ["git", "-c", "core.hooksPath=.git/no-hooks", "-c", "core.autocrlf=false", "-c", "commit.gpgsign=false",
+               "-c", "user.name=Gipbench Evaluation Kit", "-c", "user.email=gipbench-eval@example.invalid"]
+        subprocess.run([*git, "init", "--template=", "--initial-branch=main"], cwd=repo, check=True)
+        subprocess.run([*git, "add", "--force", "--", "."], cwd=repo, check=True)
+        subprocess.run([*git, "commit", "--quiet", "-m", "Initial evaluation kit release"], cwd=repo, check=True)
+        repo.rename(target)
+    print(f"Evaluation kit repository: {target}")
 
 
 def build(dst: Path, args, policy, keep_datasets, no_text):
@@ -426,9 +449,20 @@ def build(dst: Path, args, policy, keep_datasets, no_text):
         (dst / "configs" / Path(rel).name).write_bytes(data)
     # người nhận không cần repo
     print(f"code/: {len(copy_code(dst, args.name.rsplit('-v', 1)[-1], keep_datasets))} module")
-    (dst / "README.md").write_text(README.replace("{name}", args.name).replace(
-        "{summary}", "```json\n" + json.dumps(summary, ensure_ascii=False, indent=1) + "\n```"),
-                                   encoding="utf-8")
+    readme = README.replace("{name}", args.name).replace(
+        "{summary}", "```json\n" + json.dumps(summary, ensure_ascii=False, indent=1) + "\n```")
+    for original in ("code_switch_v1", "external_v1"):
+        latest = f"{original}_1"
+        if latest in summary and original not in summary:
+            readme = re.sub(rf"\b{original}\b", latest, readme)
+    (dst / "README.md").write_text(readme, encoding="utf-8")
+    licenses = {name: info.get("license") for bench in summary.values() for name, info in bench["by_dataset"].items()}
+    lines = ["# Dataset licenses", "", "Register of license labels recorded in the benchmark manifests.",
+             "See the datasheet for upstream sources, attribution, and usage terms.", "", "| Dataset | License label |",
+             "| --- | --- |"]
+    lines.extend(f"| {name} | {license or 'Unknown'} |" for name, license in sorted(licenses.items()))
+    (dst / "DATA_LICENSES.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (dst / ".gitignore").write_text("__pycache__/\n*.egg-info/\nbench_data/\nmy_system/\nleak/\n", encoding="utf-8")
     return summary
 
 

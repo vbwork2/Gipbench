@@ -20,9 +20,9 @@ Cách dùng: làm **từ trên xuống**. Thứ tự các phần là thứ tự 
 
 - **Phần 3 có công cụ dựng dev độc lập (18/11)**. ViMedCSS validation sau lọc còn 73 câu y khoa, cần thêm nguồn CS ngoài y khoa và nguồn thuần Việt nói tự nhiên. **Phần 4 xong (18/11)**: đối chiếu checkpoint E3, CTC 200 bước, ma trận giải mã đủ (Gipformer + RNN LM không giúp C1).
 
-- **Phần 3b dev tạm (18/11):** dữ liệu local không đủ cho dev_v2 đạt chuẩn, nên cắt dev tạm theo video từ VSS (CS 476 câu, VI 365 câu). Pool `vss_cs@v4` / `distill@v5` đã bỏ các video đó; chờ 👤 nghe 766 câu.
+- **Phần 3b dev tạm (19/11):** đã nghe 766 câu và phát hành dev tạm `@1` (CS 323 câu, VI 213 câu). Pool `vss_cs@v4` / `distill@v5` đã bỏ các video giữ lại.
 
-**Kết luận:** X0 **chạy được ngay**, không cần dev (luật cố định `fixed_last`, đăng ký 18/11). Dev tạm (3b) chỉ cần từ X1, nghe dần. `reserved_terms_v1` đã chốt. Claim "general" vẫn cần dev_v2 đạt chuẩn (nguồn 2e).
+**Kết luận:** X0 sẵn sàng chạy khi đủ shard trên Colab. X1–X5 mặc định dùng dev_v2, còn dev tạm dùng kiểm pipeline. Claim "general" vẫn cần dev_v2 đạt chuẩn (nguồn 2e).
 
 ---
 
@@ -174,7 +174,7 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
   Anh (nhãn giả vô nghĩa); mọi video VSS có CS thật đã ở `vss_cs` / `distill`. Parquet G-Group chính là test của G0 / C1.
   Nhãn VSS do họ Zipformer / Gipformer sinh (cùng họ model đang FT) nên làm tham chiếu dev phải nghe kiểm.
 
-### 3b. Dev TẠM (người dùng chọn 18/11), chờ 👤 nghe
+### 3b. Dev TẠM (đã phát hành 19/11)
 Dev tạm này mở đường cho smoke test, X0 và chọn checkpoint. **Không thay** dev_v2 đạt chuẩn ở trên. Lệnh ở
 [RUNBOOK](docs/RUNBOOK.md#dev-độc-lập).
 - [x] `dataset.release.holdout_dev` (`select` / `apply`): giữ lại video theo hash ổn định, bỏ **cả video** khỏi train,
@@ -187,7 +187,7 @@ Dev tạm này mở đường cho smoke test, X0 và chọn checkpoint. **Không
 - [x] `make_dev_split --interim --carved-from …`: đòi mọi câu có nhãn người (`label_source: human:*`). Ngưỡng CS ≥ 300 câu,
   VI ≥ 1 h. Release gắn `interim: true, representative: false, speaker_unit: video, carved_from`. Thêm: video VSS
   không còn được đếm là người nói (`is_video_unit`), và dev VI không tạm vẫn từ chối đơn vị video.
-- [x] `e4_x0.yaml` trỏ `dev/dev_interim_{cs,vi}@1`. Stage 0 sẽ dừng với lỗi "chưa có release" cho tới khi nghe xong.
+- [x] `e4_x0.yaml` dùng `dev: null` theo luật chọn checkpoint cố định cập nhật ở Phần 5.
 - [x] 👤 Nghe `data/listen/dev_interim_cs/listen.csv` (401 câu) và `data/listen/dev_interim_vi/listen.csv` (365 câu) bằng
   `review_bench.html` (thư mục audio = `audio/` cạnh phiếu). Xuất thành `listen_reviewed.csv` trong cùng thư mục.
   Với VI: sửa chữ cho đúng; câu thật ra có từ Anh thì gắn `<en>`, câu đó sẽ tự rời dev VI.
@@ -238,34 +238,35 @@ Luật cho **mọi** lần chạy:
 
 - [ ] **Chạy trên Colab** (17/11): dữ liệu + model gốc qua Drive b.vinh2005 (Drive for desktop), code bằng `git clone`. RUNBOOK mục 2b.
   - [x] `scripts/colab/pack_ft_bundle.py` / `unpack_ft_bundle.py` (+ `tests/dataset/test_colab_bundle.py`): gói 6 pool (v2 + vss_cs / distill e3_v1) + `models/gip15` (model.pt, bpe, tokens) + manifest mọi bench / catalog = 18 848 file, 4.28 GB, 6 shard (000–005; 005 là lượt gói bổ sung) ở `D:/gipbench_ft_bundle`.
-  - [ ] 👤 Cài Google Drive for desktop, đăng nhập b.vinh2005 → chép `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft`.
+  - [ ] 👤 Hoàn tất chép index hiện hành và shard 000–009 từ `D:/gipbench_ft_bundle` vào `My Drive/gipbench_ft`.
   - [x] `configs/paths.colab.yaml` + `scripts/colab/colab_ft.ipynb`: chung Python Colab, k2 khớp torch / CUDA, checkpoint trên Drive, watchdog `/content` (chừa 5 GiB); có test cấu hình / notebook.
   - [x] Commit + push nhánh `fix/scorer-leak-audit` (18/11, `044e7fe`; notebook clone đúng nhánh này).
-  - [ ] 👤 Thêm Secret `GH_TOKEN` trong Colab (repo riêng tư).
+  - [x] 👤 Đã có Secret `GH_TOKEN` trong Colab (người dùng xác nhận 19/11).
   - [x] Kiểm SHA-256 và nội dung 6 shard gốc. Đóng shard 006–007 cùng index cập nhật ở `data/tmp/colab_x0_bundle`. Gói bổ sung chứa hai bench v1.1, ONNX INT8 baseline, catalog train và file thuật ngữ đã chốt.
-  - [x] Notebook có chế độ chuẩn bị mặc định (`RUN_EXPERIMENT=False`), chọn seed và liệt kê các release còn thiếu sau khi giải nén.
-  - [ ] Kiểm torch / CUDA / k2, đọc gói Drive và dry-run trên Colab thật. Thay đổi X0 hiện ở workspace, nhánh remote vẫn cần cập nhật trước khi Colab clone.
+  - [x] Notebook kiểm shard thiếu ngay sau khi mount Drive, có chế độ chuẩn bị mặc định (`RUN_EXPERIMENT=False`), chọn seed và liệt kê các release còn thiếu sau khi giải nén. Index local đã kiểm SHA-256 đúng 10/10 shard (18.864 file).
+  - [ ] Kiểm torch / CUDA / k2, đọc gói Drive và dry-run trên Colab thật. Cần cập nhật nhánh mà notebook clone và tải đủ shard.
     Audit 17/11 (Claude): sửa notebook: kernel không import được gipbench sau `pip install -e` (thêm `src` vào sys.path),
     kiểm Drive theo cỡ checkpoint, in stderr git đã che token. **Dung lượng Drive**: `checkpoint-N.pt` ~1.1 GB (e3_v1),
     một lượt giữ `segments_per_epoch` (4) cái ≈ 4.4 GB + onnx; cộng gói 4.3 GB thì Drive 15 GB chỉ đủ ~2 experiment:
     xoá checkpoint sau khi có artifact, hoặc nâng Drive trước khi quét e4_x0…x6 × 2 seed.
   - [ ] Khi có dev_v2 / `catalog/train-v1` / pool lọc lại: `pack_ft_bundle.py --refs …` (chỉ gói phần mới) rồi chép lại.
-- [ ] Viết `configs/model/experiments/e4_x0.yaml` … `e4_x6.yaml` (`catalog/train-v1`, `leak_gate.mode: fail`, `dev_v2`, `seeds: [0,1]`, `mix.max_views: 8`).
-  - [x] Chuẩn bị [`e4_x0.yaml`](configs/model/experiments/e4_x0.yaml) và kiểm dry-run stage 0–6 cho cả hai seed. X0 dùng VIVOS v2 nhãn người, 2 epoch × 20 h, LR 3e-4 và bỏ CTC.
-  - [x] Selector E4 kiểm cận trên CI95 ΔWER, chèn tiếng Anh, và ΔCS-WER mỗi domain. Đã kiểm trên dữ liệu giả.
-  - [x] Kiểm riêng 10.557 câu replay VIVOS v2 với 6 benchmark khoá và 820 thuật ngữ giữ riêng. Kết quả 0 critical theo metadata. Stage 0 đầy đủ còn chờ hai release dev.
-  - Xong khi: `--stages 0-6 --dry-run` in lệnh; stage 0 thoát 0.
+- [x] Cấu hình `e4_x0.yaml` … `e4_x6.yaml` và lệnh chạy ở [RUNBOOK mục 2c](docs/RUNBOOK.md#2c-chạy-ablation-e4). X0–X5 dùng hai seed, ngân sách 2.400 batch/seed, trần thực tế 8 lượt/audio nguồn. X0 dùng replay VIVOS `@v3`; X1–X5 mặc định dùng dev_v2. X6 dùng artifact đã chọn.
+  - Selector kiểm ngưỡng giữ tiếng Việt và từng domain, báo thêm CI95 ΔCS-WER theo domain, `cs_recall` và `term_recall` trên lát `ft_unseen`.
+  - Smoke X4 stage 0 với dev tạm và ViMedCSS `@v4` + VSS `@v4`: 0 critical. Cổng kiểm độc lập dev với train và text; thuật ngữ giữ riêng được phép xuất hiện trong nhãn dev để chấm `ft_unseen`.
+  - [ ] Stage 0 với đầu vào nghiên cứu thật của X1–X5 còn chờ dev_v2, pool CS ngoài y khoa, và TTS đã kiểm cho X5.
 - [ ] **X0** · FT chỉ replay tiếng Việt nhãn người, LR 3e-4, đóng băng embed + 2 stack. Câu hỏi: pipeline có tự gây hại không?
   - **18/11 (người dùng chọn): X0 không dùng dev.** `select.rule: fixed_last` (checkpoint cuối, không WiSE-FT), đăng ký trước. Valid loss của icefall tính trên 200 câu train, chỉ để theo dõi. Dry-run 0–6 đạt; test `test_model_pipeline` có 3 ca mới cho luật này.
+  - Stage 0–3 chạy thật trên WSL với seed 0. Cổng báo 0 critical, mix tạo 29.545 cut / 40 giờ, tối đa 3 lượt mỗi audio nguồn.
   - Đạt nếu ΔWER **G0** (chấm bench khoá đúng 1 lần trên artifact) ≤ +0.3 và cận trên CI95 ≤ +0.5; trước 18/11 tiêu chí này đo trên dev VI. ⛔ Không đạt thì lỗi nằm ở recipe (LR / scheduler / drop_ctc): **dừng mọi thí nghiệm CS**, sửa recipe trước.
-  - So X1+ với X0 cùng luật: chọn lại X0 trên dev tạm, không cần train lại (checkpoint được giữ): `--stages 5-6 --set "dev={cs: dev/dev_interim_cs@1, vi: dev/dev_interim_vi@1}" --set select.rule=cs_wer`.
+  - Có lệnh chấm G0 và áp dụng ngưỡng tự động. Khi chọn lại X0 theo dev, chạy stage 0 với cùng dev trước stage 5–6 và ghi kết quả vào thư mục riêng theo RUNBOOK.
 - [ ] **X1** · sweep LR 1e-4 / 3e-4 / 1e-3. Chọn LR lớn nhất còn đạt X0.
 - [ ] **X2** · chỉ train decoder + joiner (đóng băng encoder). Nếu đạt ≥ 50% lợi ích của X3 thì vấn đề chính là thiên lệch ngôn ngữ, không phải âm học.
 - [ ] **X3** · X1 + CS thật đã lọc video, trần lặp ≤ 8. Đạt nếu CI95 Δ CS-WER < 0 ở ≥ 2 domain ngoài y khoa.
 - [ ] **X4** · X3 + vss_cs (2d ĐẠT 18/11, lỗi span 5.1% [3.4, 7.7]). Bỏ vss_cs nếu không tốt hơn X3. Báo kèm `cs_recall` vì 13.6% câu nhãn có từ Anh không tag.
 - [ ] **X5** · X3 + TTS 10 / 30% (lexicon từ `catalog/train-v1`, không từ bench). Đo `term_recall` trên thuật ngữ `ft_unseen`.
+  - Đã sinh 2.232 câu kịch bản cho 504 thuật ngữ từ catalog train. Chờ giọng TTS được phép dùng, tổng hợp audio và kiểm ASR để phát hành `pool/tts_train@e4_v1`.
 - [ ] **X6** · checkpoint tốt nhất × greedy / beam / LM.
-- [ ] Mỗi lần chạy: model_card có leak report, số lượt lặp, seed, sampler state.
+- [x] Code xuất model_card kèm leak report, số lượt lặp, seed và sampler state của checkpoint cuối. Chờ lượt FT thật để kiểm card đầu ra.
 
 ---
 
@@ -274,14 +275,16 @@ Luật cho **mọi** lần chạy:
 - [ ] 👤 Xác định gói v1.0.1 / v1.1 / v1.1.1 đã gửi cho ai. Gửi bản thay thế (các gói này dặn `git clone` repo riêng tư).
 - [ ] 👤 **Không** cấp quyền repo `vbwork2/Gipbench` cho người ngoài.
 - [x] [share_policy.yaml](configs/dataset/share_policy.yaml) dạng allowlist + regex cấm; `package.py` quét gói, có vi phạm thì dừng; bỏ `consensus_private` khỏi `datasets.yaml` của gói (IP-08). *(18/11)*
-  - Gói dựng ở `.<tên>.partial/`, kiểm xong mới đổi tên; vi phạm thì xoá, không để gói dở. `datasets.yaml` (cả bản trong `code/`) chỉ giữ bộ có trong bench được đóng gói. Docs bỏ khối `<!-- share:omit -->` (lịch sử v0, lệnh có đường dẫn máy). `release.json` thêm `distinct_utterances`, `scorer_code_sha256`, `share_policy_sha256`, `text_withheld_datasets`.
-  - Lời thoại ViMD / LSVSC / Bud500 / Speech-MASSIVE test **không kèm gói** cho tới khi rà license (mục dưới). `fetch` lấy lại từ nguồn, manifest vẫn trùng hash khoá (có test). Rà xong bộ nào thì bỏ khỏi `text_not_redistributable`.
+  - Gói dựng trong thư mục tạm riêng cho mỗi lượt, kiểm xong mới đổi tên. `datasets.yaml` (cả bản trong `code/`) chỉ giữ bộ có trong bench được đóng gói. Docs bỏ khối `<!-- share:omit -->` (lịch sử v0, lệnh có đường dẫn máy). `release.json` thêm `distinct_utterances`, `scorer_code_sha256`, `share_policy_sha256`, `text_withheld_datasets`.
+  - Lời thoại CV17 / ViMD / LSVSC / Bud500 / Speech-MASSIVE test được giữ lại cho tới khi rà license (mục dưới). `fetch` phục hồi lời thoại từ nguồn. Rà xong bộ nào thì cập nhật `text_not_redistributable`.
   - *Đã kiểm trên dữ liệu thật* (G0 + C0 v1.1 + C1 + E0 v1.1 + 6 baseline, ra `/tmp`, không ghi `data/share`): chính sách ĐẠT, 70 file, `scorer_code_sha256` trùng repo, E0 bỏ text 22 988 câu (đúng tổng 6 bộ). Test: `tests/dataset/test_package.py` (20 ca) + 2 ca ở `test_evalsets.py`; bộ test 24/24 ĐẠT.
   - **Phát hiện:** số câu không trùng là **36 236**, không phải 36 237: `e0_vimedcss_test_Med_CS-4819-2` và `…-5081_1-1` (hai video khác nhau) có **cùng audio, khác lời thoại**, tức nguồn gắn nhầm audio. Cả hai thuộc lát "video chưa thấy" 100 câu của E0. Đã ghi datasheet mục 7 ý 13, sửa README gói; E0 v1.1 khoá nên giữ nguyên, bản sau nên loại.
-  - Chưa làm (IP-08 mục 5, Phase 5): `package.py --emit-repo` (repo kit lịch sử sạch).
+- [x] `package.py --emit-repo` xuất repo kit sạch với một commit, có CLI `fetch`, `verify`, `score`, `compare`, `decontam`, `card`. Đã dựng gói v1.1.3 với bốn benchmark khoá và tám baseline.
+  - Gói ZIP ở `data/share/gipbench-bench-v1.1.3.zip`. Đã khôi phục đủ bảy bộ bị giữ lời thoại từ dữ liệu nguồn đã nhập và xác minh SHA-256 manifest E0 v1.1 trùng bản khoá.
 - [x] Sửa docstring `infer/decode.py` và comment `asr_models/gip15_mbs4_open.yaml` (bỏ E1, đường dẫn module train, `results/v0_draft`). Comment đổi nên `model_config_sha256` trong `run_meta.json` cũ khác sha file hiện tại; không code nào đọc trường này.
 - [ ] 👤 Rà license (bảng G.4 của audit): ViMD (ND), LSVSC / CV17 (bản đăng lại), Bud500 / Speech-MASSIVE test (gated). Chưa chắc thì không kèm text.
 - [ ] Chạy thử `fetch` trên một máy sạch khác.
+  - Đã thử trong WSL từ code của kit và bốn Parquet nguồn đã lưu của C1. `fetch` + `verify` khớp cả 1.260/1.260 SHA-256. Môi trường Python riêng trên Windows lấy Common Voice 27 đủ 1.593/1.593; lượt fetch toàn bộ trên máy vật lý khác còn chờ.
 
 ---
 
@@ -355,4 +358,4 @@ Thứ tự khuyến nghị:
 4. ~~**1d**~~ ✅ 18/11 (datasheet 8d). ~~Khoá `code_switch_v1_1` / `external_v1_1`~~ ✅ 18/11. **Phần 1 xong.**
 5. 👤 Nguồn CS tự nhiên ngoài y khoa có id người nói (cho `dev_v2`, Phần 3).
 6. **X0 chạy được** (không cần dev): gói lại Drive (`pack_ft_bundle.py`), cập nhật nhánh remote, chạy trên Colab.
-7. 👤 Nghe dev tạm (Phần 3b) trước X1, nghe dần được: `data/listen/pending_all/listen.csv`, có gợi ý chỗ ASR lệch.
+7. ~~👤 Nghe dev tạm (Phần 3b)~~ đã xong 19/11. Dev_v2 vẫn chờ nguồn phù hợp.

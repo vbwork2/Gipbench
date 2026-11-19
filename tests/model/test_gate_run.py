@@ -92,6 +92,16 @@ def main():
     md = (d / "work/ok/leak_report.md").read_text(encoding="utf-8") if (d / "work/ok/leak_report.md").exists() else ""
     check("leak_report.md có cả bộ lọc câu cũ (LeakGuard)", "Cổng rò rỉ" in md and "LeakGuard" in md, md[:200])
 
+    reserved = d / "reserved.txt"
+    reserved.write_text("meeting\n", encoding="utf-8")
+    R.write_release("dev/heldout@1", manifest_rows=[row("heldout", "ZZZZZZZZZZZ", "đây là <en>meeting</en>")],
+                    flags={"independent": True})
+    rc, out = run_exp(env, exp(d, "dev_overlap", dev={"cs": "dev/heldout@1", "vi": "dev/dvind@v1"},
+                              leak_gate={"check_dev": True, "reserved_terms": str(reserved)}), "--stages", "0")
+    report = json.loads((d / "work/dev_overlap/leak_report.json").read_text(encoding="utf-8"))
+    check("Dev source overlap blocks while reserved terms in dev remain measurable",
+          rc == 3 and report["dev"]["dev/heldout@1"]["critical"] > 0 and report["reserved"]["critical"] == 0, out)
+
     rc, out = run_exp(env, exp(d, "leak", pools={"replay": {"weight": 1.0, "datasets": ["vimedcss"], "refs": ["pool/clean@v1", "pool/leaky@v1"]}}), "--stages", "0")
     rep = json.loads((d / "work/leak/leak_report.json").read_text(encoding="utf-8"))
     check("trùng video với bench khoá: thoát mã 3 trước curate / train", rc == 3 and rep["blocking"] and "DỪNG" in out, (rc, out))

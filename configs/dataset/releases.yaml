@@ -180,6 +180,12 @@ releases:
     notes: "v4 bỏ 24 video giữ lại cho dev_interim_vi (383 câu) + 1 video có >= 2 câu gần trùng text dev, cùng các câu
       cùng nguồn (tổng 473 câu). 1 394 câu / 5.02 h / 93 nguồn."
 
+  pool/tts_train@e4_v1:
+    manifest: data/tts/e4/train_tts.jsonl
+    catalog: catalog/train-v1
+    built_by: gipbench.dataset.synth.verify
+    flags: {train_only: true, label_source: synthetic}
+
   dev/dev_cs@e3_v1:
     manifest: data/e3_v1/dev_cs.jsonl
     catalog: catalog/v0-draft

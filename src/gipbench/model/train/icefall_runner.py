@@ -105,7 +105,10 @@ class Runner:
             if free < min_disk or low >= 2:
                 kind = "disk" if free < min_disk else "ram"
                 events.append((kind, f"{_now()} WATCHDOG: {kind}: ổ còn {free} GB, RAM {mem} MB -> dừng finetune\n"))
-                proc.send_signal(signal.SIGINT)
+                if os.name == "nt":
+                    proc.terminate()
+                else:
+                    proc.send_signal(signal.SIGINT)
                 return
             age = time.time() - self.log.stat().st_mtime if self.log.exists() else 0
             if el >= hang and age >= hang:

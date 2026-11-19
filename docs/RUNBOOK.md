@@ -137,8 +137,9 @@ Secret `GH_TOKEN`. Giữ `RUN_EXPERIMENT = False` để kiểm CUDA/k2, giải n
 Notebook chép `configs/paths.colab.yaml` thành `configs/paths.yaml`: data ở local, checkpoint / kết quả trên Drive;
 ba Python dùng chung môi trường Colab (biến môi trường trỏ tới đường dẫn tuyệt đối của `python3`).
 
-Gói ở `D:/gipbench_ft_bundle` (19/11 đã gộp shard 000–008 cùng một `bundle_index.json`; 008 = `pool/vivos_train@v3`
-cho X0). Chép nguyên thư mục lên Drive `My Drive/gipbench_ft`. Shard 006 chứa hai manifest bench v1.1 đã khoá
+Gói ở `D:/gipbench_ft_bundle` có `bundle_index.json` và shard 000–009. Shard 008 chứa `pool/vivos_train@v3` cho X0,
+009 chứa hai release dev tạm. Chép index hiện hành và đủ các shard nó liệt kê lên Drive `My Drive/gipbench_ft`.
+Notebook kiểm danh sách file ngay sau khi mount Drive. Shard 006 chứa hai manifest bench v1.1 đã khoá
 và model ONNX INT8 cho baseline. Shard 007 chứa catalog train và file thuật ngữ đã chốt. Có thể chạy dry-run cục bộ trước
 khi tải gói lên.
 
@@ -151,6 +152,49 @@ Lệnh đầu in cả hai seed. Lượt thật chạy lần lượt với `SEED 
 kết quả dev và artifact riêng. Bật `RUN_EXPERIMENT` khi cell dry-run không còn báo đầu vào thiếu.
 X0 không cần dev (`dev: null`, `select.rule: fixed_last`); catalog train và `reserved_terms_v1.txt` nằm ở shard 007.
 Notebook chạy cổng rò rỉ trước stage 1–6. Watchdog dùng `/content` và chừa 5 GiB.
+
+### 2c. Chạy ablation E4
+
+X0–X5 dùng hai seed, 2.400 batch train mỗi seed và tối đa 8 lượt mỗi audio nguồn, tính cả speed perturb. Recipe yêu cầu
+đủ batch trước khi export. `model_card.json` ghi số lượt trong mix, seed, sampler state của checkpoint cuối và SHA-256
+của các YAML cấu thành cấu hình. Khi chạy một biến thể, đặt `name` riêng để checkpoint và kết quả không lẫn nhau.
+
+- Chấm X0 mỗi seed sau khi đã có artifact và audio G0. Script dùng beam 4, batch 1 giống Gipformer gốc, rồi ghi
+  `acceptance.json` theo ngưỡng ΔWER ≤ +0,3 và cận trên CI95 ≤ +0,5.
+
+  ```bash
+  python scripts/diagnostics/e4_x0_check.py --artifact <artifact>/seed-0 \
+      --baseline-hyps results/general_asr/general_v1/gip15_mbs4_open/hyps.jsonl --out results/e4_x0/seed-0
+  ```
+
+- Với X1, chạy ba LR `0.0001`, `0.0003`, `0.001` trên mỗi seed. Dùng LR lớn nhất đáp ứng ràng buộc giữ tiếng Việt ở cả hai
+  seed. `EXPERIMENT_OVERRIDES` trong notebook nhận cùng các cặp `--set` như CLI.
+
+  ```bash
+  python -m gipbench.model.run configs/model/experiments/e4_x1.yaml --seed 0 \
+      --set name=e4_x1_lr1e4 --set train.lr=0.0001
+  ```
+
+- X2–X5 cần `--set train.lr=<LR đã chọn ở X1>` và `pool/cs_natural@1` đã lọc, có `dataset: cs_natural`. X2 và X3 dùng cùng
+  mix 65% replay, 35% CS thật. X4 thay 10% mix bằng `pool/vss_cs@v4`. X5 mặc định 10% TTS. Lượt 30% cần các override
+  `name=e4_x5_tts30`, `pools.replay_human.weight=0.455`, `pools.cs_real.weight=0.245`, `pools.synth.weight=0.30`.
+  Kiểm tỷ trọng thực tế trong `model_card.mix.groups` vì trần lặp có thể làm giảm tỷ trọng yêu cầu.
+- Dev chuẩn cho X1–X5 là `dev/dev_v2_cs@1` và `dev/dev_v2_vi@1`. Smoke test có thể ghi đè hai `dev.cs` / `dev.vi` bằng dev tạm
+  và `pools.cs_real.refs=[pool/vimedcss_train@v4]` ở X2–X5. Đặt tên run riêng có chữ `interim`. Kết quả smoke chỉ dùng để kiểm
+  pipeline. Khi chạy lại stage 5–6 của X0 với dev, chạy stage 0 với cùng override trước, thêm `leak_gate.check_dev=true`,
+  và đặt `output.dev_results` và `output.artifact` riêng để giữ kết quả X0 đã chấm.
+- X5 dùng `dataset.synth.make_text` với catalog train, `reserved_terms_v1.txt`, manifest tất cả bench khoá và
+  `--out-dir data/tts/e4`. Dùng `dataset.synth.synth` với danh sách giọng đã được phép dùng, chạy `dataset.synth.verify`
+  với các kết quả ASR và `--out data/tts/e4/train_tts.jsonl`, rồi `dataset.release.register pool/tts_train@e4_v1`.
+  Bổ sung release âm thanh và text gốc vào Drive với `pack_ft_bundle.py --refs pool/tts_train@e4_v1 --no-bench-catalog
+  --model-files data/tts/e4/tts_text.txt --out D:/gipbench_ft_bundle`.
+- X6 giải mã cùng artifact đã chọn bằng greedy, beam 4 và ba LM scale đã đăng ký. Chốt benchmark trước khi chạy và báo
+  cả lưới, với Δ so cặp so với beam 4. Giữ file LM đã kiểm text rò rỉ theo Phần 4.
+
+  ```bash
+  python scripts/diagnostics/e4_x6_decode.py --artifact <artifact>/seed-0 --benchmark general_v1 cs_ggroup_v1 \
+      --lm results/phase4/lm/gip15_rnnlm/gip15_rnnlm_e2.onnx --out results/e4_x6/seed-0
+  ```
 
 ## 3. Bench: system -> kết quả -> leaderboard
 

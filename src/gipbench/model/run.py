@@ -145,10 +145,21 @@ def stage_prepare(c):
     refs, extra = LG.plan_refs(c.guard_refs, R.locked_bench_refs())
     print(f"  cổng rò rỉ ({g['mode']}) sẽ kiểm {len(refs)} bench: {', '.join(refs)}"
           + (f"\n  bench khoá không có trong leak_guard (vẫn được kiểm): {', '.join(extra)}" if extra else ""))
-    for ref, out in jobs:
-        print(f"  {ref} -> {out}")
+    dev_refs = list(c.exp["dev"].values()) if c.has_dev and g["check_dev"] else []
+    if not c.dry:
+        (c.work / "leak_report.json").unlink(missing_ok=True)
+    try:
         if not c.dry:
-            R.materialize(ref, out)
+            for ref in dev_refs:
+                if not (R.resolve(ref).meta.get("flags") or {}).get("independent"):
+                    raise R.ReleaseError(f"{ref}: flags.independent must be true")
+        for ref, out in jobs:
+            print(f"  {ref} -> {out}")
+            if not c.dry:
+                R.materialize(ref, out)
+    except R.ReleaseError as exc:
+        print(exc)
+        sys.exit(3)
     if c.dry:
         return
     c.work.mkdir(parents=True, exist_ok=True)
@@ -157,16 +168,20 @@ def stage_prepare(c):
         resolved["run_seed"] = c.seed
     (c.work / "experiment.resolved.yaml").write_text(yaml.safe_dump(resolved, allow_unicode=True, sort_keys=False),
                                                      encoding="utf-8")
-    res = LG.run_gate(c.exp["name"], c.guard_refs, jobs, mode=g["mode"],
-                      exemptions=str(X.abspath(g["exemptions"])) if g["exemptions"] else None,
-                      reserved_terms=str(X.abspath(g["reserved_terms"])) if g["reserved_terms"] else None,
-                      text_files=[str(X.abspath(f)) for f in g["text_files"]], audio_sha=g["audio_sha"],
-                      require_audio_sha=g["require_audio_sha"], near=g["near"], out_dir=c.work)
+    try:
+        res = LG.run_gate(c.exp["name"], c.guard_refs, jobs, mode=g["mode"],
+                          exemptions=str(X.abspath(g["exemptions"])) if g["exemptions"] else None,
+                          reserved_terms=str(X.abspath(g["reserved_terms"])) if g["reserved_terms"] else None,
+                          text_files=[str(X.abspath(f)) for f in g["text_files"]], audio_sha=g["audio_sha"],
+                          require_audio_sha=g["require_audio_sha"], near=g["near"], dev_refs=dev_refs, out_dir=c.work)
+    except FileNotFoundError as exc:
+        print(f"Missing leakage-gate input: {exc.filename}")
+        sys.exit(3)
     print(f"  cổng rò rỉ: {'ĐẠT' if res['passed'] else 'KHÔNG ĐẠT'}: {res['critical']} critical, {res['review']} cần xem, "
           f"{res['exempted']} miễn trừ ({res['sec']} s); audio_sha={res['audio_sha']}")
     for ref, why in res["unresolved"].items():
         print(f"    CHƯA KIỂM {ref}: {why}")
-    for ref, b in res["benches"].items():
+    for ref, b in {**res["benches"], **res["dev"]}.items():
         for f in b["findings"]:
             if f["severity"] == "critical":
                 print(f"    {ref}: {f['kind']} {f['count']} giá trị / {f.get('test_rows', '–')} câu test")
@@ -246,9 +261,13 @@ def stage_mix(c):
     print(f"== 3. mix_cuts: {m['epochs']} epoch ảo × {m['epoch_hours']} h cut")
     args = []
     for g in X.groups(c.exp):
+        if not g["refs"] or not g["weight"]:
+            continue
         p = c.lhotse / f"{g['group']}_cuts_raw.jsonl.gz"
-        if p.exists() or (c.dry and g["refs"]):
+        if p.exists() or c.dry:
             args += ["--group", f"{g['group']}={p}:{g['weight']}"]
+        elif c.exp["train"].get("max_batches"):
+            sys.exit(f"Missing cuts for the configured E4 group {g['group']}: {p}")
     c.run([c.py_ft, "-m", "gipbench.model.features.mix_cuts", *args, "--epoch-hours", m["epoch_hours"],
            "--epochs", m["epochs"], *(["--max-views", m["max_views"]] if m.get("max_views") else []),
            *c.seed_args, "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
@@ -265,17 +284,32 @@ def finetune_cmd(c, seg):
                         "--valid-cuts", *valid,
                         "--on-the-fly-feats", "True", "--num-workers", str(t.get("workers", 2)),
                         "--num-buckets", str(t.get("buckets", 10)), "--mp-start-method", "spawn", "--shuffle", "True",
-                        "--base-lr", str(t["lr"]), "--max-duration", str(t["max_duration"]), "--enable-musan", "False",
+                        "--base-lr", str(t["lr"] if t["lr"] is not None else "<X1-selected-LR>"),
+                        "--max-duration", str(t["max_duration"]), "--enable-musan", "False",
+                        *opt_args({"max_batches": t.get("max_batches")}),
                         "--enable-spec-aug", "True", "--save-every-n", str(seg), "--keep-last-k", str(t.get("keep_last_k", 40)),
                         "--manifest-dir", str(lh)]
 
 
 def stage_finetune(c):
     t, m = c.exp["train"], c.exp["mix"]
+    max_batches = t.get("max_batches")
+    if not c.dry and t["lr"] is None:
+        sys.exit("Set train.lr to the learning rate selected in X1 before training.")
     stats = c.lhotse / "train_mix_cuts.jsonl.gz.json"
+    if not c.dry and max_batches:
+        checked_gate(c)
+        if not stats.is_file():
+            sys.exit("Run stages 1-3 before the E4 training run.")
     eh = json.loads(stats.read_text(encoding="utf-8"))["epoch_hours"] if stats.exists() else m["epoch_hours"]
-    steps = IR.steps_per_epoch(eh, t["max_duration"])
+    steps = max_batches // m["epochs"] if max_batches else IR.steps_per_epoch(eh, t["max_duration"])
     seg, eps = IR.segment_plan(steps, t.get("segments_per_epoch", 4))
+    previous = IR.ckpt_nums(c.exp_dir)
+    if not c.dry and max_batches and previous and previous[-1] >= max_batches:
+        if previous[-1] != max_batches:
+            sys.exit(f"Existing checkpoint {previous[-1]} exceeds the configured {max_batches} batches.")
+        print(f"  Training already reached {max_batches} batches.")
+        return
     print(f"== 4. finetune (LR {t['lr']}, freeze {t['freeze']}) -> {c.exp_dir}")
     print(f"  ước tính {steps} step / epoch ảo -> checkpoint mỗi {seg} step, epoch ảo = {eps} step")
     c.run([c.py_ft, "-m", "gipbench.model.train.wrap_ckpt", c.model / "model.pt", c.init_ckpt]
@@ -292,6 +326,9 @@ def stage_finetune(c):
     res = runner.run(c.init_ckpt)
     if res != "done":
         raise SystemExit(f"finetune dừng: {res}")
+    nums = IR.ckpt_nums(c.exp_dir)
+    if max_batches and (not nums or nums[-1] != max_batches):
+        sys.exit(f"Training data was exhausted before {max_batches} batches. Check the realized mix and batch size.")
 
 
 # ------------------------------------------------------------------ stage 5–6
@@ -306,7 +343,7 @@ def export(c, ed, name, select_args):
 
 def decode_dev(c, md, name):
     d = c.exp.get("decode_dev", {})
-    for k in ("cs", "vi"):
+    for k in c.dev:
         s = f"dev_{k}"
         if (c.rd / name / s / "hyps.jsonl").exists():
             continue
@@ -336,26 +373,48 @@ def natural(p):
 def select(c, cands, out):
     sel = c.exp.get("select", {})
     limits = {key: sel.get(key) for key in ("max_vi_ci_upper", "max_vi_hallucination_delta", "max_cs_domain_delta")}
+    gate_config = LG.gate_config(c.exp)
+    reserved = gate_config["reserved_terms"] if gate_config["check_dev"] else None
     c.run([c.py, "-m", "gipbench.model.select.select_ckpt", "--catalog", c.cat, "--dev-cs", c.dev["cs"], "--dev-vi", c.dev["vi"],
            "--base", c.rd / "base", "--cand", *cands, "--max-vi-delta", sel.get("max_vi_delta", 0.3),
            "--rule", sel.get("rule", "term_acc_macro"), "--dev-ref-cs", c.exp["dev"]["cs"], "--dev-ref-vi", c.exp["dev"]["vi"],
            *(["--allow-legacy-dev"] if sel.get("allow_legacy_dev") else []), *(["--allow-bench-catalog"] if c.oracle else []),
-           *opt_args(limits), "--out", out])
+           *opt_args({**limits, "reserved_terms": X.abspath(reserved) if reserved else None}), "--out", out])
     return None if c.dry else json.loads(Path(f"{out}.json").read_text(encoding="utf-8"))
+
+
+def checked_gate(c):
+    path = c.work / "leak_report.json"
+    if not path.is_file():
+        print(f"LỖI chưa có báo cáo cổng rò rỉ {path}: chạy stage 0 trước.")
+        sys.exit(3)
+    gate = json.loads(path.read_text(encoding="utf-8"))
+    if gate["blocking"]:
+        print(f"LỖI báo cáo cổng rò rỉ {path} còn {gate['critical']} critical chưa miễn trừ: không tạo artifact.")
+        sys.exit(3)
+    config = LG.gate_config(c.exp)
+    if c.exp.get("train", {}).get("max_batches"):
+        texts = [str(X.abspath(path)) for path in config["text_files"]]
+        dev = [c.exp["dev"][kind] for kind in c.dev]
+        refs = [*X.input_refs(c.exp), *dev, *[f"text:{Path(path).name}" for path in texts]]
+        if (not gate["passed"] or gate["mode"] != "fail" or refs != [entry["label"] for entry in gate["inputs"]]
+                or set(gate["benches"]) != set(c.guard_refs) | set(R.locked_bench_refs())
+                or gate.get("text_file_sha256", {}) != {path: R.sha256(path) for path in texts}):
+            sys.exit("Run stage 0 with the exact E4 inputs in fail mode before training or export.")
+    if config["check_dev"] and not set(c.exp["dev"].values()) <= set(gate.get("dev", {})):
+        sys.exit("Run stage 0 with the exact development releases before training or export.")
+    return gate
 
 
 def stage_select(c):
     alphas = c.exp.get("select", {}).get("wise_alphas", [0.3, 0.5, 0.7, 1.0])
     gate = None
-    if not c.dry:  # đóng khi lỗi: artifact chỉ được ghi khi có báo cáo cổng rò rỉ của chính experiment này và không blocking
-        lr = c.work / "leak_report.json"
-        if not lr.exists():
-            print(f"LỖI chưa có báo cáo cổng rò rỉ {lr}: chạy stage 0 trước (artifact phải kèm báo cáo cổng).")
-            sys.exit(3)
-        gate = json.loads(lr.read_text(encoding="utf-8"))
-        if gate["blocking"]:
-            print(f"LỖI báo cáo cổng rò rỉ {lr} còn {gate['critical']} critical chưa miễn trừ: không tạo artifact.")
-            sys.exit(3)
+    if not c.dry:
+        gate = checked_gate(c)
+        max_batches = c.exp["train"].get("max_batches")
+        nums = IR.ckpt_nums(c.exp_dir)
+        if max_batches and (not nums or nums[-1] != max_batches):
+            sys.exit(f"Stage 4 must reach the configured {max_batches} batches before export.")
     if c.fixed:
         final, md, wck = select_fixed(c)
         rw = {"results": {}}
@@ -386,6 +445,12 @@ def stage_select(c):
     if c.seed is not None:
         card["seed"] = c.seed
         card["mix"] = json.loads((c.lhotse / "train_mix_cuts.jsonl.gz.json").read_text(encoding="utf-8"))
+        card["experiment"]["sources"] = {str(Path(path).name): R.sha256(path) for path in c.exp["_sources"]}
+        path = c.exp_dir / f"checkpoint-{nums[-1]}.pt"
+        sampler_path = c.work / "sampler_state.json"
+        c.run([c.py_ft, "-m", "gipbench.model.train.sampler_state", path, sampler_path])
+        card["sampler_state"] = json.loads(sampler_path.read_text(encoding="utf-8"))
+        card["train"] = c.exp["train"]
     onnx_export.write_artifact(c.artifact, md, card)
     for ext in ("json", "md"):
         shutil.copy(c.work / f"leak_report.{ext}", c.artifact / f"leak_report.{ext}")

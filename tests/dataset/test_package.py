@@ -8,6 +8,7 @@ bộ trong text_not_redistributable bị bỏ lời thoại; distinct_utterances
 release.json có scorer_code_sha256 trùng hash evaluate tính; docs bỏ khối share:omit.
 """
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -95,7 +96,9 @@ def main():
         K.manifest_path = lambda name: (man, {"evidence_level": "draft", "track": "G0"})
         try:
             out = td / "share"
-            rc = run_main(["--benchmarks", "general_v1", "--name", "fake-v9.9", "--out", str(out)])
+            repo = td / "eval-kit"
+            rc = run_main(["--benchmarks", "general_v1", "--name", "fake-v9.9", "--out", str(out),
+                           "--emit-repo", str(repo)])
             dst = out / "fake-v9.9"
             check("đóng gói giả: thoát 0, có gói, không còn thư mục tạm",
                   rc == 0 and dst.is_dir() and not (out / ".fake-v9.9.partial").exists(), rc)
@@ -103,12 +106,19 @@ def main():
             check("release.json: distinct_utterances", rel["distinct_utterances"] == 4, rel.get("distinct_utterances"))
             check("release.json: scorer_code_sha256 trùng evaluate.scorer_code_sha256()",
                   rel["scorer_code_sha256"] == EVAL.scorer_code_sha256())
-            check("release.json: ghi bộ bị giữ lời thoại", rel["text_withheld_datasets"] == ["vimd"], rel["text_withheld_datasets"])
+            count = subprocess.check_output(["git", "-C", str(repo), "rev-list", "--count", "HEAD"], text=True).strip()
+            remote = subprocess.check_output(["git", "-C", str(repo), "remote", "-v"], text=True).strip()
+            check("eval kit has a single commit, no remote, and the checked package content",
+                  count == "1" and not remote and (repo / "SHA256SUMS").read_bytes() == (dst / "SHA256SUMS").read_bytes())
+            check("release.json: ghi bộ bị giữ lời thoại", rel["text_withheld_datasets"] == ["cv17_vi", "vimd"],
+                  rel["text_withheld_datasets"])
             got = [json.loads(l) for l in open(dst / "manifests" / "general_v1.jsonl", encoding="utf-8")]
             vimd = [r for r in got if r["dataset"] == "vimd"]
             check("bộ text_not_redistributable: bỏ text_tagged / text_orig, không thêm trường",
                   all("text_tagged" not in r and "text_orig" not in r and "text_redistributable" not in r for r in vimd))
-            check("bộ khác giữ lời thoại", all("text_tagged" in r for r in got if r["dataset"] != "vimd"))
+            check("CV17 mirror text is withheld", all("text_tagged" not in r for r in got if r["dataset"] == "cv17_vi"))
+            check("bộ khác giữ lời thoại",
+                  all("text_tagged" in r for r in got if r["dataset"] not in rel["text_withheld_datasets"]))
             for p in (dst / "configs" / "datasets.yaml", dst / "code" / "configs" / "bench" / "datasets.yaml"):
                 ds = yaml.safe_load(p.read_text(encoding="utf-8"))["datasets"]
                 check(f"{p.relative_to(dst).as_posix()}: không có consensus_private, chỉ bộ được đóng gói",

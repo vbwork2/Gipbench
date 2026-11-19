@@ -9,9 +9,7 @@ leak_gate:
   # đọc file khi thiếu audio_sha256 (pool v3 đã có sha nên chỉ bench / dev thiếu sha mới bị băm). Chế độ metadata để lọt
   # trùng audio từng byte của video đăng lại (18/11: ViMedCSS 5189-55 = E0 test 5190-56).
   audio_sha: hash
-# X0 KHÔNG dùng dev (người dùng chọn 18/11, đăng ký trước khi chạy): select.rule fixed_last bên dưới. Dev tạm
-# (dev/dev_interim_{cs,vi}@1, TODO 3b) dùng từ X1. Để so X1+ với X0 cùng luật: chạy lại stage 5–6 của X0 với dev tạm
-# (checkpoint được giữ, keep_last_k) bằng --set dev.cs=... dev.vi=... select.rule=cs_wer, không cần train lại.
+# X0 uses the pre-registered fixed_last rule. See the runbook for selecting again with a development set.
 dev: null
 seeds: [0, 1]
 
@@ -26,7 +24,8 @@ mix: {epochs: 2, epoch_hours: 20, max_views: 8}
 
 train:
   lr: 0.0003
-  # At 20 hours this keeps the estimated checkpoint interval above Icefall's 200-step averaging period.
+  max_batches: 2400
+  # The batch duration and budget give 300 batches per checkpoint, above Icefall's 200-batch averaging period.
   max_duration: 60
   freeze: "encoder_embed.,encoder.encoders.0.,encoder.encoders.1."
   model_args: "--use-transducer 1 --use-ctc 0"
@@ -51,7 +50,7 @@ select:
 decode_dev: {threads: 2, batch: 1}
 
 output:
-  exp_dir: ${exp_root}/e4_x0
-  work_dir: data/work/model/e4_x0
-  dev_results: ${results_root}/e4_x0_dev
-  artifact: ${exp_root}/artifacts/e4_x0
+  exp_dir: ${exp_root}/${name}
+  work_dir: data/work/model/${name}
+  dev_results: ${results_root}/${name}_dev
+  artifact: ${exp_root}/artifacts/${name}

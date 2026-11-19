@@ -1,0 +1,12 @@
+extends: e4_x1.yaml
+name: e4_x3
+description: Add real code-switching speech to the replay control
+train:
+  # Supply the learning rate selected by the X1 sweep.
+  lr: null
+pools:
+  replay_human: {weight: 0.65}
+  cs_real:
+    weight: 0.35
+    datasets: [ViMedCSS, cs_natural]
+    refs: [pool/vimedcss_train@v4, pool/cs_natural@1]
