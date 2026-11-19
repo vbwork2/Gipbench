@@ -244,16 +244,23 @@ def write_report(path, args, sides, notes, checks, shared):
 
 
 def is_video_unit(unit):
-    return unit.startswith("yt:") or (source_key({"speaker": unit}) or "").startswith("yt:")
+    """Đơn vị là video (không phải người nói): YouTube ID hoặc video VSS (`vss_<tên>.mp4` / `vss:<tên>.mp4`)."""
+    return (unit.startswith(("yt:", "vss_", "vss:")) or
+            (source_key({"speaker": unit}) or "").startswith("yt:"))
+
+
+INTERIM_MIN_CS_ROWS = 300  # dev tạm: không đòi 4 domain / 100 người nói (không có nguồn, TODO 2e)
 
 
 def build_independent(args):
-    from gipbench.dataset.release.clean_pool import clean, load_refs, verify
+    from gipbench.dataset.release.clean_pool import clean, hash_refs, load_refs, screen_audio, verify
 
     if not args.exclude_from:
         raise SystemExit("--exclude-from must list all training pools used by the experiment")
     if args.release and R.parse(args.release)[0] != "dev":
         raise SystemExit("--release must be a dev release reference")
+    if args.interim and not args.carved_from:
+        raise SystemExit("--interim needs --carved-from: the training pools the dev videos were cut from")
     bench_refs = R.locked_bench_refs()
     if not bench_refs:
         raise SystemExit("No locked benchmarks configured")
@@ -288,21 +295,54 @@ def build_independent(args):
             continue
         if args.kind == "cs" and (not spans or not any(t.span < 0 for t in tokens)):
             continue
-        if args.kind == "vi" and (is_video_unit(cluster or speaker) or spans or any(en_like(t.tok) for t in tokens)):
+        if args.kind == "vi" and ((is_video_unit(cluster or speaker) and not args.interim) or spans or
+                                  any(en_like(t.tok) for t in tokens)):
             continue
         eligible.append(dict(r, split="dev", speaker=speaker, speaker_cluster=cluster or speaker, text_tagged=text))
 
-    keep, _, stats = clean(eligible, refs)
-    verification = verify(keep, refs)
+    # cùng luật với pool v3 (18/11): audio sha + bỏ audio rỗng / im lặng, text gần trùng, rồi dấu vân tay âm thanh
+    # (dev so với mọi bench khoá VÀ mọi pool train). Thiếu file audio: giữ để báo cáo, --release vẫn từ chối bên dưới.
+    eligible, bad_audio, audio_stats = screen_audio(eligible, on_missing="keep")
+    audio_stats.update(hash_refs(refs))
+    keep, _, stats = clean(eligible, refs, near_threshold=args.near_threshold, near_spread_min=2)
+    acoustic = None
+    if not args.no_acoustic:
+        from gipbench.core.audiofp import load_cache, save_cache
+        from gipbench.dataset.release.acoustic_audit import DEFAULT_CACHE, audit_acoustic
+        cpath = str(DEFAULT_CACHE) if args.fp_cache is None else args.fp_cache
+        cache = load_cache(cpath) if cpath else {}
+        n0 = len(cache)
+        res = audit_acoustic([("dev", keep)], refs, workers=args.workers, cache=cache)
+        if cpath and len(cache) > n0:
+            Path(cpath).parent.mkdir(parents=True, exist_ok=True)
+            save_cache(cpath, cache)
+        hit = set(res["train_ids"].get("dev", []))
+        keep = [r for r in keep if str(r["id"]) not in hit]
+        acoustic = dict(res["stats"], dropped=len(hit), examples=res["matches"][:20])
+    stats.update(audio=audio_stats, n_bad_audio=len(bad_audio), acoustic=acoustic)
+    verification = verify(keep, refs, args.near_threshold)
     domains = {str(r.get("domain") or "").strip().lower() for r in keep} - {"", "unk", "unknown", "other"}
     units = {r["speaker_cluster"] for r in keep}
     speakers = {u for u in units if not is_video_unit(u)}
     seconds = sum(float(r["duration"]) for r in keep)
-    qualified = ((len(keep) >= 1500 and len(domains) >= 4 and len(speakers) >= 100)
-                 if args.kind == "cs" else seconds >= 3600)
+    # đã kiểm = người nghe, hoặc (dev tạm) khớp từng token với mọi ASR khác họ (holdout_dev triage, có kiểm mù mẫu)
+    verified_prefix = ("human", "auto:asr_agree") if args.interim else ("human",)
+    unverified = [r["id"] for r in keep if not str(r.get("label_source") or "").startswith(verified_prefix)]
+    n_auto = sum(str(r.get("label_source") or "").startswith("auto:") for r in keep)
+    if args.interim:
+        # dev tạm cắt từ pool nhãn giả: mọi câu phải qua người nghe (holdout_dev apply), ngưỡng nới, cờ ghi rõ giới hạn
+        qualified = (len(keep) >= INTERIM_MIN_CS_ROWS if args.kind == "cs" else seconds >= 3600) and not unverified
+    else:
+        qualified = ((len(keep) >= 1500 and len(domains) >= 4 and len(speakers) >= 100)
+                     if args.kind == "cs" else seconds >= 3600)
     flags = {"independent": True, "exclusion_sets": [name for name, _ in refs]}
-    report = {"input_rows": len(rows), "kind": args.kind, "filter": stats, "domains": sorted(domains),
-              "speakers": len(speakers), "speaker_units": len(units), "hours": seconds / 3600, "qualified": qualified,
+    if args.interim:
+        flags.update(interim=True, representative=False, speaker_unit="video", carved_from=list(args.carved_from),
+                     labels_auto_asr_agree=n_auto,
+                     use="smoke test / X0 / chọn checkpoint; không claim general; không chấm checkpoint train trên carved_from")
+    report = {"input_rows": len(rows), "kind": args.kind, "interim": bool(args.interim), "filter": stats,
+              "domains": sorted(domains), "speakers": len(speakers), "speaker_units": len(units), "hours": seconds / 3600,
+              "unverified_labels": len(unverified), "labels_auto_asr_agree": n_auto, "qualified": qualified,
               "exclusion_sets": flags["exclusion_sets"], "verify": verification}
     report_path = Path(f"{args.out_dev}.report.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -317,7 +357,8 @@ def build_independent(args):
             raise SystemExit(f"Missing development audio for {len(missing)} utterances, e.g. {missing[:3]}")
         R.write_release(args.release, manifest_rows=keep, parents=[Path(p) for p in args.candidates], flags=flags,
                         builder=__spec__.name if __spec__ else __name__,
-                        builder_args={"kind": args.kind, "exclusion_sets": flags["exclusion_sets"]})
+                        builder_args={"kind": args.kind, "exclusion_sets": flags["exclusion_sets"],
+                                      "interim": bool(args.interim)})
     out_dir = str(Path(args.out_dev).resolve().parent)
     write_jsonl(args.out_dev, (dict(r, audio=rel_audio(r, out_dir)) for r in keep))
     print(f"{len(keep)} dev utterances with zero critical findings against {len(refs)} sets. Report: {report_path}")
@@ -332,6 +373,18 @@ def run(argv=None):
     ap.add_argument("--kind", choices=["cs", "vi"], help="Independent dev stream")
     ap.add_argument("--exclude-from", nargs="+", help="Training manifests or release refs; locked benchmarks are added in independent mode")
     ap.add_argument("--release", help="Register a qualifying independent dev release, e.g. dev/dev_v2_cs@1")
+    ap.add_argument("--interim", action="store_true",
+                    help="(--candidates) dev TẠM cắt từ pool train (holdout_dev): đơn vị = video, ngưỡng cs >= 300 câu, "
+                         "mọi nhãn phải label_source human:*; release gắn interim / representative: false")
+    ap.add_argument("--carved-from", nargs="*", default=[],
+                    help="(--interim) pool mà video dev được cắt ra; checkpoint train trên các pool này không được chấm")
+    ap.add_argument("--near-threshold", type=float, default=0.6,
+                    help="(--candidates) bỏ câu gần trùng text với bench / train, Jaccard shingle (0 = tắt)")
+    ap.add_argument("--no-acoustic", action="store_true",
+                    help="(--candidates) bỏ qua kiểm dấu vân tay âm thanh (KHÔNG khuyến nghị khi --release)")
+    ap.add_argument("--workers", type=int, default=4, help="(--candidates) số tiến trình tính dấu vân tay")
+    ap.add_argument("--fp-cache", default=None,
+                    help="(--candidates) cache dấu vân tay (mặc định data/tmp/audiofp/cache.npz; '' = không cache)")
     ap.add_argument("--splits", nargs="+", default=["B1"], help="split của bench được tách dev / test (mặc định B1)")
     ap.add_argument("--dev-frac", type=float, default=0.3)
     ap.add_argument("--seed", type=int, default=0)

@@ -53,6 +53,37 @@ python -m gipbench.dataset.release.make_dev_split \
 nhiên, ngưỡng ít nhất 1 giờ. Thêm `--release dev/dev_v2_cs@1` hoặc `--release dev/dev_v2_vi@1` để đăng ký release đủ điều
 kiện, có audio và kèm `flags.independent` / `flags.exclusion_sets`. Sau đó đối chiếu `ck4132` với model gốc trên dev_v2.
 
+**Dev tạm (18/11, đang dùng cho `e4_x0`).** Chưa có nguồn đạt ngưỡng trên (TODO 2e), nên dev tạm được cắt theo video từ
+`vss_cs@v3` (CS) và `distill@v4` (VI). Pool train tương ứng đã bỏ các video này (`vss_cs@v4`, `distill@v5`). Nhãn giả
+phải qua người nghe. Dev tạm chỉ dùng cho smoke test / X0 / chọn checkpoint. Nó không đại diện 4 domain, đơn vị người nói
+là video, và **không được chấm checkpoint đã train trên `carved_from`** (E3, `ck4132`).
+
+```bash
+# đã chạy: data/listen/dev_interim_{cs,vi}/ (heldout.jsonl, candidates.jsonl, listen.csv, audio/)
+python -m gipbench.dataset.release.holdout_dev select --pool pool/vss_cs@v3 --kind cs --frac 0.3 \
+  --reuse data/listen/vss_cs_v1/listen_A_reviewed.csv --out data/listen/dev_interim_cs
+python -m gipbench.dataset.release.holdout_dev select --pool pool/distill@v4 --kind vi --frac 0.2 --out data/listen/dev_interim_vi
+# 👤 nghe listen.csv bằng review_bench.html, xuất thành listen_reviewed.csv trong cùng thư mục, rồi:
+python -m gipbench.dataset.release.holdout_dev apply --dir data/listen/dev_interim_cs
+python -m gipbench.dataset.release.holdout_dev apply --dir data/listen/dev_interim_vi
+POOLS="pool/vimedcss_train@v4 pool/vivos_train@v3 pool/confusable_train@v3 pool/cv_other@v3 pool/vss_cs@v4 pool/distill@v5"
+python -m gipbench.dataset.release.make_dev_split --candidates data/listen/dev_interim_cs/verified.jsonl --kind cs \
+  --interim --carved-from pool/vss_cs@e3_v1 pool/vss_cs@v3 --exclude-from $POOLS \
+  --release dev/dev_interim_cs@1 --out-dev data/dev/dev_interim_cs.jsonl
+python -m gipbench.dataset.release.make_dev_split --candidates data/listen/dev_interim_vi/verified.jsonl --kind vi \
+  --interim --carved-from pool/distill@e3_v1 pool/distill@v3 pool/distill@v4 --exclude-from $POOLS \
+  --release dev/dev_interim_vi@1 --out-dev data/dev/dev_interim_vi.jsonl
+```
+
+Trước khi nghe (đã chạy 18/11): `holdout_dev triage --hyps <qwen3> <whisper>` nhận luôn câu mà nhãn khớp từng token với
+mọi ASR khác họ (VI chỉ có 6 / 365 câu nên giữ lại cả để kiểm mù). `holdout_dev hint --hyps qwen3=… whisper=…` ghi cột
+`hint`, trang duyệt hiện cột này dưới câu, từ lệch bọc trong ⟦ ⟧. Hyp chạy trong WSL: `data/listen/dev_interim_{cs,vi}/run_asr.sh`.
+Phiếu gộp để nghe một lượt: `data/listen/pending_all/listen.csv`. Nghe phiếu gộp thì chạy `apply` cho từng thư mục với
+`--review "$(pwd)/data/listen/pending_all/listen_reviewed.csv"` (mỗi `apply` chỉ lấy id của mình).
+
+`--interim` đòi mọi câu có `label_source: human:*` (hoặc `auto:asr_agree` từ `triage`). Ngưỡng: CS ≥ 300 câu, VI ≥ 1 giờ. Release gắn
+`interim: true, representative: false, speaker_unit: video, carved_from`.
+
 ## 2. Model: experiment -> artifact
 
 ```bash

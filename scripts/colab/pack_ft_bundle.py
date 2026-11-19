@@ -31,9 +31,12 @@ from typing import Dict, Iterable, List, Tuple
 REPO = Path(__file__).resolve().parents[2]
 INDEX = "bundle_index.json"
 
-# pool train sạch với mọi bench khoá (TODO 2c) + nhãn giả / chưng cất đang dùng; dev cũ chỉ để chẩn đoán (không độc lập)
-DEFAULT_REFS = ["pool/vimedcss_train@v2", "pool/vivos_train@v2", "pool/confusable_train@v2", "pool/cv_other@v2",
-                "pool/vss_cs@e3_v1", "pool/distill@e3_v1"]
+# pool train v3 (18/11): sạch với mọi bench khoá theo nguồn / audio sha / text gần trùng, đã bỏ audio im lặng; có
+# audio_sha256 trong manifest. Dev cũ chỉ để chẩn đoán (không độc lập)
+DEFAULT_REFS = ["pool/vimedcss_train@v4", "pool/vivos_train@v3", "pool/confusable_train@v3", "pool/cv_other@v3",
+                # v4 / v5 (18/11): bỏ video giữ lại cho dev tạm (holdout_dev). Thêm dev/dev_interim_{cs,vi}@1 bằng --refs
+                # khi đã nghe xong và đăng ký.
+                "pool/vss_cs@v4", "pool/distill@v5"]
 DEFAULT_MODEL_FILES = ["models/gip15/model.pt", "models/gip15/bpe.model", "models/gip15/tokens.txt",
                        "models/gip15/config.json", "models/gip15/README.md",
                        # text bộ test riêng tư (consensus): core.leak chặn khỏi train / dev (paths.yaml leak_block_files)

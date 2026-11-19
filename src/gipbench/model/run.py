@@ -17,6 +17,9 @@ Stage (đầu vào chỉ là release + experiment YAML; không đọc data/raw, 
   4 finetune    icefall finetune_cs.py theo đoạn + watchdog (gipbench.model.train.icefall_runner)
   5 candidates  model gốc + checkpoint mỗi epoch ảo -> export int8 -> decode dev
   6 select      chọn checkpoint trên dev, WiSE-FT các alpha, chọn lại -> artifact (onnx + model_card.json + leak_report.*)
+                select.rule: fixed_last + dev: null = luật cố định đăng ký trước, không cần dev: checkpoint cuối, WiSE-FT
+                một alpha (select.fixed_wise_alpha, mặc định 1.0); stage 5 bỏ qua; valid loss của icefall trên
+                select.valid_rows câu train (chỉ theo dõi)
                 + system YAML cho bench (configs/bench/systems/<system>.yaml, không ghi đè file đã có). Cần báo cáo cổng
                 rò rỉ của stage 0 (không có hoặc blocking -> thoát mã 3)
 Chấm bench KHÔNG nằm ở đây: python -m gipbench.bench.run --bench <bench release> --system configs/bench/systems/<system>.yaml
@@ -87,7 +90,11 @@ class Ctx:
         self.bench = R.release_dir(self.guard_refs[0]) / "manifest.jsonl"  # LeakGuard cũ (lọc câu trong to_lhotse): bench đầu tiên
         self.oracle = X.catalog_use(exp) == "oracle_diagnostic"
         self.inputs = [(ref, self.work / "inputs" / f"{safe(ref)}.jsonl") for ref in X.input_refs(exp)]
-        self.dev = {k: self.work / "inputs" / f"dev_{k}.jsonl" for k in ("cs", "vi")}
+        self.has_dev = bool(exp.get("dev"))
+        self.dev = {k: self.work / "inputs" / f"dev_{k}.jsonl" for k in ("cs", "vi")} if self.has_dev else {}
+        self.fixed = (exp.get("select") or {}).get("rule") == X.FIXED_RULE
+        # không có dev: valid loss của icefall tính trên mẫu nhỏ CỦA TRAIN (chỉ để theo dõi, không dùng chọn checkpoint)
+        self.valid = self.work / "inputs" / "valid_from_train.jsonl"
         self.lhotse = self.work / "lhotse"
         self.egs = self.icefall / "egs" / "librispeech" / "ASR"
         check_catalogs(self)
@@ -128,7 +135,9 @@ def check_catalogs(c):
 # ------------------------------------------------------------------ stage 0
 def stage_prepare(c):
     print("== 0. prepare: pool + dev từ release -> inputs/ (audio tuyệt đối), cổng rò rỉ đóng khi lỗi")
-    jobs = c.inputs + [(c.exp["dev"][k], c.dev[k]) for k in ("cs", "vi")]
+    jobs = c.inputs + [(c.exp["dev"][k], c.dev[k]) for k in c.dev]
+    if not c.has_dev:
+        print(f"  dev: không có (select.rule: {X.FIXED_RULE}, luật cố định đăng ký trước)")
     try:
         g = LG.gate_config(c.exp)
     except ValueError as e:
@@ -211,8 +220,24 @@ def stage_features(c):
     tail = ["--bench", c.bench, "--catalog", c.cat, "--out", c.lhotse]
     for g, p in sorted(files.items()):
         c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", p, "--name", g, *tail, *aug, *c.seed_args])
-    for k in ("cs", "vi"):
+    for k in c.dev:
         c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.dev[k], "--name", f"dev_{k}", *tail])
+    if not c.has_dev:
+        n = int((c.exp.get("select") or {}).get("valid_rows", 200))
+        print(f"  valid (chỉ theo dõi loss, KHÔNG chọn checkpoint): {n} câu train theo hash id -> {c.valid}")
+        if not c.dry:
+            write_valid_sample(c.work / "train_curated.jsonl", c.valid, n)
+        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.valid, "--name", "valid", *tail])
+
+
+def write_valid_sample(src, out, n):
+    """n câu của train_curated chọn theo sha256(id) (ổn định, không phụ thuộc thứ tự). Chỉ cho valid loss của icefall."""
+    rows = read_jsonl(str(src))
+    rows.sort(key=lambda r: hashlib.sha256(str(r["id"]).encode("utf-8")).hexdigest())
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        for r in rows[:n]:
+            f.write(json.dumps({k: v for k, v in r.items() if not k.startswith("_")}, ensure_ascii=False) + "\n")
 
 
 # ------------------------------------------------------------------ stage 3
@@ -232,10 +257,12 @@ def stage_mix(c):
 # ------------------------------------------------------------------ stage 4
 def finetune_cmd(c, seg):
     t, lh = c.exp["train"], c.lhotse
+    valid = ([str(lh / "dev_cs_cuts_raw.jsonl.gz"), str(lh / "dev_vi_cuts_raw.jsonl.gz")] if c.has_dev
+             else [str(lh / "valid_cuts_raw.jsonl.gz")])
     return lambda res: [c.py_ft, "./zipformer/finetune_cs.py", "--world-size", "1", "--use-fp16", "1",
                         *t["model_args"].split(), *res, *c.seed_args, "--exp-dir", str(c.exp_dir), "--bpe-model", str(c.model / "bpe.model"),
                         "--freeze-modules", t["freeze"], "--train-cuts", str(lh / "train_mix_cuts.jsonl.gz"),
-                        "--valid-cuts", str(lh / "dev_cs_cuts_raw.jsonl.gz"), str(lh / "dev_vi_cuts_raw.jsonl.gz"),
+                        "--valid-cuts", *valid,
                         "--on-the-fly-feats", "True", "--num-workers", str(t.get("workers", 2)),
                         "--num-buckets", str(t.get("buckets", 10)), "--mp-start-method", "spawn", "--shuffle", "True",
                         "--base-lr", str(t["lr"]), "--max-duration", str(t["max_duration"]), "--enable-musan", "False",
@@ -289,6 +316,9 @@ def decode_dev(c, md, name):
 
 
 def stage_candidates(c):
+    if c.fixed:
+        print(f"== 5. ứng viên: bỏ qua (select.rule: {X.FIXED_RULE}, không có dev để decode)")
+        return
     print("== 5. ứng viên: model gốc + checkpoint mỗi epoch ảo -> export int8 -> decode dev")
     decode_dev(c, c.model, "base")
     nums = IR.ckpt_nums(c.exp_dir) or (["<N>"] if c.dry else [])
@@ -326,6 +356,64 @@ def stage_select(c):
         if gate["blocking"]:
             print(f"LỖI báo cáo cổng rò rỉ {lr} còn {gate['critical']} critical chưa miễn trừ: không tạo artifact.")
             sys.exit(3)
+    if c.fixed:
+        final, md, wck = select_fixed(c)
+        rw = {"results": {}}
+    else:
+        final, md, wck, rw = select_on_dev(c, alphas)
+    print(f"  model chọn: {final} ({md}) -> artifact {c.artifact}")
+    if c.dry:
+        return
+    sel = c.exp.get("select", {})
+    dev_refs = [c.exp["dev"][k] for k in ("cs", "vi")] if c.has_dev else []
+    card = {"system": c.exp["name"], "experiment": {"path": c.exp["_path"], "overrides": c.exp["_overrides"],
+                                                     "sha256": hashlib.sha256(Path(c.exp["_path"]).read_bytes()).hexdigest()},
+            "base_model": {"path": str(c.model), "sha256": onnx_export.sha256(c.model / "model.pt")
+                           if (c.model / "model.pt").exists() else None},
+            "releases_used": {ref: R.resolve(ref).meta["files"] for ref in
+                              [*X.input_refs(c.exp), *dev_refs, c.exp["catalog"], *c.guard_refs]},
+            "catalog": {"ref": c.exp["catalog"], "flags": R.catalog_flags(c.exp["catalog"]), "use": X.catalog_use(c.exp)},
+            "select": {"rule": sel.get("rule", "term_acc_macro"), "dev": c.exp["dev"],
+                       "dev_flags": {k: R.resolve(c.exp["dev"][k]).meta.get("flags") or {} for k in ("cs", "vi")}
+                       if c.has_dev else None,
+                       **({"fixed_wise_alpha": float(sel.get("fixed_wise_alpha", 1.0))} if c.fixed else {})},
+            "leak_gate": LG.card_summary(gate, c.work / "leak_report.json"),
+            "leak_report_sha256": hashlib.sha256((c.work / "leak_report.json").read_bytes()).hexdigest(),
+            "checkpoint_picked": final, "wise_from": wck, "dev_metrics": rw["results"].get(final),
+            "git_commit": R.git_commit()}
+    if c.oracle:
+        card.update(inference_mode="oracle_bias", rankable=False)
+    if c.seed is not None:
+        card["seed"] = c.seed
+        card["mix"] = json.loads((c.lhotse / "train_mix_cuts.jsonl.gz.json").read_text(encoding="utf-8"))
+    onnx_export.write_artifact(c.artifact, md, card)
+    for ext in ("json", "md"):
+        shutil.copy(c.work / f"leak_report.{ext}", c.artifact / f"leak_report.{ext}")
+    write_systems(c)
+
+
+def select_fixed(c):
+    """Luật cố định đăng ký trước (không nhìn dev / bench): checkpoint cuối; WiSE-FT đúng một alpha nếu alpha < 1."""
+    alpha = float((c.exp.get("select") or {}).get("fixed_wise_alpha", 1.0))
+    nums = IR.ckpt_nums(c.exp_dir)
+    last = nums[-1] if nums else ("<N>" if c.dry else None)
+    if last is None:
+        sys.exit(f"LỖI không có checkpoint-*.pt trong {c.exp_dir}: chạy stage 4 trước")
+    wck = f"ck{last}"
+    print(f"== 6. luật cố định ({X.FIXED_RULE}): checkpoint cuối {wck}, WiSE-FT alpha {alpha:g} (không dùng dev)")
+    if alpha >= 1.0:
+        return wck, export(c, c.exp_dir, wck, ["--iter", str(last)]), wck
+    an = f"{alpha:g}"
+    c.run([c.py_ft, "-m", "gipbench.model.select.interpolate_ckpt", "--base", c.init_ckpt,
+           "--ft", c.exp_dir / f"checkpoint-{last}.pt", "--ft-key", "model", "--alphas", an,
+           "--out-dir", c.exp_dir / "wise", "--epoch", "1"])
+    md = export(c, c.exp_dir / "wise" / f"alpha_{an}", f"wise_{an}", ["--epoch", "1"])
+    if not c.dry:
+        (c.exp_dir / "wise" / f"alpha_{an}" / "epoch-1.pt").unlink(missing_ok=True)
+    return f"wise_{an}", md, wck
+
+
+def select_on_dev(c, alphas):
     print(f"== 6. chọn checkpoint trên dev, WiSE-FT alpha {' / '.join(map(str, alphas))} của checkpoint đó, chọn lại")
     cks = sorted(c.rd.glob("ck*"), key=natural) if not c.dry else [c.rd / "ck<N>"]
     r = select(c, cks, c.rd / "select_ckpt")
@@ -351,31 +439,7 @@ def stage_select(c):
     rw = select(c, wise, c.rd / "select_wise")
     final = "<pick>" if c.dry else rw["pick"]
     md = c.model if final == "base" else c.exp_dir / "cand" / final / "onnx"
-    print(f"  model chọn: {final} ({md}) -> artifact {c.artifact}")
-    if c.dry:
-        return
-    card = {"system": c.exp["name"], "experiment": {"path": c.exp["_path"], "overrides": c.exp["_overrides"],
-                                                     "sha256": hashlib.sha256(Path(c.exp["_path"]).read_bytes()).hexdigest()},
-            "base_model": {"path": str(c.model), "sha256": onnx_export.sha256(c.model / "model.pt")
-                           if (c.model / "model.pt").exists() else None},
-            "releases_used": {ref: R.resolve(ref).meta["files"] for ref in
-                              [*X.input_refs(c.exp), c.exp["dev"]["cs"], c.exp["dev"]["vi"], c.exp["catalog"], *c.guard_refs]},
-            "catalog": {"ref": c.exp["catalog"], "flags": R.catalog_flags(c.exp["catalog"]), "use": X.catalog_use(c.exp)},
-            "select": {"rule": c.exp.get("select", {}).get("rule", "term_acc_macro"), "dev": c.exp["dev"],
-                       "dev_flags": {k: R.resolve(c.exp["dev"][k]).meta.get("flags") or {} for k in ("cs", "vi")}},
-            "leak_gate": LG.card_summary(gate, c.work / "leak_report.json"),
-            "leak_report_sha256": hashlib.sha256((c.work / "leak_report.json").read_bytes()).hexdigest(),
-            "checkpoint_picked": final, "wise_from": wck, "dev_metrics": rw["results"].get(final),
-            "git_commit": R.git_commit()}
-    if c.oracle:
-        card.update(inference_mode="oracle_bias", rankable=False)
-    if c.seed is not None:
-        card["seed"] = c.seed
-        card["mix"] = json.loads((c.lhotse / "train_mix_cuts.jsonl.gz.json").read_text(encoding="utf-8"))
-    onnx_export.write_artifact(c.artifact, md, card)
-    for ext in ("json", "md"):
-        shutil.copy(c.work / f"leak_report.{ext}", c.artifact / f"leak_report.{ext}")
-    write_systems(c)
+    return final, md, wck, rw
 
 
 def write_systems(c):

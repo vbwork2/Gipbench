@@ -150,6 +150,24 @@ Mỗi dòng manifest: `id`, `dataset`, `upstream_id`, `upstream_split`, `text_ta
     cùng `audio_sha256` `4f10b21eaba5…` (7,0 s) nhưng lời thoại khác nhau: nguồn gắn nhầm audio cho ít nhất một câu. Cả hai
     thuộc lát `train_video_overlap = false` của E0 (100 câu), nên lát này có ≥ 1 câu nhãn sai. E0 v1.1 đã khoá nên giữ
     nguyên; bản sau nên loại cả hai câu.
+14. **Trùng ngầm mà khoá nguồn (YouTube ID) không thấy** (phát hiện 18/11/2026 bằng sha256 audio, text gần trùng và dấu
+    vân tay âm thanh Haitsma–Kalker, so ViMedCSS train và VietSuperSpeech với mọi bench):
+    - **Video ViMedCSS đăng lại dưới ID khác.** `e0_vimedcss_test_Med_CS-5190-56` cùng audio từng byte với một câu ViMedCSS
+      train (video 5189); `…-3655_2-27` nằm trọn trong một câu train của video 3656_2 (BER 0.025); `…-2338_2-3` và `…-2338_2-5`
+      có cùng nội dung với video train 2337_2. Hai câu 2338_2 thuộc lát `train_video_overlap = false`, nên lát "video chưa
+      thấy" có ≥ 2 câu mà model train trên ViMedCSS train đầy đủ (vd VieGem) đã thấy: số trên lát này ở mục 8b / 8c hơi lạc
+      quan. Trong E0 cũng có cặp cùng audio `…-315_2-13` / `…-316_2-12`.
+    - **Câu mở đầu theo mẫu của kênh, đọc bằng cùng một giọng** ("Nội dung trong video này sẽ tìm hiểu về…", "Tổng quan bệnh
+      hội chứng…", "Công ty hóa chất Trần Tiến…"): C0 `…-484-1`, `…-486-1`; E0 `…-426-2`, `…-582-1`, `…-2749-1`, `…-4254-1`,
+      `…-145-7` chung đoạn audio với câu train. ViMedCSS không tách theo kênh, nên trùng người nói / kênh giữa train và test
+      không kiểm được bằng ID video.
+    - **Audio im lặng / rỗng có nhãn** trong E0 ViMedCSS: `…-3077-5`, `…-4770-2` (toàn mẫu 0), `…-4072_1-13` (44 byte). Mọi
+      model đều sai hết các câu này.
+    - **Bud500 test và VietSuperSpeech cắt từ cùng audio gốc**: `e0_bud500_test-00001-of-00002-1b2cd3ea16a2c5b1_1_122` khớp
+      một đoạn VietSuperSpeech (BER 0.045). Model train trên VietSuperSpeech có thể đã nghe câu này.
+    E0 v1.1 đã khoá nên giữ nguyên; bản sau nên loại các câu trên và tách ViMedCSS theo kênh. Dữ liệu FT của gipbench đã
+    loại mọi câu train liên quan<!-- share:omit --> (`pool/vimedcss_train@v4`, `pool/distill@v4`; báo cáo
+    `reports/leak/acoustic_v3`, `reports/leak/acoustic_final`: 0 cặp khớp sau khi lọc)<!-- /share:omit -->.
 
 ## 8. Kết quả tham chiếu (v1.0, open_vocab, hồ sơ gipbench_strict_v1, `evaluate --mode final`, %)
 

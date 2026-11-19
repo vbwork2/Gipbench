@@ -174,9 +174,19 @@ def test_x0_dry_run():
     check("X0 passes both seeds to Icefall and keeps separate output paths",
           len(train) == 2 and all(f"--seed {seed}" in line and f"seed-{seed}" in line
                                   for seed, line in enumerate(train)))
-    check("X0 dry-run includes retention limits and replay cap", all(flag in p.stdout for flag in (
-        "--max-vi-ci-upper 0.5", "--max-vi-hallucination-delta 0.0", "--max-cs-domain-delta 1.0",
-        "--epoch-hours 20 --epochs 2 --max-views 8")))
+    # X0 (18/11): luật cố định đăng ký trước, không dev -> không decode dev / select_ckpt; valid loss trên mẫu train
+    check("X0 dry-run: luật cố định, replay cap, không chọn trên dev", all(flag in p.stdout for flag in (
+        "--epoch-hours 20 --epochs 2 --max-views 8", "luật cố định (fixed_last)", "--name valid",
+        "valid_cuts_raw.jsonl.gz", "--iter <N>")) and "select_ckpt" not in p.stdout and "dev_cs" not in p.stdout,
+        p.stderr[-500:])
+    p2 = subprocess.run(command + ["--seed", "0", "--set", "dev={cs: dev/dev_interim_cs@1, vi: dev/dev_interim_vi@1}",
+                                   "--set", "select.rule=cs_wer"], capture_output=True, encoding="utf-8", cwd=G)
+    check("X0 chọn lại trên dev tạm (không train lại) giữ các ngưỡng giữ tiếng Việt", p2.returncode == 0 and all(
+        flag in p2.stdout for flag in ("--max-vi-ci-upper 0.5", "--max-vi-hallucination-delta 0.0",
+                                       "--max-cs-domain-delta 1.0", "--rule cs_wer")), p2.stderr[-500:])
+    p3 = subprocess.run(command + ["--set", "dev=null", "--set", "select.rule=cs_wer"], capture_output=True,
+                        encoding="utf-8", cwd=G)
+    check("dev rỗng mà luật cần dev -> từ chối", p3.returncode != 0 and "fixed_last" in (p3.stderr + p3.stdout))
     p = subprocess.run(command + ["--seed", "1"], capture_output=True, encoding="utf-8", cwd=G)
     check("X0 previews one seed when selected", p.returncode == 0 and p.stdout.count("== 6.") == 1
           and "== e4_x0 seed 1" in p.stdout and "seed-0" not in p.stdout, p.stderr)

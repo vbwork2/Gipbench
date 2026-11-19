@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from gipbench.core import release as R
-from gipbench.core.decontam import audit, load_exemptions, overlap_counts, read_lines
+from gipbench.core.decontam import audit, load_exemptions, overlap_counts, read_lines, sha256_file
 from gipbench.core.manifest import read_jsonl
 
 AUDIO_SHA_MODES = ("hash", "metadata", "skip")
@@ -84,6 +84,12 @@ def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]],
         per_input.append((f"text:{Path(f).name}", rows))
         train += rows
         res["inputs"].append({"label": f"text:{Path(f).name}", "rows": len(rows)})
+    if audio_sha == "hash":
+        # băm audio train MỘT lần (audit chạy riêng từng bench, nếu không sẽ đọc lại mọi file train cho mỗi bench)
+        for r in train:
+            p = r.get("_audio_path")
+            if not r.get("audio_sha256") and p and Path(p).exists():
+                r["audio_sha256"] = sha256_file(p)
     for ref in refs:
         try:
             rel = R.resolve(ref)

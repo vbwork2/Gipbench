@@ -16,11 +16,13 @@ Cách dùng: làm **từ trên xuống**. Thứ tự các phần là thứ tự 
 
 - **Mục tiêu "general" (đăng ký trước):** CS-WER C1 giảm (CI95 < 0) ở ≥ 2 domain ngoài y khoa **và** `vi_only_wer` G0 không tăng (cận trên CI ≤ +0.5); xác nhận cùng chiều trên Z0 khi có. C0 / E0-ViMedCSS không dùng để claim general. Các hướng cải tiến ngoài X0–X6: Phần 7.
 
-- **2c xong, 2d / 2e công cụ xong (17/11):** pool v2 sạch, cổng ĐẠT 0 critical; phiếu nghe 300 câu vss_cs chờ 👤; CS ở 4 domain mục tiêu chỉ còn 0.43 h, nên dev_v2 đang chờ nguồn mới (2e).
+- **2c xong, 2d xong (18/11), 2e công cụ xong (17/11):** pool v2 sạch, cổng ĐẠT 0 critical; 2d nghe 300 câu vss_cs: lỗi span 5.1% [3.4, 7.7], ĐẠT (nhưng 13.6% câu có từ Anh không tag); CS ở 4 domain mục tiêu chỉ còn 0.43 h, nên dev_v2 đang chờ nguồn mới (2e).
 
 - **Phần 3 có công cụ dựng dev độc lập (18/11)**. ViMedCSS validation sau lọc còn 73 câu y khoa, cần thêm nguồn CS ngoài y khoa và nguồn thuần Việt nói tự nhiên. **Phần 4 xong (18/11)**: đối chiếu checkpoint E3, CTC 200 bước, ma trận giải mã đủ (Gipformer + RNN LM không giúp C1).
 
-**Kết luận:** X0 vẫn chờ dev độc lập đủ ngưỡng và quyết định `reserved_terms_v1`.
+- **Phần 3b dev tạm (18/11):** dữ liệu local không đủ cho dev_v2 đạt chuẩn, nên cắt dev tạm theo video từ VSS (CS 476 câu, VI 365 câu). Pool `vss_cs@v4` / `distill@v5` đã bỏ các video đó; chờ 👤 nghe 766 câu.
+
+**Kết luận:** X0 **chạy được ngay**, không cần dev (luật cố định `fixed_last`, đăng ký 18/11). Dev tạm (3b) chỉ cần từ X1, nghe dần. `reserved_terms_v1` đã chốt. Claim "general" vẫn cần dev_v2 đạt chuẩn (nguồn 2e).
 
 ---
 
@@ -92,7 +94,7 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
   - *Đã kiểm trên dữ liệu thật* (`e3_v1.yaml`, bỏ kiểm catalog bằng `catalog_use=oracle_diagnostic` để xem riêng cổng; 37 s, 280 MB): **thoát 3, 11 critical**. C0 ← ViMedCSS train **388 câu / 248 video** (+ dev_cs 71); E0 vimedcss_test ← ViMedCSS train **1 514 câu / 898 video** (+ dev_cs 518 — code cũ báo 0); G0 ← pool confusable 4 + VIVOS/CV text; 0 critical với C1 (G-Group không có id người nói: `identity_unknown` 100%).
   - `e3_v1.yaml` nguyên bản: thoát 3 ngay vì catalog `v0-draft` (xem 2b).
 - [x] Test D.3 ca 6: `tests/model/test_gate_run.py` (release giả: bench khoá ngoài `leak_guard` vẫn được kiểm; bench khoá chưa register → "CHƯA KIỂM"; miễn trừ từng loại; `mode: report`; stage 6 thiếu báo cáo).
-- ⚠️ **Mặc định `audio_sha: metadata`** (không đọc file audio): pool train không có `audio_sha256`, nên trùng audio **không được kiểm** ở cổng mặc định (báo cáo ghi rõ; hash cũng không bắt được audio resample). Trùng nguồn / clip / text mới là kiểm chính. Bật `leak_gate.audio_sha: hash` (đọc file, chậm hơn) và `require_audio_sha: true` khi cần chặt.
+- ✅ 18/11: pool v3 có `audio_sha256`, `e4_x0` bật `audio_sha: hash` (xem 2c "Pool v3"). Ghi chú cũ: **Mặc định `audio_sha: metadata`** (không đọc file audio): pool train không có `audio_sha256`, nên trùng audio **không được kiểm** ở cổng mặc định (báo cáo ghi rõ; hash cũng không bắt được audio resample). Trùng nguồn / clip / text mới là kiểm chính. Bật `leak_gate.audio_sha: hash` (đọc file, chậm hơn) và `require_audio_sha: true` khi cần chặt.
 - ⚠️ **Hệ quả:** mọi experiment dùng `pool/vimedcss_train@full` sẽ bị cổng chặn (trùng video với C0 / E0). Cần pool đã loại video bench (2c), **không** nên miễn trừ.
 - Sửa lỗi có sẵn: stage 0 của `model.run` vỡ khi chạy thật (`Catalog(str(path))` thay vì `Catalog.load`; refactor 16/11 chỉ kiểm bằng `--dry-run`).
 
@@ -119,13 +121,29 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
 - [x] `pool/confusable_train@e3_v1b` (`label_source: human:vivos_train`) + mục `errata:` cuối `releases.yaml` (confusable@e3_v1, cv_train@v1, vimedcss_train@full → bản thay thế). Mục cũ không sửa.
 - ⚠️ **Sửa 17/11 21:50:** 3 pool v2 do `clean_pool` sinh ra (`vimedcss_train`, `vivos_train`, `confusable_train`) có **đường dẫn audio lệch một cấp**: `clean_pool` chép nguyên `audio` tương đối của release nguồn sang file ra ở độ sâu khác, nên **0 file đọc được**. Train sẽ vỡ ở stage 2; cổng rò rỉ vẫn ĐẠT vì không đọc audio. Đã sửa `clean_pool.write_pool` (ghi lại theo thư mục file ra, dùng `rel_audio`), chạy lại cùng tham số (id / text / số câu giống hệt, 0 audio thiếu), đăng ký lại 3 release (bản hỏng cất ở scratchpad). `register` giờ **từ chối pool / dev có audio không tồn tại**.
 - Test: `tests/dataset/test_train_pools.py` (20 ca, thêm ca đường dẫn audio). Còn lại: khi có dev_v2, chạy lại `clean_pool --exclude <dev_v2>` ra version mới.
+- [x] **Pool v3 (18/11):** cổng `audio_sha: hash` trên pool v2 bắt **4 critical** mà chế độ metadata để lọt: 1 câu ViMedCSS train trùng audio **từng byte** với E0 test (`5189-55` = `5190-56`; video đăng lại dưới YouTube ID khác nên `source_key` không thấy) và 3 cặp audio **im lặng số / rỗng** có nhãn (trùng sha vì cùng độ dài, không phải rò rỉ, nhưng là dữ liệu hỏng). So text gần trùng thêm 15 câu E0 ViMedCSS, 2 câu trong lát "video chưa thấy" (`2338_2-3/-5` ← train `2337_2`).
+  - `clean_pool` mặc định: đọc audio (ghi `audio_sha256` vào manifest, bỏ câu audio rỗng / im lặng số), bỏ câu gần trùng text (Jaccard ≥ 0.6, luật bộ đọc như cũ), ≥ 2 câu gần trùng trong một video thì bỏ cả video; `.dropped.jsonl` có `drop_reason`. `core.decontam.audio_check`, `near_duplicates(best_only=False)`. `leakgate` chế độ hash băm train một lần (20 phút → 34 s).
+  - `pool/*@v3` (đăng ký, errata `vimedcss_train@v2`): vimedcss **3 881 câu / 7.55 h** (bỏ 39 audio im lặng / rỗng + 25 trùng / gần trùng / cùng video), vivos 10 555 (bỏ 2 gần trùng), confusable / cv_other / vss_cs / distill không đổi số câu (cv_other mp3: chỉ có sha, không kiểm im lặng).
+  - *Đã kiểm:* `leakgate` hash trên 6 pool v3: **0 critical**, 0 / 820 thuật ngữ giữ riêng. `e4_x0.yaml`: `leak_gate.audio_sha: hash`, `vivos_train@v3`; dry-run stage 0–6 in đủ lệnh. Test 24/24 (thêm 14 ca v3 trong `test_train_pools`).
+  - Còn lại: `catalog/train-v1` dựng từ `vimedcss_train@v2` (không dựng lại; catalog đã trừ span bench). Gói Colab cần gói lại (`pack_ft_bundle.py` mặc định = bộ pool cuối, xem dưới).
+- [x] **Dấu vân tay âm thanh (18/11):** `core.audiofp` (Haitsma–Kalker, 5.5 kHz, 33 băng; đối chứng resample 8 kHz / nhiễu 20 dB / cắt 0.3 s / ogg: khớp 117/118, 0 khớp nhầm) + `dataset.release.acoustic_audit` (cache `data/tmp/audiofp/cache.npz`). Bắt được trùng mà sha / `source_key` / text không thấy.
+  - Pool v3 × mọi bench khoá (19 336 × 45 130 câu, 18 phút): 15 cặp. Thật: E0 `3655_2-27` ⊂ train `3656_2-28` (BER 0.025, video đăng lại); Bud500 test ↔ `vss_0037945` của distill (BER 0.045, cùng audio gốc). Trùng giọng kênh: 6 câu ViMedCSS train chung câu mở đầu theo mẫu với C0 / E0 (BER 0.13–0.28).
+  - `clean_pool` mặc định chạy dấu vân tay: BER ≤ 0.10 bỏ cả nguồn, cao hơn bỏ câu; tự kiểm lại sau lọc. `vimedcss_train@v4` (3 868 câu / 7.53 h, bỏ 13), `distill@v4` (1 867 câu, bỏ cả video 22 câu); errata v3 → v4.
+  - **Bộ pool cuối:** `vimedcss_train@v4`, `distill@v4`, `vivos_train@v3`, `confusable_train@v3`, `cv_other@v3`, `vss_cs@v3`. *Đã kiểm:* dấu vân tay **0 cặp** (`reports/leak/acoustic_final`), `leakgate` hash **0 critical**, 0 / 820 thuật ngữ giữ riêng. Test 24/24 (+3 ca dấu vân tay).
+  - `make_dev_split --candidates` giờ áp cùng luật cho dev_v2: sha + bỏ audio im lặng, text gần trùng (`--near-threshold`), dấu vân tay dev × (bench khoá + pool train) (`--no-acoustic` để tắt).
+  - Datasheet mục 7 ý 14: ghi các câu bench bị nhiễm (E0 v1.1 khoá, không sửa; bản sau nên loại + tách ViMedCSS theo kênh). Lát "video chưa thấy" có ≥ 2 câu đã có trong ViMedCSS train.
+  - Không bắt được: cùng người nói nhưng đoạn khác (trừ khi cùng ID nguồn), audio đổi tốc độ / cao độ.
 
-### 2d. Chất lượng nhãn giả (IP-10 · R11 R24) · công cụ + phiếu xong 17/11, chờ 👤 nghe
+### 2d. Chất lượng nhãn giả (IP-10 · R11 R24) ✅ 18/11: ĐẠT (giữ vss_cs có điều kiện), 1 người nghe
 - [x] `dataset/pseudolabel/listen_sample.py`, gồm `sample` và `score`. Phiếu theo định dạng `review_bench.html` (nghe từng câu: ok / fix / drop; `term_review_page` là duyệt theo thuật ngữ nên không hợp).
   - Đã sinh `data/listen/vss_cs_v1/`: `listen_A.csv` **300 câu** = 240 câu giữ (12 ô × 20, đủ cả 12 ô) + 60 câu bị loại sát ranh giới (30 `vi_wer` 0.15–0.25, 30 còn span chưa xác nhận); `listen_B.csv` 60 câu chung cho người nghe thứ hai; audio local 249 câu chép vào `audio/` (102 MB), 51 câu đối chứng dùng URL HF (công khai, đã kiểm 200).
   - Phiếu nghe mù: không có cột ô / giữ-loại / hyp; khoá ở `sample_key.csv` (đừng mở khi nghe).
-- [ ] 👤 Nghe `listen_A.csv` (mở `src/gipbench/dataset/label/review_bench.html`, chọn thư mục `audio/`, xuất CSV thành `listen_A_reviewed.csv`). Nếu có người thứ hai: `listen_B.csv`. Rồi chạy `python -m gipbench.dataset.pseudolabel.listen_sample score --dir data/listen/vss_cs_v1 [--review-b listen_B_reviewed.csv]`.
-  - Xong khi: `score.md` có tỉ lệ lỗi span kèm CI95 Wilson. **Bỏ vss_cs nếu cận dưới CI95 lỗi span > 10%** (luật audit E.3, tự in quyết định).
+- [x] 👤 Nghe `listen_A.csv` → `listen_A_reviewed.csv` (300 / 300 câu: ok 210, fix 78, drop 12). Chấm: `PYTHONPATH=src python -m gipbench.dataset.pseudolabel.listen_sample score --dir data/listen/vss_cs_v1` → `score.md` / `score.json`.
+  - Luật đăng ký trước: bỏ vss_cs nếu cận dưới CI95 lỗi span > 10%. **Kết quả: lỗi span 5.1% [3.4, 7.7] trên 408 span (236 câu giữ) → GIỮ có điều kiện.** Ca xấu nhất (coi 4 câu giữ bị drop là sai hết span): 6.7% [4.7, 9.6], vẫn đạt.
+  - Câu có ≥ 1 span sai 7.6% [4.9, 11.7]; WER phần Việt của nhãn 0.5%. Lỗi tập trung ở thuật ngữ **tần suất thấp** (7.2% [4.4, 11.6] so với cao 3.0% [1.4, 6.4]).
+  - ⚠️ **Câu có từ Anh không tag / viết kiểu Việt: 13.6% [9.8, 18.5]** (vd. "va li" = value, "bo" = bar, "heo cai" = health care). Đây là lỗi recall, không nằm trong luật span. Train trên vss_cs sẽ dạy model một phần "Anh viết kiểu Việt"; khi đọc X4 phải xem cả `cs_recall`, không chỉ CS-WER.
+  - Đối chứng: `span_unconfirmed` bị loại đúng (96% câu có span sai). `vi_wer_boundary` (0.15–0.25) chỉ 19.1% span sai, tức ngưỡng 0.15 đang loại nhầm khá nhiều; có thể nới lên 0.20 nếu cần thêm giờ (phải nghe lại mẫu sau khi nới).
+  - [ ] (tuỳ chọn) Người nghe thứ hai làm `listen_B.csv` để có kappa. Hiện chỉ 1 người nghe nên chưa có kappa, cần ghi rõ khi báo X4.
 
 ### 2e. Độ phủ domain CS (R10) · thống kê xong 17/11, chờ 👤 nguồn
 - [x] `dataset.report.cs_coverage` → [reports/data/cs_coverage.md](reports/data/cs_coverage.md). CS train **sau 2c**: medical 6.07 h (ViMedCSS@v2), vss_cs 5.76 h (80% `other` podcast). **4 domain mục tiêu cộng lại 0.43 h**: tech 0.20 h / 38 nguồn, edu 0.11 / 26, finance 0.10 / 22, pubadmin 0.02 / 4. Domain nào cũng thiếu ~1.8–2 h so với ngưỡng đề xuất 2 h / 30 nguồn.
@@ -152,6 +170,34 @@ Mục đích: không có test trong train, không có từ vựng bench trong kh
   - [ ] ≥ 1 500 câu CS, ≥ 4 domain, ≥ 100 người nói; dev VI ≥ 1 h tự nhiên;
   - [ ] **kiểm đại diện:** chấm checkpoint `ck4132` (E3 v1) trên dev_v2 thì phải thấy **xấu đi** như trên bench. Nếu dev_v2 vẫn báo "tốt lên" thì dev_v2 chưa dùng được.
 - ⛔ **NO-GO:** nếu 2e không tìm được đủ CS tự nhiên ngoài y khoa, dừng ở đây và chuyển sang thu dữ liệu.
+- **Kiểm 18/11: dữ liệu local không đủ cho dev_v2 đạt chuẩn.** 159 video VSS chưa vào pool nào phần lớn là phỏng vấn tiếng
+  Anh (nhãn giả vô nghĩa); mọi video VSS có CS thật đã ở `vss_cs` / `distill`. Parquet G-Group chính là test của G0 / C1.
+  Nhãn VSS do họ Zipformer / Gipformer sinh (cùng họ model đang FT) nên làm tham chiếu dev phải nghe kiểm.
+
+### 3b. Dev TẠM (người dùng chọn 18/11), chờ 👤 nghe
+Dev tạm này mở đường cho smoke test, X0 và chọn checkpoint. **Không thay** dev_v2 đạt chuẩn ở trên. Lệnh ở
+[RUNBOOK](docs/RUNBOOK.md#dev-độc-lập).
+- [x] `dataset.release.holdout_dev` (`select` / `apply`): giữ lại video theo hash ổn định, bỏ **cả video** khỏi train,
+  phiếu nghe theo định dạng 2d. Câu đã nghe ở 2d mà nhãn không đổi thì dùng lại quyết định cũ. Test: `tests/dataset/test_holdout_dev.py`
+  (15 / 15).
+  - `data/listen/dev_interim_cs/`: 95 / 336 video của `vss_cs@v3`, **476 câu / 1.74 h**. Phiếu **401 câu** (75 câu dùng lại từ 2d).
+  - `data/listen/dev_interim_vi/`: 24 / 118 video của `distill@v4`, **365 câu thuần Việt / 1.30 h**. Phiếu **365 câu**.
+- [x] Pool train bỏ các video đó, đã đăng ký: `pool/vss_cs@v4` (1 087 câu / 4.01 h / 241 video), `pool/distill@v5`
+  (1 394 câu / 5.02 h / 93 nguồn). `clean_pool` 0 critical. `pack_ft_bundle` mặc định dùng hai pool này.
+- [x] `make_dev_split --interim --carved-from …`: đòi mọi câu có nhãn người (`label_source: human:*`). Ngưỡng CS ≥ 300 câu,
+  VI ≥ 1 h. Release gắn `interim: true, representative: false, speaker_unit: video, carved_from`. Thêm: video VSS
+  không còn được đếm là người nói (`is_video_unit`), và dev VI không tạm vẫn từ chối đơn vị video.
+- [x] `e4_x0.yaml` trỏ `dev/dev_interim_{cs,vi}@1`. Stage 0 sẽ dừng với lỗi "chưa có release" cho tới khi nghe xong.
+- [ ] 👤 Nghe `data/listen/dev_interim_cs/listen.csv` (401 câu) và `data/listen/dev_interim_vi/listen.csv` (365 câu) bằng
+  `review_bench.html` (thư mục audio = `audio/` cạnh phiếu). Xuất thành `listen_reviewed.csv` trong cùng thư mục.
+  Với VI: sửa chữ cho đúng; câu thật ra có từ Anh thì gắn `<en>`, câu đó sẽ tự rời dev VI.
+  - Bản gộp để nghe một lượt: `data/listen/pending_all/listen.csv` (766 câu: 401 CS rồi 365 VI, cột `split` ghi phiếu gốc; audio là hardlink). Nghe bản gộp thì xuất `data/listen/pending_all/listen_reviewed.csv` và chạy `apply` với `--review` trỏ tới file đó (mỗi `apply` chỉ lấy id của phiếu mình).
+- [ ] Sau khi nghe: `holdout_dev apply` → `make_dev_split --interim … --release dev/dev_interim_{cs,vi}@1` (lệnh ở RUNBOOK).
+- ⚠️ **Giới hạn (ghi vào mọi báo cáo dùng dev tạm):**
+  - cùng phân phối với vss_cs train (podcast, 80% `other`), giống thiết kế `dev_cs@e3_v1` từng báo "tốt lên" sai;
+  - không đủ 4 domain; đơn vị người nói = video;
+  - **không chấm được checkpoint E3 / `ck4132`**: chúng train trên `carved_from`, nên phép "kiểm đại diện" ở trên không làm được với dev tạm;
+  - chỉ có nghĩa cho X0 (replay VI) và chọn checkpoint. Muốn claim "general" vẫn cần dev_v2 đạt chuẩn hoặc bench khoá.
 
 ---
 
@@ -198,11 +244,13 @@ Luật cho **mọi** lần chạy:
   - [x] Kiểm riêng 10.557 câu replay VIVOS v2 với 6 benchmark khoá và 820 thuật ngữ giữ riêng. Kết quả 0 critical theo metadata. Stage 0 đầy đủ còn chờ hai release dev.
   - Xong khi: `--stages 0-6 --dry-run` in lệnh; stage 0 thoát 0.
 - [ ] **X0** · FT chỉ replay tiếng Việt nhãn người, LR 3e-4, đóng băng embed + 2 stack. Câu hỏi: pipeline có tự gây hại không?
-  - Đạt nếu ΔWER dev VI ≤ +0.3. ⛔ Không đạt thì lỗi nằm ở recipe (LR / scheduler / drop_ctc): **dừng mọi thí nghiệm CS**, sửa recipe trước.
+  - **18/11 (người dùng chọn): X0 không dùng dev.** `select.rule: fixed_last` (checkpoint cuối, không WiSE-FT), đăng ký trước. Valid loss của icefall tính trên 200 câu train, chỉ để theo dõi. Dry-run 0–6 đạt; test `test_model_pipeline` có 3 ca mới cho luật này.
+  - Đạt nếu ΔWER **G0** (chấm bench khoá đúng 1 lần trên artifact) ≤ +0.3 và cận trên CI95 ≤ +0.5; trước 18/11 tiêu chí này đo trên dev VI. ⛔ Không đạt thì lỗi nằm ở recipe (LR / scheduler / drop_ctc): **dừng mọi thí nghiệm CS**, sửa recipe trước.
+  - So X1+ với X0 cùng luật: chọn lại X0 trên dev tạm, không cần train lại (checkpoint được giữ): `--stages 5-6 --set "dev={cs: dev/dev_interim_cs@1, vi: dev/dev_interim_vi@1}" --set select.rule=cs_wer`.
 - [ ] **X1** · sweep LR 1e-4 / 3e-4 / 1e-3. Chọn LR lớn nhất còn đạt X0.
 - [ ] **X2** · chỉ train decoder + joiner (đóng băng encoder). Nếu đạt ≥ 50% lợi ích của X3 thì vấn đề chính là thiên lệch ngôn ngữ, không phải âm học.
 - [ ] **X3** · X1 + CS thật đã lọc video, trần lặp ≤ 8. Đạt nếu CI95 Δ CS-WER < 0 ở ≥ 2 domain ngoài y khoa.
-- [ ] **X4** · X3 + vss_cs (chỉ khi 2d đạt). Bỏ vss_cs nếu không tốt hơn X3.
+- [ ] **X4** · X3 + vss_cs (2d ĐẠT 18/11, lỗi span 5.1% [3.4, 7.7]). Bỏ vss_cs nếu không tốt hơn X3. Báo kèm `cs_recall` vì 13.6% câu nhãn có từ Anh không tag.
 - [ ] **X5** · X3 + TTS 10 / 30% (lexicon từ `catalog/train-v1`, không từ bench). Đo `term_recall` trên thuật ngữ `ft_unseen`.
 - [ ] **X6** · checkpoint tốt nhất × greedy / beam / LM.
 - [ ] Mỗi lần chạy: model_card có leak report, số lượt lặp, seed, sampler state.
@@ -232,7 +280,7 @@ Mỗi hướng tác động vào một chỗ **khác cơ chế** của hệ. Bi�
 | Mã | Nhóm | Hướng | Cơ chế (1 câu) | Mở khoá khi | Repo 17/11 |
 | --- | --- | --- | --- | --- | --- |
 | D1 | Dữ liệu | CS tự nhiên ngoài y khoa có id người nói | đúng phân phối mục tiêu; lệch domain là nguyên nhân mạnh nhất khiến E3 hỏng | 👤 2e | chưa có nguồn |
-| D2 | Dữ liệu | Nhãn giả có kiểm soát (teacher khác họ, vote nhiều model, lọc ngữ âm) | tăng CS thật rẻ, sửa lệch "chỉ giữ từ Anh dễ" | 2d đạt | `pseudolabel/` có, chưa nghe mẫu |
+| D2 | Dữ liệu | Nhãn giả có kiểm soát (teacher khác họ, vote nhiều model, lọc ngữ âm) | tăng CS thật rẻ, sửa lệch "chỉ giữ từ Anh dễ" | 2d đạt | 2d ĐẠT 18/11 (vss_cs, 1 người nghe) |
 | D3 | Dữ liệu | TTS CS (≥ 20 giọng, ≥ 3 cách đọc / thuật ngữ) | phủ thuật ngữ hiếm / `ft_unseen` | `catalog/train-v1`; = X5 | `dataset/synth/` có, chưa có audio |
 | D4 | Dữ liệu | Ghép cụm audio thuật ngữ vào câu Việt thật | rẻ hơn TTS cả câu, giữ âm học Việt thật | so trực tiếp với D3 | chưa có |
 | D5 | Dữ liệu | Augment kênh / nhiễu (MUSAN, codec 8 kHz, RIR) | general = môi trường thu đa dạng | lát kênh G0 (Phần 4) | `--enable-musan False` |
@@ -291,6 +339,8 @@ Thứ tự khuyến nghị:
 
 1. ~~Bước 0, 1a, 1b, 2a, 2b (công cụ)~~ ✅ 17/11.
 2. ~~👤 Chốt `reserved_terms_v1`, dựng `catalog/train-v1`~~ ✅ 18/11.
-3. ~~**2c** dọn dữ liệu train~~ ✅ 17/11. 👤 Nghe phiếu `data/listen/vss_cs_v1/listen_A.csv` (2d, ~300 câu × ~14 s).
+3. ~~**2c** dọn dữ liệu train~~ ✅ 17/11. ~~👤 Nghe phiếu 2d~~ ✅ 18/11: lỗi span 5.1% [3.4, 7.7], ĐẠT → X4 được phép chạy.
 4. ~~**1d**~~ ✅ 18/11 (datasheet 8d). ~~Khoá `code_switch_v1_1` / `external_v1_1`~~ ✅ 18/11. **Phần 1 xong.**
 5. 👤 Nguồn CS tự nhiên ngoài y khoa có id người nói (cho `dev_v2`, Phần 3).
+6. **X0 chạy được** (không cần dev): gói lại Drive (`pack_ft_bundle.py`), cập nhật nhánh remote, chạy trên Colab.
+7. 👤 Nghe dev tạm (Phần 3b) trước X1, nghe dần được: `data/listen/pending_all/listen.csv`, có gợi ý chỗ ASR lệch.

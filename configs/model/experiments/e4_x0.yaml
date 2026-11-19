@@ -6,16 +6,20 @@ leak_guard: bench/general-v1.0
 leak_gate:
   mode: fail
   reserved_terms: configs/dataset/reserved_terms_v1.txt
-dev:
-  cs: dev/dev_v2_cs@1
-  vi: dev/dev_v2_vi@1
+  # đọc file khi thiếu audio_sha256 (pool v3 đã có sha nên chỉ bench / dev thiếu sha mới bị băm). Chế độ metadata để lọt
+  # trùng audio từng byte của video đăng lại (18/11: ViMedCSS 5189-55 = E0 test 5190-56).
+  audio_sha: hash
+# X0 KHÔNG dùng dev (người dùng chọn 18/11, đăng ký trước khi chạy): select.rule fixed_last bên dưới. Dev tạm
+# (dev/dev_interim_{cs,vi}@1, TODO 3b) dùng từ X1. Để so X1+ với X0 cùng luật: chạy lại stage 5–6 của X0 với dev tạm
+# (checkpoint được giữ, keep_last_k) bằng --set dev.cs=... dev.vi=... select.rule=cs_wer, không cần train lại.
+dev: null
 seeds: [0, 1]
 
 pools:
   replay_human:
     weight: 1.0
     datasets: [vivos]
-    refs: [pool/vivos_train@v2]
+    refs: [pool/vivos_train@v3]
 
 features: {speed_perturb: true, phone_sim: 0.3}
 mix: {epochs: 2, epoch_hours: 20, max_views: 8}
@@ -34,7 +38,11 @@ train:
   watchdog: {min_free_disk_gb: 5, min_ram_mb: 1024, ram_grace_s: 180, hang_s: 600, poll_s: 60}
 
 select:
-  rule: cs_wer
+  # luật cố định (đăng ký trước 18/11): checkpoint cuối, không WiSE-FT (alpha 1.0), không nhìn dev / bench.
+  # Chấm bench khoá đúng một lần trên artifact này. Các ngưỡng max_* bên dưới chỉ dùng khi chọn lại trên dev.
+  rule: fixed_last
+  fixed_wise_alpha: 1.0
+  valid_rows: 200
   max_vi_delta: 0.3
   max_vi_ci_upper: 0.5
   max_vi_hallucination_delta: 0.0

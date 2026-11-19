@@ -29,6 +29,35 @@ def sha256_file(path, bufsize: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
+def audio_check(path) -> Dict:
+    """Đọc file audio một lần: {"sha256", "defect"}. defect: "missing" (không có file) | "empty" (WAV không có mẫu, vd
+    file 44 byte) | "digital_silence" (WAV mọi mẫu bằng 0) | "unchecked" (không phải WAV: chỉ có sha) | None (có tín hiệu).
+    File im lặng / rỗng trùng sha với nhau dù khác video (cùng độ dài là đủ), nên không được coi là bằng chứng rò rỉ;
+    câu có nhãn mà audio im lặng là dữ liệu hỏng (train dạy model sinh chữ từ im lặng)."""
+    import io
+    import wave
+    p = Path(path) if path else None
+    if p is None or not p.exists():
+        return {"sha256": None, "defect": "missing"}
+    data = p.read_bytes()
+    out = {"sha256": hashlib.sha256(data).hexdigest(), "defect": None}
+    if p.suffix.lower() != ".wav":
+        out["defect"] = "unchecked"
+        return out
+    try:
+        with wave.open(io.BytesIO(data), "rb") as w:
+            frames = w.readframes(w.getnframes())
+            zero = b"\x80" if w.getsampwidth() == 1 else b"\x00"
+    except (wave.Error, EOFError):
+        out["defect"] = "unchecked"
+        return out
+    if not frames:
+        out["defect"] = "empty"
+    elif frames.count(zero) == len(frames):
+        out["defect"] = "digital_silence"
+    return out
+
+
 def dup_key(text: str) -> str:
     """Khoá so trùng text: bỏ tag, chuẩn chính tả v1, token hoá như bench (số -> chữ, bỏ dấu câu)."""
     return " ".join(basic_tokens(canon_v1(plain_text(text or ""))))
@@ -157,9 +186,10 @@ def _overlap(kind: str, test: Sequence[Dict], train: Sequence[Dict], field: str,
 
 
 def near_duplicates(test: Sequence[Dict], train: Sequence[Dict], threshold: float = 0.8, n: int = 5,
-                    min_chars: int = 20, stop_df: int = 2000) -> List[Dict]:
+                    min_chars: int = 20, stop_df: int = 2000, best_only: bool = True) -> List[Dict]:
     """Cặp (test, train) có Jaccard shingle ký tự >= threshold nhưng KHÔNG trùng hẳn. Câu ngắn (< min_chars ký tự sau
-    chuẩn hoá) bỏ qua (dễ trùng ngẫu nhiên). Shingle xuất hiện trong > stop_df câu train bị bỏ khỏi chỉ mục."""
+    chuẩn hoá) bỏ qua (dễ trùng ngẫu nhiên). Shingle xuất hiện trong > stop_df câu train bị bỏ khỏi chỉ mục.
+    best_only: mỗi câu test chỉ trả cặp có Jaccard cao nhất (báo cáo); False = mọi câu train đạt ngưỡng (để lọc train)."""
     tr = []
     for r in train:
         k = dup_key(row_text(r))
@@ -178,17 +208,18 @@ def near_duplicates(test: Sequence[Dict], train: Sequence[Dict], threshold: floa
             continue
         sh = shingles(k, n)
         cand = Counter(j for s in sh for j in idx.get(s, ()))
-        best = None
+        found = []
         for j, c in cand.most_common(20):
             tid, tk, tsh = tr[j]
             if tk == k:
                 continue
             jac = len(sh & tsh) / len(sh | tsh)
-            if jac >= threshold and (best is None or jac > best[0]):
-                best = (jac, tid, tk)
-        if best:
-            out.append({"test_id": r["id"], "train_id": best[1], "jaccard": round(best[0], 3),
-                        "test_text": k, "train_text": best[2]})
+            if jac >= threshold:
+                found.append((jac, tid, tk))
+        if best_only and found:
+            found = [max(found, key=lambda x: x[0])]
+        out += [{"test_id": r["id"], "train_id": tid, "jaccard": round(jac, 3), "test_text": k, "train_text": tk}
+                for jac, tid, tk in found]
     return out
 
 

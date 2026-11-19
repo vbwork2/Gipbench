@@ -1,0 +1,189 @@
+{
+ "matches": [
+  {
+   "bench": "bench/code-switch-v1.0",
+   "test_id": "c0_vmc_Med_CS-484-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-4160-2",
+   "ber": 0.239,
+   "overlap_s": 2.18,
+   "offset_s": 0.44
+  },
+  {
+   "bench": "bench/code-switch-v1.0",
+   "test_id": "c0_vmc_Med_CS-484-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.275,
+   "overlap_s": 2.97,
+   "offset_s": 0.65
+  },
+  {
+   "bench": "bench/code-switch-v1.0",
+   "test_id": "c0_vmc_Med_CS-486-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.156,
+   "overlap_s": 3.62,
+   "offset_s": -0.02
+  },
+  {
+   "bench": "bench/code-switch-v1.1",
+   "test_id": "c0_vmc_Med_CS-484-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-4160-2",
+   "ber": 0.239,
+   "overlap_s": 2.18,
+   "offset_s": 0.44
+  },
+  {
+   "bench": "bench/code-switch-v1.1",
+   "test_id": "c0_vmc_Med_CS-484-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.275,
+   "overlap_s": 2.97,
+   "offset_s": 0.65
+  },
+  {
+   "bench": "bench/code-switch-v1.1",
+   "test_id": "c0_vmc_Med_CS-486-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.156,
+   "overlap_s": 3.62,
+   "offset_s": -0.02
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-145-7",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-285-4",
+   "ber": 0.277,
+   "overlap_s": 3.56,
+   "offset_s": 0.06
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-2749-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-2758-1",
+   "ber": 0.246,
+   "overlap_s": 1.61,
+   "offset_s": -0.01
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-3655_2-27",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-3656_2-28",
+   "ber": 0.025,
+   "overlap_s": 2.62,
+   "offset_s": 0.06
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-4254-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-423-1",
+   "ber": 0.233,
+   "overlap_s": 4.62,
+   "offset_s": 0.0
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-426-2",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.22,
+   "overlap_s": 3.62,
+   "offset_s": -0.02
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-426-2",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-1530-1",
+   "ber": 0.279,
+   "overlap_s": 4.62,
+   "offset_s": -0.77
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-582-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-254-2",
+   "ber": 0.136,
+   "overlap_s": 3.62,
+   "offset_s": -0.02
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_vimedcss_test_Med_CS-582-1",
+   "train_ref": "pool/vimedcss_train@v3",
+   "train_id": "vmc_Med_CS-1530-1",
+   "ber": 0.278,
+   "overlap_s": 4.62,
+   "offset_s": -0.75
+  },
+  {
+   "bench": "bench/external-v1.1",
+   "test_id": "e0_bud500_test-00001-of-00002-1b2cd3ea16a2c5b1_1_122",
+   "train_ref": "pool/distill@v3",
+   "train_id": "vss_0037945",
+   "ber": 0.045,
+   "overlap_s": 1.17,
+   "offset_s": -1.14
+  }
+ ],
+ "train_ids": {
+  "pool/vimedcss_train@v3": [
+   "vmc_Med_CS-1530-1",
+   "vmc_Med_CS-254-2",
+   "vmc_Med_CS-2758-1",
+   "vmc_Med_CS-285-4",
+   "vmc_Med_CS-3656_2-28",
+   "vmc_Med_CS-4160-2",
+   "vmc_Med_CS-423-1"
+  ],
+  "pool/distill@v3": [
+   "vss_0037945"
+  ]
+ },
+ "stats": {
+  "n_train_rows": 19336,
+  "n_train_fp": 19336,
+  "n_bench_rows": 71382,
+  "n_bench_readable": 45130,
+  "n_bench_unreadable": 26252,
+  "n_bench_unique_audio": 45130,
+  "n_matches": 15,
+  "pairs_by_bench_train": {
+   "bench/external-v1.1 <- pool/vimedcss_train@v3": 8,
+   "bench/code-switch-v1.0 <- pool/vimedcss_train@v3": 3,
+   "bench/code-switch-v1.1 <- pool/vimedcss_train@v3": 3,
+   "bench/external-v1.1 <- pool/distill@v3": 1
+  },
+  "max_ber": 0.3,
+  "min_overlap_s": 1.0,
+  "sec_train_fp": 281.2,
+  "sec_bench_fp": 757.4,
+  "sec_match": 33.6
+ },
+ "train": [
+  "pool/vimedcss_train@v3",
+  "pool/vivos_train@v3",
+  "pool/confusable_train@v3",
+  "pool/cv_other@v3",
+  "pool/vss_cs@v3",
+  "pool/distill@v3"
+ ],
+ "bench": [
+  "bench/general-v1.0",
+  "bench/code-switch-v1.0",
+  "bench/cs-ggroup-v1.0",
+  "bench/external-v1.0",
+  "bench/code-switch-v1.1",
+  "bench/external-v1.1"
+ ]
+}

@@ -17,6 +17,9 @@ from gipbench.core import paths
 from gipbench.core.paths import REPO
 
 REQUIRED = ["name", "base_model", "catalog", "leak_guard", "dev", "pools", "output"]
+# Luật chọn không cần dev (đăng ký trước): checkpoint cuối, WiSE-FT một alpha cố định (select.fixed_wise_alpha, mặc định
+# 1.0 = không nội suy). dev: null. Checkpoint vẫn được giữ (keep_last_k) để chọn lại trên dev sau này nếu cần.
+FIXED_RULE = "fixed_last"
 
 
 def _set(d, dotted, value):
@@ -47,6 +50,11 @@ def load(path, overrides=()):
     missing = [k for k in REQUIRED if k not in exp]
     if missing:
         raise SystemExit(f"{path}: thiếu khoá {missing}")
+    rule = (exp.get("select") or {}).get("rule")
+    if not exp["dev"] and rule != FIXED_RULE:
+        raise SystemExit(f"{path}: dev rỗng chỉ dùng được với select.rule: {FIXED_RULE} (luật chọn cố định đăng ký trước)")
+    if exp["dev"] and rule == FIXED_RULE:
+        raise SystemExit(f"{path}: select.rule {FIXED_RULE} không dùng dev; đặt dev: null cho rõ")
     ctx = {"exp_root": paths.get("exp_root"), "results_root": paths.get("results_root"),
            "icefall": paths.get("icefall"), "repo": str(REPO), "name": exp["name"]}
     exp = _expand(exp, ctx)

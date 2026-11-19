@@ -163,10 +163,134 @@ def test_cv_pool(d: Path):
                              for r in rows), rows[:1])
 
 
+def _wav(path: Path, samples, rate=16000):
+    import struct
+    import wave
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+    return str(path)
+
+
+def test_clean_pool_v3(d: Path):
+    """18/11: cổng mặc định để lọt (1) audio im lặng / rỗng có nhãn, (2) video ViMedCSS đăng lại dưới YouTube ID khác
+    (trùng sha audio, hoặc nhiều câu gần trùng text), vì source_key chỉ so ID."""
+    from gipbench.core.decontam import audio_check
+    from gipbench.dataset.release.clean_pool import clean, hash_refs, screen_audio, verify
+    a = d / "v3"
+    voiced = [(i * 37) % 2000 - 1000 for i in range(16000)]
+    p_voiced = _wav(a / "voiced.wav", voiced)
+    p_voiced2 = _wav(a / "voiced_copy.wav", voiced)                       # cùng byte, khác file
+    p_other = _wav(a / "other.wav", [(i * 11) % 500 for i in range(8000)])
+    p_sil = _wav(a / "sil.wav", [0] * 16000)
+    p_sil_b = _wav(a / "sil_bench.wav", [0] * 16000)                     # im lặng cùng độ dài ở bench: cùng sha
+    p_empty = _wav(a / "empty.wav", [])
+    (a / "x.mp3").write_bytes(b"ID3fake")
+    check("audio_check: phân loại có tín hiệu / im lặng / rỗng / không phải WAV / thiếu file",
+          [audio_check(p)["defect"] for p in (p_voiced, p_sil, p_empty, str(a / "x.mp3"), str(a / "none.wav"))]
+          == [None, "digital_silence", "empty", "unchecked", "missing"])
+    check("audio_check: im lặng cùng độ dài trùng sha (nên không được coi là rò rỉ)",
+          audio_check(p_sil)["sha256"] == audio_check(p_sil_b)["sha256"])
+
+    yt = lambda v: {"speaker": f"yt_{v}", "source": f"yt_{v}"}  # noqa: E731
+    bench = [row("b1", "câu bench có tín hiệu", _audio_path=p_voiced, **yt("BENCHVID001")),
+             row("b2", "câu bench audio im lặng", _audio_path=p_sil_b, **yt("BENCHVID002")),
+             row("b3", "về siêu âm có thể thấy hình ảnh giãn mạch rối loạn dòng máu trên doppler màu", **yt("BENCHVID003")),
+             row("b4", "hình ảnh thứ hai và thứ ba là hình ảnh trên siêu âm doppler màu thấy các dòng rối", **yt("BENCHVID003")),
+             row("b5", "trong số các nghiên cứu đó phải kể đến tiến sĩ edward howell người mỹ", **yt("BENCHVID004")),
+             row("b6", "người đọc đọc một câu khá dài trong kịch bản của bộ đọc này", dataset="vivos", domain="read",
+                 speaker="vivos_VIVOSDEV01")]
+    pool = [row("p1", "lời khác hẳn nhưng audio giống hệt", _audio_path=p_voiced2, **yt("REUPLOAD001")),  # đăng lại: trùng sha
+            row("p2", "câu khác trong video đăng lại", _audio_path=p_other, **yt("REUPLOAD001")),
+            row("p3", "câu nhãn có mà audio im lặng", _audio_path=p_sil, **yt("SILENTVID01")),
+            row("p4", "câu thật của video có câu im lặng", _audio_path=p_other, **yt("SILENTVID01")),
+            row("p5", "về siêu âm có thể thấy hình ảnh giãn mạch rối loạn dòng máu trên doppler màu thay đổi tốc độ",
+                _audio_path=p_other, **yt("REUPLOAD002")),                                         # 2 câu gần trùng -> cả nguồn
+            row("p6", "hình ảnh thứ hai và thứ ba là hình ảnh trên siêu âm doppler màu có thể thấy các dòng rối",
+                _audio_path=p_other, **yt("REUPLOAD002")),
+            row("p7", "câu thứ ba của video đăng lại", _audio_path=p_other, **yt("REUPLOAD002")),
+            row("p8", "trong số các nghiên cứu đó phải kể đến tiến sĩ edward howell người anh", _audio_path=p_other,
+                **yt("ONENEARVID1")),                                                               # 1 câu gần trùng
+            row("p9", "câu sạch của video chỉ có một câu gần trùng", _audio_path=p_other, **yt("ONENEARVID1")),
+            row("p10", "người đọc đọc một câu khá dài trong kịch bản của bộ đọc kia", dataset="vivos", domain="read",
+                speaker="vivos_VIVOSSPK01", _audio_path=p_other)]
+    try:
+        screen_audio([row("q", "x", _audio_path=str(a / "none.wav"))])
+        check("screen_audio: thiếu file audio thì dừng", False)
+    except SystemExit:
+        check("screen_audio: thiếu file audio thì dừng", True)
+    ok, bad, ast = screen_audio(pool)
+    check("screen_audio: bỏ câu audio im lặng, ghi audio_sha256 cho mọi câu còn lại",
+          [r["id"] for r in bad] == ["p3"] and bad[0]["drop_reason"] == "audio_digital_silence"
+          and all(r.get("audio_sha256") for r in ok), (bad, ast))
+    refs = [("bench/x", bench)]
+    hst = hash_refs(refs)
+    check("hash_refs: băm bench thiếu sha, đánh dấu bench im lặng (không vào chỉ mục)",
+          bench[0].get("audio_sha256") and bench[1].get("_silent") and not bench[1].get("audio_sha256"), (hst, bench[:2]))
+    keep, drop, st = clean(ok, refs, near_threshold=0.6, near_spread_min=2)
+    ids = {r["id"] for r in keep}
+    check("clean v3: trùng sha audio khác YouTube ID -> bỏ cả video đăng lại", not {"p1", "p2"} & ids, ids)
+    check("clean v3: câu im lặng không làm mất câu thật cùng video", "p4" in ids, ids)
+    check("clean v3: >= 2 câu gần trùng trong một video -> bỏ cả video", not {"p5", "p6", "p7"} & ids, ids)
+    check("clean v3: 1 câu gần trùng -> chỉ bỏ câu đó", "p8" not in ids and "p9" in ids, ids)
+    check("clean v3: gần trùng trong cùng bộ đọc được miễn", "p10" in ids, ids)
+    reasons = {r["id"]: r["drop_reason"] for r in drop}
+    check("clean v3: drop_reason ghi khoá trùng / same_source",
+          reasons.get("p1") == "audio_sha256" and reasons.get("p2") == "same_source" and reasons.get("p8") == "text_near"
+          and reasons.get("p7") == "same_source", reasons)
+    check("clean v3: thống kê đếm nguồn bỏ do gần trùng", st["sources_dropped_near"] == 1, st)
+    ver = verify(keep, refs, 0.6)
+    check("clean v3: kiểm lại 0 critical, 0 câu gần trùng", all(v["critical"] == 0 for v in ver.values()), ver)
+    keep0, _, _ = clean(ok, refs)
+    check("clean: mặc định hàm (near tắt) giữ hành vi cũ cho câu chỉ gần trùng", "p8" in {r["id"] for r in keep0})
+
+
+def test_acoustic_audit(d: Path):
+    """Dấu vân tay âm thanh (core.audiofp): cùng audio đã resample 16 kHz -> 8 kHz, cắt 0.3 s đầu, đổi âm lượng vẫn khớp;
+    audio khác không khớp; audit_acoustic trả đúng id train cần loại."""
+    import numpy as np
+    import soundfile as sf
+    from gipbench.core.audiofp import FPIndex, fingerprint_signal
+    from gipbench.dataset.release.acoustic_audit import audit_acoustic
+    rng = np.random.default_rng(0)
+
+    def speechy(sec, sr=16000):
+        # nhiễu lọc thông dải, đường bao âm tiết ngẫu nhiên: đủ cấu trúc phổ - thời gian như tiếng nói
+        n = int(sec * sr)
+        x = np.convolve(rng.normal(size=n), np.hanning(9), "same")
+        env = np.repeat(rng.uniform(0.05, 1.0, n // 1600 + 1), 1600)[:n]
+        f = np.cumsum(rng.uniform(150, 900, n)) / sr
+        return (0.3 * env * (x * 0.3 + np.sin(2 * np.pi * f))).astype(np.float32)
+
+    a = d / "fp"
+    a.mkdir(parents=True, exist_ok=True)
+    orig = speechy(4.0)
+    other = speechy(4.0)
+    sf.write(a / "orig.wav", orig, 16000)
+    sf.write(a / "other.wav", other, 16000)
+    y = orig[int(0.3 * 16000):]
+    y8 = np.interp(np.linspace(0, len(y) - 1, len(y) // 2), np.arange(len(y)), y).astype(np.float32) * 0.5
+    sf.write(a / "reup.wav", y8, 8000)
+    idx = FPIndex([("orig", *fingerprint_signal(orig, 16000)), ("other", *fingerprint_signal(other, 16000))])
+    m = idx.match(*fingerprint_signal(y8, 8000))
+    check("audiofp: audio resample 8 kHz + cắt đầu + đổi âm lượng khớp đúng clip gốc", [z["train"] for z in m] == ["orig"], m)
+    check("audiofp: audio khác không khớp", idx.match(*fingerprint_signal(speechy(4.0), 16000)) == [])
+    train = [("pool/x", [row("t1", "a", _audio_path=str(a / "orig.wav")), row("t2", "b", _audio_path=str(a / "other.wav"))])]
+    bench = [("bench/y", [row("b1", "c", _audio_path=str(a / "reup.wav")), row("b2", "d", _audio_path=str(a / "none.wav"))])]
+    res = audit_acoustic(train, bench)
+    check("acoustic_audit: báo đúng câu train trùng âm thanh, bỏ qua bench không đọc được",
+          res["train_ids"] == {"pool/x": ["t1"]} and res["stats"]["n_bench_unreadable"] == 1, res)
+
+
 def main():
     d = Path(tempfile.mkdtemp())
     test_clean_pool()
     test_clean_pool_audio_paths(d)
+    test_clean_pool_v3(d)
+    test_acoustic_audit(d)
     test_curate_dedupe(d)
     test_mix_cap()
     test_cv_pool(d)
