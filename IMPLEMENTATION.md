@@ -40,3 +40,13 @@ A hotword-only comparison can set `evaluation_kind` to `decoder_only`. This veri
 ## Follow-up on inconclusive errors
 
 `scripts/diagnostics/fpt_phase2_review.py prepare` selects a seeded sample from the sealed bug-mining split and writes WAVs and an ASR input manifest in `artifacts/phase2_review`. Use the existing `gipbench.infer.asr_hyps` entry point with that manifest and local model snapshots to produce `qwen.jsonl` and `whisper.jsonl` in the same directory. The `probe` stage uses the Icefall model arguments to replay the rank windows on the original audio. The `report` stage joins the local results by recording ID, verifies the hashes of the WAVs used by each ASR model, and writes `reports/phase2_inconclusive_review.md`.
+
+## Reviewed-name decoding preset
+
+`configs/bench/asr_models/gip15_mbs4_fpt_reviewed_names.yaml` enables context biasing for ANDY MURRAY, CHAPLIN, CROWELL and SMITH. It uses beam 4, hotword score 3.0 and one recording per batch. This preset is available through the standard bench transcribe entry point wherever those names are appropriate context.
+
+```sh
+python scripts/diagnostics/fpt_targeted_names.py --model-dir models/gip15
+```
+
+The diagnostic compares the preset with unbiased decoding on the locked development manifests. Its report checks the exact phrases, newly incorrect clean recordings and introduced name triggers. The previous heldout was used for a separate acceptance run.
