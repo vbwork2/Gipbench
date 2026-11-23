@@ -185,3 +185,16 @@ def development_rows(directory: Path, split: str) -> list[dict]:
     if checksum(manifest) != lock["development_sha256"][split]:
         raise ValueError(f"The {split} manifest differs from the sealed copy.")
     return read_rows(manifest)
+
+
+def development_sample(directory: Path, size: int, seed: int) -> list[dict]:
+    """A seeded random sample of the sealed development pool outside bug_mining and clean_control."""
+    lock = json.loads((directory / "heldout_lock.json").read_text(encoding="utf-8"))
+    pool = directory / "full_scored.jsonl"
+    if checksum(pool) != lock["development_pool_sha256"]:
+        raise ValueError("The development pool differs from the sealed copy.")
+    used = {row["utt_id"] for split in ("bug_mining", "clean_control") for row in development_rows(directory, split)}
+    rows = sorted((row for row in read_rows(pool) if row["utt_id"] not in used), key=lambda row: row["utt_id"])
+    if len(rows) < size:
+        raise ValueError(f"The development pool has {len(rows)} unused rows, fewer than {size}.")
+    return Random(seed).sample(rows, size)
