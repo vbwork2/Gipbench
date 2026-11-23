@@ -70,6 +70,7 @@ def run(args: argparse.Namespace) -> None:
         f"Unbiased beam CS-WER: {baseline['cs_wer']:.2%}.",
         f"Terms used: {len(hotwords)}. Omitted unknown BPE terms: {len(candidates - hotwords)}.",
         f"Clean-control utterances already changed by unbiased beam: {len(clean_rows) - len(baseline_clean)}.",
+        "The unbiased beam and hotword runs use the same batches over both development splits.",
         "",
         "| Score | CS-WER | CS-WER gain | Newly changed clean | False hotword triggers | Pareto frontier |",
         "|---:|---:|---:|---:|---:|:---|",
