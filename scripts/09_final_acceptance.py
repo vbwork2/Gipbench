@@ -129,12 +129,15 @@ def run(args: argparse.Namespace) -> None:
     candidate_held, candidate_clean = results[primary]
     decisions = gates(base_held, candidate_held, base_clean, candidate_clean, frozen["candidate_evidence"], config["seed"])
     if evaluation_kind == "decoder_only":
-        decisions["G5"] = {"pass": None, "scope": "No encoder intervention or weight change"}
+        decisions["G5"] = {"pass": None, "scope": "Decoding-only comparison with identical weights"}
     status = "PASS" if all(value["pass"] is not False for value in decisions.values()) else "FAIL"
     lines = [
         "# Final acceptance",
         "",
         f"Primary candidate {primary} compared with {baseline}. Overall result **{status}**.",
+        "",
+        f"Heldout has {len(cases):,} utterances, including {lock['heldout_cs_count']:,} with CS reference tokens. "
+        f"The split unit is {lock.get('split_unit', 'speaker')}.",
         *(
             ["This is a decoding-only evaluation on identical model weights."]
             if evaluation_kind == "decoder_only" else []
@@ -150,10 +153,22 @@ def run(args: argparse.Namespace) -> None:
             f"{metric['cs_wer']:.2%} | {metric['ins_rate']:.2%} |"
         )
     lines.extend(["", "| Gate | Status | Evidence |", "|---|---|---|"])
+    gain, clean_gate, insertion, vietnamese, causal = (decisions[f"G{index}"] for index in range(1, 6))
+    lower, upper = gain["interval"]
+    evidence_text = {
+        "G1": (f"CS-WER gain {gain['gain'] * 100:+.2f} pp, p={gain['p_value']:.4f}, "
+               f"95% CI [{lower * 100:+.2f}, {upper * 100:+.2f}] pp"),
+        "G2": f"{clean_gate['utterances_degraded']}/{len(clean)} newly degraded clean utterances",
+        "G3": f"Insertion rate delta {insertion['insertion_delta'] * 100:+.3f} pp",
+        "G4": f"N-WER delta {vietnamese['n_wer_delta'] * 100:+.3f} pp",
+        "G5": causal["scope"] if causal["pass"] is None else (
+            f"{causal['random_control_count']} random controls, p95={causal['random_p95']}, "
+            f"candidate fix rate={causal['candidate_fix_rate']}"
+        ),
+    }
     for gate, value in decisions.items():
-        evidence = ", ".join(f"{key}={number}" for key, number in value.items() if key != "pass")
         gate_status = "N/A" if value["pass"] is None else "PASS" if value["pass"] else "FAIL"
-        lines.append(f"| {gate} | {gate_status} | {evidence} |")
+        lines.append(f"| {gate} | {gate_status} | {evidence_text[gate]} |")
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with args.report.open("x", encoding="utf-8") as stream:
         stream.write("\n".join(lines) + "\n")
