@@ -1,7 +1,6 @@
 """Check decoder parity and diagnose errors from the locked development split."""
 
 import argparse
-from collections import Counter
 import json
 from pathlib import Path
 from random import Random
@@ -14,7 +13,7 @@ import soundfile
 import torch
 
 from gipformer_mech.fpt import audio_indices, manifest_waveform, parquet_files, recognizer, settings, transcribe
-from gipformer_mech.logit_lens import investigate
+from gipformer_mech.logit_lens import INTERPRETATION, investigate, summarize_findings
 from gipformer_mech.metrics import score
 from gipformer_mech.rnnt_loader import encode, greedy, load_model, resample
 from gipformer_mech.splits import development_rows
@@ -68,28 +67,10 @@ def diagnose(args, model, sp, model_map, config, case) -> dict:
         findings.append({"utt_id": row["utt_id"], "errors": errors})
     if len(findings) != len(rows):
         raise ValueError("Missing audio for at least one bug-mining record.")
-    categories = Counter(error["category"] for row in findings for error in row["errors"])
-    total = sum(categories.values())
-    if not total:
-        raise ValueError("No aligned CS substitution or deletion errors in bug_mining.")
-    share = {key: count / total for key, count in categories.items()}
     return {
-        "error_span_count": total,
-        "category_counts": dict(categories),
-        "category_share": share,
-        "reference_prefix_category_counts": dict(Counter(
-            error["reference_prefix_category"] for row in findings for error in row["errors"]
-        )),
+        **summarize_findings(findings, model_map["blank_id"]),
         "predictor_context": "Tokens actually emitted by PyTorch greedy search before each probed frame.",
-        "decision": {
-            "prioritize_hotwords_and_joiner": share.get("PREDICTOR_OVERRIDE_BUG", 0) >= 0.30,
-            "allow_encoder_sweep": share.get("ENCODER_BUG", 0) >= 0.25,
-            "prepare_finetune": share.get("TRUE_GAP", 0) > 0.70,
-        },
-        "interpretation": (
-            "TRUE_GAP records a tokenizer unknown or absence from the measured top ten. "
-            "It is an operational label, not proof that the acoustic information is absent."
-        ),
+        "interpretation": INTERPRETATION,
         "findings": findings,
     }
 

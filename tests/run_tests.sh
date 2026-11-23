@@ -23,7 +23,7 @@ for f in tests/model/test_*.py; do [ -f "$f" ] && run "$(basename "$f" .py)" pyt
 # đánh giá đa bộ dữ liệu (feat/general-asr): chuẩn hoá có phiên bản, chấm điểm, rò rỉ, registry, adapter
 for f in tests/core/test_*.py tests/infer/test_*.py tests/bench/test_registry.py tests/dataset/test_fetch.py tests/dataset/test_evalsets.py \
          tests/dataset/test_train_catalog.py tests/dataset/test_train_pools.py tests/dataset/test_listen_sample.py tests/dataset/test_colab_bundle.py tests/dataset/test_colab_config.py tests/dataset/test_package.py \
-         tests/dataset/test_llm_context_check.py; do
+         tests/dataset/test_llm_context_check.py tests/mech/test_*.py; do
   [ -f "$f" ] && run "$(basename "$f" .py)" python "$f"
 done
 exit $fail

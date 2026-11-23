@@ -1,7 +1,7 @@
 """Read out intermediate Zipformer activations on the final RNN-T frame grid."""
 
 from bisect import bisect_left
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
 import torch
@@ -86,6 +86,12 @@ def top_at_frames(logits, target: int, frames: list[int], sp) -> dict:
 
 
 def classify(pieces: list[dict], context: str = "full") -> str:
+    """Label one error span from its pieces' best ranks within the probed window.
+
+    NEAR_MISS: every piece is already in the final-stack top ten with this predictor
+    context, but the span was still misrecognized. The answer is available to the
+    Joiner; the loss is in score calibration or the search, not in the encoder.
+    """
     if any(item["unknown"] for item in pieces):
         return "TRUE_GAP"
     if all(item["stacks"][-1]["acoustic"]["best_rank"] <= 10 for item in pieces) and any(
@@ -96,12 +102,53 @@ def classify(pieces: list[dict], context: str = "full") -> str:
         item["stacks"][-1][context]["best_rank"] > 10 for item in pieces
     ):
         return "ENCODER_BUG"
+    if all(item["stacks"][-1][context]["best_rank"] <= 10 for item in pieces):
+        return "NEAR_MISS"
     if all(
         stack[mode]["best_rank"] > 10
         for item in pieces for stack in item["stacks"] for mode in (context, "acoustic")
     ):
         return "TRUE_GAP"
     return "INCONCLUSIVE"
+
+
+INTERPRETATION = (
+    "TRUE_GAP records a tokenizer unknown or absence from the measured top ten. "
+    "It is an operational label, not proof that the acoustic information is absent. "
+    "NEAR_MISS means every target piece was in the final-stack top ten, so the error "
+    "arises after the encoder, in Joiner scores or the search."
+)
+
+
+def blank_led_near_miss(error: dict, blank: int) -> bool:
+    """A greedy-prefix NEAR_MISS where blank leads at least one non-top piece in the final stack."""
+    return error["category"] == "NEAR_MISS" and any(
+        piece["stacks"][-1]["full"]["best_rank"] > 1
+        and piece["stacks"][-1]["full"]["top10"][0]["token_id"] == blank
+        for piece in error["pieces"]
+    )
+
+
+def summarize_findings(findings: list[dict], blank: int) -> dict:
+    """Category counts, shares and Phase 2 decisions over all diagnosed error spans."""
+    errors = [error for row in findings for error in row["errors"]]
+    if not errors:
+        raise ValueError("No aligned CS substitution or deletion errors in bug_mining.")
+    categories = Counter(error["category"] for error in errors)
+    share = {key: count / len(errors) for key, count in categories.items()}
+    return {
+        "error_span_count": len(errors),
+        "category_counts": dict(categories),
+        "category_share": share,
+        "reference_prefix_category_counts": dict(Counter(error["reference_prefix_category"] for error in errors)),
+        "near_miss_blank_led_count": sum(blank_led_near_miss(error, blank) for error in errors),
+        "decision": {
+            "prioritize_hotwords_and_joiner": share.get("PREDICTOR_OVERRIDE_BUG", 0) >= 0.30,
+            "allow_encoder_sweep": share.get("ENCODER_BUG", 0) >= 0.25,
+            "prioritize_score_calibration": share.get("NEAR_MISS", 0) >= 0.30,
+            "prepare_finetune": share.get("TRUE_GAP", 0) > 0.70,
+        },
+    }
 
 
 def greedy_contexts(model, output, lengths, initial: list[int]) -> torch.Tensor:
