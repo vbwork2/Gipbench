@@ -1,6 +1,7 @@
 """Evaluate frozen ONNX configurations once on the sealed FPT holdout."""
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import json
 from pathlib import Path
 import sys
@@ -36,6 +37,30 @@ def freeze_system(directory: Path, system: dict, default_quantization: str) -> d
     return frozen
 
 
+def evaluate_system(name: str, system: dict, cases: list[dict], clean: list[dict],
+                    data_dir: Path, run_dir: Path, config: dict, case: str) -> tuple[list[dict], list[dict]]:
+    rows = cases + clean
+    cached = run_dir / f"{name}.jsonl"
+    if cached.is_file():
+        entries = read_rows(cached)
+        if [row["utt_id"] for row in entries] != [row["utt_id"] for row in rows]:
+            raise ValueError(f"Incomplete cached acceptance scores for {name}.")
+        scores = [row["score_counts"] for row in entries]
+    else:
+        decode_config = {**config, "decode": {**config["decode"], "quantize": system["quantize"]}}
+        hotwords = Path(system["hotwords"]) if system.get("hotwords") else None
+        rec = recognizer(Path(system["model_dir"]), run_dir, decode_config, case,
+                         system["method"], hotwords, system.get("hotwords_score"))
+        predictions = decode_rows(rows, data_dir, rec, config["decode"]["batch_size"])
+        terms = config["text"]["cs_terms"]
+        scores = [score(row["reference"], predictions[row["audio_idx"]], case, terms) for row in rows]
+        temp = cached.with_suffix(".part")
+        write_rows(temp, ({"utt_id": row["utt_id"], "score_counts": counts}
+                          for row, counts in zip(rows, scores, strict=True)))
+        temp.replace(cached)
+    return scores[:len(cases)], scores[len(cases):]
+
+
 def run(args: argparse.Namespace) -> None:
     config, case = settings()
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
@@ -50,6 +75,18 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError("The baseline and primary systems must use the same decoding method.")
     if systems[baseline].get("hotwords"):
         raise ValueError("The acceptance baseline must be unbiased.")
+    evaluation_kind = plan.get("evaluation_kind", "weight_candidate")
+    if evaluation_kind not in {"weight_candidate", "decoder_only"}:
+        raise ValueError("Unknown acceptance evaluation kind.")
+    if evaluation_kind == "decoder_only":
+        first, second = systems[baseline], systems[primary]
+        if (
+            first["model_dir"] != second["model_dir"]
+            or first["quantize"] != second["quantize"]
+            or not second.get("hotwords")
+            or any(second["sha256"].get(path) != digest for path, digest in first["sha256"].items())
+        ):
+            raise ValueError("Decoder-only acceptance requires identical model files and a hotword candidate.")
     if any(not name.isidentifier() for name in systems):
         raise ValueError("System names must be valid identifiers.")
     lock = json.loads((args.manifests / "heldout_lock.json").read_text(encoding="utf-8"))
@@ -60,6 +97,7 @@ def run(args: argparse.Namespace) -> None:
     frozen = {
         "baseline": baseline,
         "primary": primary,
+        "evaluation_kind": evaluation_kind,
         "systems": systems,
         "heldout_sha256": lock["heldout_sha256"],
         "pipeline_sha256": checksum(ROOT / "configs/pipeline.yaml"),
@@ -80,36 +118,27 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError("Heldout size or dataset revision differs from the sealed metadata.")
     if {row["utt_id"] for row in cases} & {row["utt_id"] for row in clean}:
         raise ValueError("Heldout and clean-control utterances overlap.")
-    terms = config["text"]["cs_terms"]
-    results = {}
-    for name, system in systems.items():
-        cached = args.run_dir / f"{name}.jsonl"
-        if cached.is_file():
-            entries = read_rows(cached)
-            if [row["utt_id"] for row in entries] != [row["utt_id"] for row in cases + clean]:
-                raise ValueError(f"Incomplete cached acceptance scores for {name}.")
-            scores = [row["score_counts"] for row in entries]
-        else:
-            decode_config = {**config, "decode": {**config["decode"], "quantize": system["quantize"]}}
-            hotwords = Path(system["hotwords"]) if system.get("hotwords") else None
-            rec = recognizer(Path(system["model_dir"]), args.run_dir, decode_config, case,
-                             system["method"], hotwords, system.get("hotwords_score"))
-            predictions = decode_rows(cases + clean, args.data_dir, rec, config["decode"]["batch_size"])
-            scores = [score(row["reference"], predictions[row["audio_idx"]], case, terms) for row in cases + clean]
-            temp = cached.with_suffix(".part")
-            write_rows(temp, ({"utt_id": row["utt_id"], "score_counts": counts}
-                              for row, counts in zip(cases + clean, scores, strict=True)))
-            temp.replace(cached)
-        results[name] = scores[:len(cases)], scores[len(cases):]
+    with ProcessPoolExecutor(max_workers=min(args.jobs, len(systems))) as workers:
+        evaluations = {
+            name: workers.submit(evaluate_system, name, system, cases, clean, args.data_dir, args.run_dir, config, case)
+            for name, system in systems.items()
+        }
+        results = {name: evaluation.result() for name, evaluation in evaluations.items()}
 
     base_held, base_clean = results[baseline]
     candidate_held, candidate_clean = results[primary]
     decisions = gates(base_held, candidate_held, base_clean, candidate_clean, frozen["candidate_evidence"], config["seed"])
-    status = "PASS" if all(value["pass"] for value in decisions.values()) else "FAIL"
+    if evaluation_kind == "decoder_only":
+        decisions["G5"] = {"pass": None, "scope": "No encoder intervention or weight change"}
+    status = "PASS" if all(value["pass"] is not False for value in decisions.values()) else "FAIL"
     lines = [
         "# Final acceptance",
         "",
         f"Primary candidate {primary} compared with {baseline}. Overall result **{status}**.",
+        *(
+            ["This is a decoding-only evaluation on identical model weights."]
+            if evaluation_kind == "decoder_only" else []
+        ),
         "",
         "| System | Heldout WER | Heldout N-WER | Heldout CS-WER | Heldout insertion rate |",
         "|---|---:|---:|---:|---:|",
@@ -123,7 +152,8 @@ def run(args: argparse.Namespace) -> None:
     lines.extend(["", "| Gate | Status | Evidence |", "|---|---|---|"])
     for gate, value in decisions.items():
         evidence = ", ".join(f"{key}={number}" for key, number in value.items() if key != "pass")
-        lines.append(f"| {gate} | {'PASS' if value['pass'] else 'FAIL'} | {evidence} |")
+        gate_status = "N/A" if value["pass"] is None else "PASS" if value["pass"] else "FAIL"
+        lines.append(f"| {gate} | {gate_status} | {evidence} |")
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with args.report.open("x", encoding="utf-8") as stream:
         stream.write("\n".join(lines) + "\n")
@@ -137,6 +167,7 @@ def main() -> None:
     parser.add_argument("--manifests", type=Path, default=ROOT / "data/manifests")
     parser.add_argument("--run-dir", type=Path, default=ROOT / "artifacts/acceptance")
     parser.add_argument("--report", type=Path, default=ROOT / "reports/final_acceptance.md")
+    parser.add_argument("--jobs", type=int, choices=(1, 2), default=2)
     run(parser.parse_args())
 
 

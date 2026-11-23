@@ -37,6 +37,7 @@ def evaluate(args: argparse.Namespace) -> None:
         "",
         "This run covers the provisional scored pool. No heldout results or speaker-disjoint claims apply."
         if provisional else "This run covers development splits. Heldout is reserved for Phase 7.",
+        "CS-WER includes attributed insertions and can exceed 100% on an error-selected split.",
         "",
         "| Split | Decoder | Utterances | WER | CER | N-WER | CS-WER | Ins | Del | Sub |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",

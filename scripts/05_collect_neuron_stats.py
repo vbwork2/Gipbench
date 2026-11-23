@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 import numpy as np
 import torch
 
-from gipformer_mech.fpt import audio_indices, parquet_files, read_rows, read_waveform, settings
+from gipformer_mech.fpt import audio_indices, manifest_waveform, parquet_files, read_rows, settings
 from gipformer_mech.model_audit import checksum
 from gipformer_mech.rnnt_loader import encode, load_model, resample
 
@@ -64,9 +64,7 @@ def run(args) -> None:
         seen = 0
         with torch.inference_mode():
             for index, raw in audio_indices(parquet_files(args.data_dir), set(selected)):
-                if raw["audio"]["path"] != selected[index]["audio_file"]:
-                    raise ValueError(f"Audio filename mismatch for FPT dataset row {index}.")
-                waveform, rate = read_waveform(raw["audio"]["bytes"])
+                waveform, rate = manifest_waveform(selected[index], raw)
                 waveform = resample(waveform, rate, model_map["sample_rate"])
                 encode(model, waveform, model_map, args.device)
                 seen += 1

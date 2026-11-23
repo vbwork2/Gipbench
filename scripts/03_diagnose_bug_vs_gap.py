@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "src"))
 import soundfile
 import torch
 
-from gipformer_mech.fpt import audio_indices, parquet_files, read_waveform, recognizer, settings, transcribe
+from gipformer_mech.fpt import audio_indices, manifest_waveform, parquet_files, recognizer, settings, transcribe
 from gipformer_mech.logit_lens import investigate
 from gipformer_mech.metrics import score
 from gipformer_mech.rnnt_loader import encode, greedy, load_model, resample
@@ -21,9 +21,10 @@ from gipformer_mech.splits import development_rows
 from gipformer_mech.text_norm import tokens
 
 
-def write_report(path: Path, report: dict) -> None:
+def write_report(path: Path, report: dict, compact: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    format_options = {"separators": (",", ":")} if compact else {"indent": 2}
+    path.write_text(json.dumps(report, ensure_ascii=False, **format_options) + "\n", encoding="utf-8")
     print(f"Wrote {path}")
 
 
@@ -58,9 +59,7 @@ def diagnose(args, model, sp, model_map, config, case) -> dict:
     findings = []
     for index, raw in audio_indices(parquet_files(args.data_dir), set(by_index)):
         row = by_index[index]
-        if raw["audio"]["path"] != row["audio_file"]:
-            raise ValueError(f"Audio filename mismatch for FPT dataset row {index}.")
-        waveform, rate = read_waveform(raw["audio"]["bytes"])
+        waveform, rate = manifest_waveform(row, raw)
         waveform = resample(waveform, rate, model_map["sample_rate"])
         words = tokens(row["reference"], case)
         counts = score(row["reference"], row["baseline_hyp"], case, config["text"]["cs_terms"])
@@ -78,6 +77,10 @@ def diagnose(args, model, sp, model_map, config, case) -> dict:
         "error_span_count": total,
         "category_counts": dict(categories),
         "category_share": share,
+        "reference_prefix_category_counts": dict(Counter(
+            error["reference_prefix_category"] for row in findings for error in row["errors"]
+        )),
+        "predictor_context": "Tokens actually emitted by PyTorch greedy search before each probed frame.",
         "decision": {
             "prioritize_hotwords_and_joiner": share.get("PREDICTOR_OVERRIDE_BUG", 0) >= 0.30,
             "allow_encoder_sweep": share.get("ENCODER_BUG", 0) >= 0.25,
@@ -115,7 +118,7 @@ def main() -> None:
     if not check["passed"]:
         parser.exit(1, f"Parity gate failed at {check['exact_match_rate']:.0%} exact transcript match.\n")
     if not args.parity_only:
-        write_report(args.report, diagnose(args, model, sp, model_map, config, case))
+        write_report(args.report, diagnose(args, model, sp, model_map, config, case), compact=True)
 
 
 if __name__ == "__main__":

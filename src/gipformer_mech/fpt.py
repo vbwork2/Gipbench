@@ -1,6 +1,7 @@
 """Read the pinned FPT FOSD parquet snapshot and score Gipformer ONNX."""
 
 from collections.abc import Iterable, Iterator
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 import json
@@ -49,6 +50,16 @@ def read_waveform(raw: bytes) -> tuple[np.ndarray, int]:
 
     waveform, rate = soundfile.read(BytesIO(raw), dtype="float32", always_2d=True)
     return np.ascontiguousarray(waveform.mean(axis=1)), rate
+
+
+def manifest_waveform(row: dict, raw: dict) -> tuple[np.ndarray, int]:
+    audio = raw["audio"]
+    if audio["path"] != row["audio_file"]:
+        raise ValueError(f"Audio filename mismatch for FPT dataset row {row['audio_idx']}.")
+    expected = row.get("audio_sha256")
+    if expected and sha256(audio["bytes"]).hexdigest() != expected:
+        raise ValueError(f"Audio checksum mismatch for FPT dataset row {row['audio_idx']}.")
+    return read_waveform(audio["bytes"])
 
 
 def recognizer(model_dir: Path, work_dir: Path, config: dict, case: str, method: str,
@@ -100,10 +111,8 @@ def decode_rows(rows: list[dict], data_dir: Path, rec, batch_size: int) -> dict[
         waves.clear()
 
     for index, raw in audio_indices(parquet_files(data_dir), set(wanted)):
-        if raw["audio"]["path"] != wanted[index]["audio_file"]:
-            raise ValueError(f"Audio filename mismatch for FPT dataset row {index}.")
         batch.append(index)
-        waves.append(read_waveform(raw["audio"]["bytes"]))
+        waves.append(manifest_waveform(wanted[index], raw))
         if len(batch) >= batch_size:
             flush()
             if len(hyps) % (batch_size * 32) == 0:

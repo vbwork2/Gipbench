@@ -1,5 +1,6 @@
 """Read out intermediate Zipformer activations on the final RNN-T frame grid."""
 
+from bisect import bisect_left
 from collections import defaultdict
 
 import numpy as np
@@ -84,23 +85,36 @@ def top_at_frames(logits, target: int, frames: list[int], sp) -> dict:
     }
 
 
-def classify(pieces: list[dict]) -> str:
+def classify(pieces: list[dict], context: str = "full") -> str:
     if any(item["unknown"] for item in pieces):
         return "TRUE_GAP"
     if all(item["stacks"][-1]["acoustic"]["best_rank"] <= 10 for item in pieces) and any(
-        item["stacks"][-1]["full"]["best_rank"] > 10 for item in pieces
+        item["stacks"][-1][context]["best_rank"] > 10 for item in pieces
     ):
         return "PREDICTOR_OVERRIDE_BUG"
-    if all(any(stack["full"]["best_rank"] <= 10 for stack in item["stacks"][1:4]) for item in pieces) and any(
-        item["stacks"][-1]["full"]["best_rank"] > 10 for item in pieces
+    if all(any(stack[context]["best_rank"] <= 10 for stack in item["stacks"][1:4]) for item in pieces) and any(
+        item["stacks"][-1][context]["best_rank"] > 10 for item in pieces
     ):
         return "ENCODER_BUG"
     if all(
         stack[mode]["best_rank"] > 10
-        for item in pieces for stack in item["stacks"] for mode in ("full", "acoustic")
+        for item in pieces for stack in item["stacks"] for mode in (context, "acoustic")
     ):
         return "TRUE_GAP"
     return "INCONCLUSIVE"
+
+
+def greedy_contexts(model, output, lengths, initial: list[int]) -> torch.Tensor:
+    """Replay the emitted prefix available before each greedy RNN-T frame."""
+    from beam_search import greedy_search_batch
+
+    trace = greedy_search_batch(model, output, lengths, return_timestamps=True)
+    history = initial + trace.hyps[0]
+    frames = [bisect_left(trace.timestamps[0], frame) for frame in range(output.shape[1])]
+    prefixes = torch.tensor(
+        [history[count:count + len(initial)] for count in frames], device=output.device
+    )
+    return model.joiner.decoder_proj(model.decoder(prefixes, need_pad=False)[:, 0])
 
 
 @torch.inference_mode()
@@ -116,7 +130,7 @@ def investigate(model, sp, model_map: dict, waveform: np.ndarray, words: list[st
 
         handles.append(model.get_submodule(stack["module"]).register_forward_hook(store))
     try:
-        final, _ = encode(model, waveform, model_map, device)
+        final, lengths = encode(model, waveform, model_map, device)
     finally:
         for handle in handles:
             handle.remove()
@@ -131,10 +145,12 @@ def investigate(model, sp, model_map: dict, waveform: np.ndarray, words: list[st
         raise ValueError("Word-by-word BPE does not match utterance tokenization.")
     context = model_map["predictor"]["context_size"]
     blank = model_map["blank_id"]
-    prompt = [-1] * (context - 1) + [blank] + ids
+    initial = [-1] * (context - 1) + [blank]
+    prompt = initial + ids
     contexts = torch.tensor([prompt[i:i + context] for i in range(len(ids) + 1)], device=device)
-    predictor = model.joiner.decoder_proj(model.decoder(contexts, need_pad=False)[:, 0])
-    anchors = align_reference(model, final, predictor, ids, blank)
+    reference_predictor = model.joiner.decoder_proj(model.decoder(contexts, need_pad=False)[:, 0])
+    anchors = align_reference(model, final, reference_predictor, ids, blank)
+    predictor = greedy_contexts(model, final, lengths, initial)
     findings = []
     for index in error_positions:
         pieces = []
@@ -145,13 +161,17 @@ def investigate(model, sp, model_map: dict, waveform: np.ndarray, words: list[st
             stacks = []
             for stack_index, probe in enumerate(probes):
                 acoustic = model.joiner.encoder_proj(probe["output"][0, frames])
-                full = model.joiner.output_linear(torch.tanh(acoustic + predictor[position]))
+                full = model.joiner.output_linear(torch.tanh(acoustic + predictor[frames]))
                 disabled = model.joiner.output_linear(torch.tanh(acoustic))
+                teacher_forced = model.joiner.output_linear(torch.tanh(acoustic + reference_predictor[position]))
                 stacks.append({
                     "stack": stack_index,
                     "available_channels": probe["available_channels"],
                     "full": top_at_frames(full, target, frames, sp),
                     "acoustic": top_at_frames(disabled, target, frames, sp),
+                    "reference_full": {
+                        "best_rank": int(((teacher_forced > teacher_forced[:, target:target + 1]).sum(-1) + 1).min())
+                    },
                 })
             pieces.append({
                 "target_id": target,
@@ -165,6 +185,7 @@ def investigate(model, sp, model_map: dict, waveform: np.ndarray, words: list[st
             "reference_word": words[index],
             "frame_span": [min(piece["frame"] for piece in pieces), max(piece["frame"] for piece in pieces) + 1],
             "category": classify(pieces),
+            "reference_prefix_category": classify(pieces, "reference_full"),
             "tokenizer_unknown": any(piece["unknown"] for piece in pieces),
             "pieces": pieces,
         })
