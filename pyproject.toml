@@ -14,6 +14,10 @@ dependencies = ["numpy", "pyyaml"]
 audio = ["soundfile", "soxr"]
 model = ["lhotse", "torch"]
 asr = ["faster-whisper"]
+mechanistic = [
+    "torch", "onnx", "sentencepiece", "sherpa-onnx", "pyarrow", "soundfile",
+    "soxr", "jiwer>=4,<5", "kaldi-native-fbank",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

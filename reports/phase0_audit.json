@@ -1,0 +1,452 @@
+{
+  "status": "passed",
+  "sha256": {
+    "model.pt": "7315ea2e15addfe796e673f0b4c9c5200e80371c029524fcc52f96161620eee2",
+    "tokens.txt": "f536d03c2e95ebd2930cf0abec88e823bd17d3c1933da7ae6a82db3b80605e15",
+    "bpe.model": "289dbb44527c13c419ae3a4d8ce6a349f01a97f8777e69934a77e3692d2f10db",
+    "config.json": "c14c8b1b7f54c329eb7a96f0729f4c4ae3687b91b65a4816b7386e34fc6192c2",
+    "encoder.int8.onnx": "b528768939c7711a889be81a718ea7f2ee50d0d2d384d53f399e15b44bd9408c",
+    "decoder.int8.onnx": "e0a156b5454722a524230f9e35d5d928cfcdd3723437b418e5bd5e04f1c3a101",
+    "joiner.int8.onnx": "12636559d135315f002a1e1b477077d415e888477378db0fd450aee5b21ac551"
+  },
+  "state_dict_entries": 745,
+  "state_dict_values": 69651511,
+  "ctc_head_values": 1026000,
+  "rnnt_state_dict_values": 68625511,
+  "advertised_parameters": 68625511,
+  "vocabulary_case_counts": {
+    "upper": 6590
+  },
+  "tokenizer_probes": {
+    "xin": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          627
+        ],
+        "pieces": [
+          "▁XIN"
+        ],
+        "piece_count": 1,
+        "unknown_count": 0
+      }
+    },
+    "chào": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          929
+        ],
+        "pieces": [
+          "▁CHÀO"
+        ],
+        "piece_count": 1,
+        "unknown_count": 0
+      }
+    },
+    "một": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          3
+        ],
+        "pieces": [
+          "▁MỘT"
+        ],
+        "piece_count": 1,
+        "unknown_count": 0
+      }
+    },
+    "Tanaka": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          159,
+          1206,
+          1601
+        ],
+        "pieces": [
+          "▁TA",
+          "NA",
+          "KA"
+        ],
+        "piece_count": 3,
+        "unknown_count": 0
+      }
+    },
+    "Tokyo": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          785,
+          744,
+          431,
+          256
+        ],
+        "pieces": [
+          "▁TO",
+          "K",
+          "Y",
+          "O"
+        ],
+        "piece_count": 4,
+        "unknown_count": 0
+      }
+    },
+    "Sheraton": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          546,
+          664,
+          871,
+          324,
+          188,
+          1010
+        ],
+        "pieces": [
+          "▁S",
+          "H",
+          "ER",
+          "A",
+          "T",
+          "ON"
+        ],
+        "piece_count": 6,
+        "unknown_count": 0
+      }
+    },
+    "Alfredo": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          205,
+          1533,
+          1012,
+          1265,
+          613,
+          256
+        ],
+        "pieces": [
+          "▁",
+          "AL",
+          "F",
+          "RE",
+          "D",
+          "O"
+        ],
+        "piece_count": 6,
+        "unknown_count": 0
+      }
+    },
+    "email": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          270,
+          324,
+          114,
+          1054
+        ],
+        "pieces": [
+          "▁EM",
+          "A",
+          "I",
+          "L"
+        ],
+        "piece_count": 4,
+        "unknown_count": 0
+      }
+    },
+    "TV": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          574,
+          793
+        ],
+        "pieces": [
+          "▁T",
+          "V"
+        ],
+        "piece_count": 2,
+        "unknown_count": 0
+      }
+    },
+    "CD": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          514,
+          613
+        ],
+        "pieces": [
+          "▁C",
+          "D"
+        ],
+        "piece_count": 2,
+        "unknown_count": 0
+      }
+    },
+    "K+": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          715,
+          2
+        ],
+        "pieces": [
+          "▁K",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      }
+    },
+    "cent": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          514,
+          908,
+          188
+        ],
+        "pieces": [
+          "▁C",
+          "EN",
+          "T"
+        ],
+        "piece_count": 3,
+        "unknown_count": 0
+      }
+    },
+    "benchmark": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          450,
+          908,
+          760,
+          193,
+          1481,
+          744
+        ],
+        "pieces": [
+          "▁B",
+          "EN",
+          "CH",
+          "M",
+          "AR",
+          "K"
+        ],
+        "piece_count": 6,
+        "unknown_count": 0
+      }
+    },
+    "streaming": {
+      "lower": {
+        "ids": [
+          205,
+          2
+        ],
+        "pieces": [
+          "▁",
+          "<unk>"
+        ],
+        "piece_count": 2,
+        "unknown_count": 1
+      },
+      "upper": {
+        "ids": [
+          546,
+          188,
+          1265,
+          324,
+          193,
+          114,
+          192
+        ],
+        "pieces": [
+          "▁S",
+          "T",
+          "RE",
+          "A",
+          "M",
+          "I",
+          "NG"
+        ],
+        "piece_count": 7,
+        "unknown_count": 0
+      }
+    }
+  },
+  "onnx_metadata": {
+    "encoder": {
+      "onnx.infer": "onnxruntime.quant",
+      "model_type": "zipformer2",
+      "version": "1",
+      "model_author": "k2-fsa",
+      "comment": "non-streaming zipformer2"
+    },
+    "decoder": {
+      "onnx.infer": "onnxruntime.quant",
+      "context_size": "2",
+      "vocab_size": "2000"
+    },
+    "joiner": {
+      "onnx.infer": "onnxruntime.quant",
+      "joiner_dim": "512"
+    }
+  },
+  "encoder_joiner_input_dim": 512,
+  "stacks_incompatible_with_direct_joiner": [
+    0,
+    1,
+    2,
+    4,
+    5
+  ]
+}
