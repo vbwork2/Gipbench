@@ -101,15 +101,18 @@ def main() -> None:
     parser.add_argument("--model-dir", type=Path, default=ROOT / "artifacts/base_model")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "data/manifests")
     parser.add_argument("--pool-size", type=int)
-    parser.add_argument("--speaker-map", type=Path, help="TSV assigning verified speaker IDs to utt_id.")
+    split = parser.add_mutually_exclusive_group()
+    split.add_argument("--speaker-map", type=Path, help="TSV assigning verified speaker IDs to utt_id.")
+    split.add_argument("--split-by-recording", action="store_true", help="Seal splits using disjoint recordings.")
     parser.add_argument("--rejected-labels", type=Path, help="Reviewed JSONL with utt_id and exclusion reason.")
     args = parser.parse_args()
     if (args.output_dir / "heldout_test.jsonl").exists():
         parser.error("The heldout manifest already exists. Use a separate run directory for a new pool.")
     scored = args.output_dir / "full_scored.jsonl"
-    if not args.speaker_map or not scored.exists():
+    seal_requested = args.speaker_map is not None or args.split_by_recording
+    if not seal_requested or not scored.exists():
         collect(args)
-    if args.speaker_map:
+    if seal_requested:
         config, _ = settings()
         seal(args.output_dir, args.speaker_map, config, args.rejected_labels)
         print("Wrote the development splits and sealed heldout manifest.")

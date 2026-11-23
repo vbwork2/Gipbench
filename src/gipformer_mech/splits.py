@@ -1,4 +1,4 @@
-"""Create disjoint FPT manifests when speaker assignments are available."""
+"""Create FPT manifests disjoint by recording or by verified speaker."""
 
 from collections import Counter, defaultdict
 from itertools import combinations
@@ -79,38 +79,91 @@ def select(rows: list[dict], sizes: dict, seed: int) -> dict[str, list[dict]]:
     raise ValueError("The available speaker groups cannot produce the requested development sizes and heldout CS quota.")
 
 
-def seal(directory: Path, speaker_map: Path, config: dict, rejected_labels: Path | None) -> None:
+def select_recordings(rows: list[dict], sizes: dict, seed: int) -> dict[str, list[dict]]:
+    random = Random(seed)
+    cs = [row for row in rows if row["cs_tokens"]]
+    non_cs = [row for row in rows if not row["cs_tokens"]]
+    min_cs = sizes["heldout_min_cs"]
+    held_size = sizes["heldout_size"]
+    if len(cs) < min_cs or len(non_cs) < held_size - min_cs:
+        raise ValueError("The scored pool cannot meet the heldout CS and non-CS quotas.")
+    held = random.sample(cs, min_cs) + random.sample(non_cs, held_size - min_cs)
+    held_ids = {row["utt_id"] for row in held}
+    development = [row for row in rows if row["utt_id"] not in held_ids]
+    clean = [row for row in development if row["baseline_wer"] == 0 and not row["cs_tokens"]]
+    bugs = [row for row in development if row["score_counts"]["cs_word_errors"]]
+    counts = Counter(
+        (error["ref"], error["hyp"])
+        for row in bugs for error in row["score_counts"]["cs_word_errors"]
+    )
+    if len(bugs) < sizes["bug_size"] or len(clean) < sizes["clean_size"]:
+        raise ValueError("The development pool has too few CS errors or clean utterances.")
+    random.shuffle(bugs)
+    bugs.sort(key=lambda row: (
+        max(counts[(error["ref"], error["hyp"])] for error in row["score_counts"]["cs_word_errors"]),
+        row["score_counts"]["cs_errors"],
+    ), reverse=True)
+    return {
+        "bug_mining": bugs[:sizes["bug_size"]],
+        "clean_control": random.sample(clean, sizes["clean_size"]),
+        "heldout_test": sorted(held, key=lambda row: row["utt_id"]),
+    }
+
+
+def seal(directory: Path, speaker_map: Path | None, config: dict, rejected_labels: Path | None) -> None:
     path = directory / "heldout_test.jsonl"
     lock = directory / "heldout_lock.json"
     if path.exists() or lock.exists():
         raise FileExistsError("A heldout split already exists in this run directory.")
     pool_path = directory / "full_scored.jsonl"
     rows = read_rows(pool_path)
-    speakers = speaker_assignments(speaker_map)
+    speakers = speaker_assignments(speaker_map) if speaker_map else None
     rejected = {row["utt_id"]: row["reason"] for row in read_rows(rejected_labels)} if rejected_labels else {}
-    missing = {row["utt_id"] for row in rows} - speakers.keys() - rejected.keys()
-    if missing:
-        raise ValueError(f"Speaker TSV lacks assignments for {len(missing)} scored utterances.")
-    pool = [
-        {**row, "speaker_id": speakers[row["utt_id"]]}
-        for row in rows if row["utt_id"] not in rejected
-    ]
-    splits = select(pool, config["dataset"], config["seed"])
+    pool = [row for row in rows if row["utt_id"] not in rejected]
+    keys = ["utt_id", "audio_idx", "audio_sha256"]
+    for key in keys:
+        if len({row[key] for row in pool}) != len(pool):
+            raise ValueError(f"The scored pool contains duplicate values for {key}.")
+    if speakers is None:
+        splits = select_recordings(pool, config["dataset"], config["seed"])
+        split_meta = {"split_unit": "recording"}
+    else:
+        missing = {row["utt_id"] for row in pool} - speakers.keys()
+        if missing:
+            raise ValueError(f"Speaker TSV lacks assignments for {len(missing)} scored utterances.")
+        pool = [{**row, "speaker_id": speakers[row["utt_id"]]} for row in pool]
+        splits = select(pool, config["dataset"], config["seed"])
+        split_meta = {
+            "split_unit": "speaker",
+            "speaker_evidence": "verified",
+            "speaker_map_sha256": checksum(speaker_map),
+        }
+    if speakers is not None:
+        keys.append("speaker_id")
     for left, right in combinations(splits.values(), 2):
-        for key in ("utt_id", "speaker_id", "audio_sha256"):
+        for key in keys:
             if {row[key] for row in left} & {row[key] for row in right}:
                 raise ValueError(f"Overlap detected for {key}.")
-    held_speakers = {row["speaker_id"] for row in splits["heldout_test"]}
+    held_ids = {row["utt_id"] for row in splits["heldout_test"]}
+    held_hashes = {row["audio_sha256"] for row in splits["heldout_test"]}
+    held_speakers = {row["speaker_id"] for row in splits["heldout_test"]} if speakers else set()
+
+    def accessible(row: dict) -> bool:
+        return (
+            row["utt_id"] not in held_ids
+            and row.get("audio_sha256") not in held_hashes
+            and (speakers is None or speakers.get(row["utt_id"]) not in held_speakers)
+        )
+
     audit_path = directory / "label_audit_dropped.jsonl"
     dropped = read_rows(audit_path)
     dropped.extend({**row, "reason": rejected[row["utt_id"]]} for row in rows if row["utt_id"] in rejected)
-    write_rows(audit_path, (row for row in dropped if speakers.get(row["utt_id"]) not in held_speakers))
-    write_rows(pool_path, (row for row in pool if row["speaker_id"] not in held_speakers))
+    write_rows(audit_path, (row for row in dropped if accessible(row)))
+    write_rows(pool_path, (row for row in pool if accessible(row)))
     for split, selected in splits.items():
         write_rows(directory / f"{split}.jsonl", selected)
     lock.write_text(json.dumps({
-        "speaker_evidence": "verified",
-        "speaker_map_sha256": checksum(speaker_map),
+        **split_meta,
         "heldout_sha256": checksum(path),
         "development_sha256": {
             split: checksum(directory / f"{split}.jsonl") for split in ("bug_mining", "clean_control")

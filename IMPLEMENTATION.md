@@ -16,11 +16,11 @@ The audit generates `configs/model_map.json` and `reports/phase0_audit.json`. Be
 
 ## Development splits and decoder parity
 
-The FPT download has filenames and transcripts, with no verified speaker IDs. The split builder accepts an `utt_id` and `speaker_id` TSV, checks group and recording overlap, and binds the development and heldout manifests to their checksums. It removes the speakers reserved for heldout from the scored development pool.
+The FPT download has filenames and transcripts, with no verified speaker IDs. For this experiment, the split builder stratifies by lexical CS labels and checks overlap by utterance ID, source row and exact audio checksum. Each recording belongs to only one split. A person may appear in multiple splits, so the evaluation measures generalization to new recordings under that design. The builder binds the final manifests to their checksums and removes the heldout rows from the development pool. With a verified speaker map, `--speaker-map` can instead seal disjoint speaker groups.
 
 ```sh
-python scripts/01_build_manifests.py --speaker-map artifacts/speakers.tsv
-python scripts/02_eval_baseline.py --model-dir artifacts/base_model
+python scripts/01_build_manifests.py --model-dir artifacts/base_model --split-by-recording
+python scripts/02_eval_baseline.py --model-dir artifacts/base_model --report reports/phase1_development_baseline.md
 python scripts/03_diagnose_bug_vs_gap.py --icefall /path/to/icefall --calibration-dir /path/to/calibration_wavs --parity-quantize int8
 python scripts/04_eval_hotwords.py
 ```
