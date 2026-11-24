@@ -119,18 +119,30 @@ def test_independent_vi_release_carries_exclusions():
             ])
             train = t / "train.jsonl"
             jl(train, [row("train", "train", "edu", "train-speaker", "train-source", text="lời huấn luyện")])
-            jl(t / "candidates.jsonl", [
-                row("clean", "source", "edu", "speaker-one", "first", dur=3600, text="chúng mình nói tiếng Việt"),
+            candidates = [
+                row("clean", "source", "edu", "speaker-one", "first", dur=3600, text="chúng mình nói tiếng Việt",
+                    label_source="human:listen_review"),
                 row("read", "source", "read", "speaker-two", "second", text="xin chào"),
                 row("cs", "source", "edu", "speaker-three", "third"),
                 row("video", "source", "edu", "yt_abcdefghijk", "fourth", text="hôm nay trời đẹp"),
-            ])
+            ]
             wav = t / "audio" / "clean.wav"
             wav.parent.mkdir()
             wav.touch()
             out = t / "dev.jsonl"
-            assert quiet(mds.run, ["--candidates", str(t / "candidates.jsonl"), "--kind", "vi", "--exclude-from",
-                                  str(train), "--out-dev", str(out), "--release", dev]) == 0
+            args = ["--candidates", str(t / "candidates.jsonl"), "--kind", "vi", "--exclude-from", str(train), "--out-dev",
+                    str(out), "--release", dev]
+            # nhãn chưa qua người kiểm: đủ giờ nhưng không được đăng ký làm dev độc lập
+            jl(t / "candidates.jsonl", [dict(candidates[0], label_source="pseudo:x"), *candidates[1:]])
+            try:
+                quiet(mds.run, args)
+            except SystemExit as exc:
+                assert "release thresholds" in str(exc)
+            else:
+                raise AssertionError("A dev split with unverified labels was registered")
+            assert not release.release_dir(dev).exists()
+            jl(t / "candidates.jsonl", candidates)
+            assert quiet(mds.run, args) == 0
             registered = release.resolve(dev)
             assert registered.meta["flags"] == {"independent": True, "exclusion_sets": [bench, str(train)]}
             assert [r["id"] for r in rd(registered.manifest)] == ["clean"]

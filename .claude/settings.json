@@ -1,0 +1,35 @@
+{
+  "enabledPlugins": {
+    "nnsight@ndif-team": true,
+    "mechanist@mechanist": true
+  },
+  "extraKnownMarketplaces": {
+    "ndif-team": {
+      "source": {
+        "source": "github",
+        "repo": "ndif-team/skills"
+      }
+    },
+    "mechanist": {
+      "source": {
+        "source": "github",
+        "repo": "zjunlp/Mechanist"
+      }
+    }
+  },
+  "permissions": {
+    "deny": [
+      "mcp__plugin_mechanist_llm-chat__chat",
+      "mcp__plugin_mechanist_mechanic-db__search_papers",
+      "Skill(mechanist:auto)",
+      "Skill(mechanist:auto-claim)",
+      "Skill(mechanist:auto-experiment)",
+      "Skill(mechanist:auto-iteration-loop)",
+      "Skill(mechanist:auto-verify)",
+      "Skill(mechanist:run-experiment)",
+      "Skill(mechanist:monitor-experiment)",
+      "Skill(mechanist:experiment-queue)",
+      "Skill(mechanist:notify)"
+    ]
+  }
+}

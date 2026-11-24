@@ -93,7 +93,12 @@ def run_gate(name: str, guard: Sequence[str], inputs: Sequence[Tuple[str, str]],
                 r["audio_sha256"] = sha256_file(p)
     pool_inputs = [(label, rows) for label, rows in per_input if label not in dev_refs]
     pool_rows = [row for _, rows in pool_inputs for row in rows] if dev_refs else []
+    for ref in sorted(set(refs) & set(dev_refs)):
+        # bench khoá / leak_guard không được làm dev: dev chọn checkpoint sẽ nhìn trộm test
+        res["unresolved"][ref] = "bench khoá hoặc leak_guard đang được dùng làm dev"
     for ref in dict.fromkeys([*refs, *dev_refs]):
+        if ref in res["unresolved"]:
+            continue
         try:
             rel = R.resolve(ref)
             if rel.manifest is None:

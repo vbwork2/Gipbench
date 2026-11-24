@@ -50,7 +50,7 @@ def evaluate(rows, hyp_path, cat, strict=False, reserved=()):
         if strict or reserved:
             ref, spans = normalize_ref(r["text_tagged"], cat)
             ref_tokens = [token.tok for token in ref]
-            hyp_tokens = normalize_hyp(hyps[r["id"]], cat)
+            hyp_tokens = normalize_hyp(hyps.get(r["id"], ""), cat)
             if strict:
                 rec.update(cs_breakdown(align(ref_tokens, hyp_tokens), [token.span for token in ref], ref_tokens, hyp_tokens))
             if reserved:
@@ -72,7 +72,7 @@ def cs_by_domain(records):
 def paired_cs_by_domain(base, candidate):
     groups = defaultdict(lambda: ([], []))
     for before, after in zip(base, candidate):
-        pair = groups[after["domain"]]
+        pair = groups[after["domain"] or "unknown"]
         pair[0].append(before)
         pair[1].append(after)
     return {domain: paired_bootstrap(before, after, "cs_wer", "boot_unit", iters=1000, seed=0)

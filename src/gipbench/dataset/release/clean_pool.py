@@ -35,8 +35,8 @@ from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
 from gipbench.core import release as R
-from gipbench.core.decontam import (audio_check, audit, clip_key, dataset_family, dup_key, near_duplicates, row_text,
-                                    source_key)
+from gipbench.core.decontam import (READ_SCRIPT_FAMILIES, audio_check, audit, clip_key, dataset_family, dup_key,
+                                    near_duplicates, row_text, source_key)
 from gipbench.core.manifest import read_jsonl, write_jsonl
 
 RAW_FIELDS = ("speaker", "source", "session")
@@ -152,7 +152,7 @@ def hits_of(r: Dict, idx) -> Dict[str, set]:
     t = dup_key(row_text(r))
     if t and t in idx["text"]:
         fam, rd = dataset_family(r), _is_read(r)
-        b = {n for n, f, tr in idx["text"][t] if not (rd and tr and f and f == fam)}
+        b = {n for n, f, tr in idx["text"][t] if not (rd and tr and f == fam and fam in READ_SCRIPT_FAMILIES)}
         if b:
             out["text"] = b
     return out
@@ -176,7 +176,7 @@ def near_hits(rows: List[Dict], refs: Sequence[Tuple[str, List[Dict]]], threshol
             t = by_id.get(str(d["test_id"]))
             for i in pos.get(str(d["train_id"]), ()):
                 tr = rows[i]
-                if t is not None and _is_read(t) and _is_read(tr) and dataset_family(t) and \
+                if t is not None and _is_read(t) and _is_read(tr) and dataset_family(t) in READ_SCRIPT_FAMILIES and \
                         dataset_family(t) == dataset_family(tr):
                     continue
                 out[i].add(name)

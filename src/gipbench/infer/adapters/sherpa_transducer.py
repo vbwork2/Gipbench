@@ -29,6 +29,9 @@ class SherpaTransducerAdapter(ASRAdapter):
         self.model_dir = Path(cfg["model"]["dir"])
         self.work_dir = Path(work_dir)
         self.lm = Path(d["lm"]) if d.get("lm") else None
+        if self.lm is not None and not self.lm.is_absolute():
+            from gipbench.core.paths import REPO
+            self.lm = REPO / self.lm  # config ghi đường dẫn tương đối theo repo, không theo cwd
         if (self.lm is not None) != (cfg["inference_mode"] == "lm"):
             raise ValueError("decode.lm requires inference_mode: lm and vice versa")
         if self.lm is not None:

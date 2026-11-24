@@ -130,6 +130,17 @@ def dataset_family(r: Dict) -> str:
     return FAMILY_ALIASES.get(s, s)
 
 
+# Họ bộ đọc dùng lại cùng kịch bản giữa train và test có chủ ý (VIVOS). Common Voice tách câu giữa các split chính thức,
+# nên một câu trùng với test CV là rò rỉ, không được miễn dù cùng họ và cùng domain read.
+READ_SCRIPT_FAMILIES = frozenset({"vivos"})
+
+
+def shared_read_script(rows: Sequence[Dict]) -> bool:
+    """Mọi dòng cùng một họ trong READ_SCRIPT_FAMILIES và đều domain read: trùng chữ là trùng kịch bản, không phải nhìn trộm."""
+    fam = {dataset_family(r) for r in rows}
+    return len(fam) == 1 and fam <= READ_SCRIPT_FAMILIES and all(str(r.get("domain") or "") == "read" for r in rows)
+
+
 def _exempt_match(exemptions: Sequence[Dict], kind: str, value: Optional[str], test_ids: Sequence[str]) -> Optional[Dict]:
     """Miễn trừ khớp: cùng kind, và (value bằng nhau, hoặc test_id thuộc các câu test của giá trị đó, hoặc miễn trừ không
     ghi value / test_id = miễn cả loại)."""
@@ -149,12 +160,19 @@ def _emit(kind: str, severity: str, hits: Dict[str, Dict], max_examples: int, ex
           extra: Optional[Dict] = None) -> List[Dict]:
     """hits: {value: {"test_ids": [...], "train_ids": [...]}} -> finding (và finding `<kind>:exempted` nếu có miễn trừ)."""
     keep, exm = {}, {}
+    by_test = {str(e["test_id"]): e for e in exemptions if e.get("kind") == kind and "test_id" in e}
     for v, h in hits.items():
-        e = _exempt_match(exemptions, kind, v, h["test_ids"])
+        e = _exempt_match(exemptions, kind, v, ())  # miễn theo value hoặc cả loại: miễn cả nhóm
         if e:
             exm[v] = dict(h, exemption=e)
-        else:
-            keep[v] = h
+            continue
+        # miễn theo test_id chỉ miễn đúng các câu test được ghi; các câu còn lại của nhóm (vd "*") vẫn là finding
+        named = [t for t in h["test_ids"] if str(t) in by_test]
+        rest = [t for t in h["test_ids"] if str(t) not in by_test]
+        if named:
+            exm[v] = dict(h, test_ids=named, exemption=by_test[str(named[0])])
+        if rest or not named:
+            keep[v] = dict(h, test_ids=rest)
     out = []
     for k, sev, hs in ((kind, severity, keep), (kind + ":exempted", "exempted", exm)):
         if not hs:
@@ -311,10 +329,7 @@ def audit(test: Sequence[Dict], train: Sequence[Dict], *, check_audio_sha: bool 
             ex[k].append(r)
     crit, read = {}, {}
     for k, trs in ex.items():
-        rows = tk[k] + trs
-        fam = {dataset_family(r) for r in rows}
-        same_read = len(fam) == 1 and "" not in fam and all(str(r.get("domain") or "") == "read" for r in rows)
-        (read if same_read else crit)[k] = {"test_ids": [r["id"] for r in tk[k]], "train_ids": [r.get("id") for r in trs]}
+        (read if shared_read_script(tk[k] + trs) else crit)[k] = {"test_ids": [r["id"] for r in tk[k]], "train_ids": [r.get("id") for r in trs]}
     f += _emit("text_exact_overlap", "critical", crit, max_examples, exemptions)
     f += _emit("lexical_overlap_read_corpus", "review", read, max_examples, exemptions,
                {"note": "trùng câu chữ trong cùng bộ đọc có chủ ý (không trùng audio / người nói); báo lát text_unseen"})

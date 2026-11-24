@@ -216,6 +216,8 @@ def stage_prepare(c):
 # ------------------------------------------------------------------ stage 1
 def stage_curate(c):
     print("== 1. curate")
+    if not c.dry:
+        checked_gate(c)  # chạy riêng --stages 1-... vẫn phải qua báo cáo cổng của stage 0
     curate = dict(c.exp.get("curate") or {})
     if c.seed is not None:
         curate["seed"] = c.seed
@@ -300,8 +302,9 @@ def stage_finetune(c):
     if not c.dry and t["lr"] is None:
         sys.exit("Set train.lr to the learning rate selected in X1 before training.")
     stats = c.lhotse / "train_mix_cuts.jsonl.gz.json"
-    if not c.dry and max_batches:
+    if not c.dry:
         checked_gate(c)
+    if not c.dry and max_batches:
         if not stats.is_file():
             sys.exit("Run stages 1-3 before the E4 training run.")
     eh = json.loads(stats.read_text(encoding="utf-8"))["epoch_hours"] if stats.exists() else m["epoch_hours"]

@@ -55,6 +55,11 @@ def test_clean_pool():
     keep2, _, _ = clean(pool + [row("p7", "câu không trùng", dataset="commonvoice", domain="read", speaker="cv_bbbbbbbbbbbbbbbb")],
                         [("bench/x", bench)])
     check("clean_pool: trùng chỉ do text không bỏ cả người nói", "p7" in {r["id"] for r in keep2})
+    # Common Voice: cùng họ, cùng domain read nhưng tách câu giữa các split -> trùng câu test vẫn bị bỏ
+    cv_bench = [row("b4", "một câu cv đọc", dataset="commonvoice_vi_27", domain="read", speaker="cv_cccccccccccccccc")]
+    cv_pool = [row("p8", "một câu cv đọc", dataset="commonvoice:validated", domain="read", speaker="cv_dddddddddddddddd")]
+    keep3, _, _ = clean(cv_pool, [("bench/cv", cv_bench)])
+    check("clean_pool: trùng câu test Common Voice cùng họ đọc bị bỏ", "p8" not in {r["id"] for r in keep3})
 
 
 def test_clean_pool_audio_paths(d: Path):

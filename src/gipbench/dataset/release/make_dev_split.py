@@ -336,8 +336,9 @@ def build_independent(args):
         qualified = (len(keep) >= INTERIM_MIN_CS_ROWS if args.kind == "cs" else seconds >= INTERIM_MIN_VI_SECONDS) \
             and not unverified
     else:
+        # dev độc lập chọn checkpoint: nhãn phải do người kiểm (human:*), như dev tạm
         qualified = ((len(keep) >= 1500 and len(domains) >= 4 and len(speakers) >= 100)
-                     if args.kind == "cs" else seconds >= 3600)
+                     if args.kind == "cs" else seconds >= 3600) and not unverified
     flags = {"independent": True, "exclusion_sets": [name for name, _ in refs]}
     if args.interim:
         flags.update(interim=True, representative=False, speaker_unit="video", carved_from=list(args.carved_from),

@@ -147,6 +147,15 @@ def main():
     rc, out = run_exp(env, exp(d, "s6b"), "--stages", "6")
     check("stage 6 với báo cáo còn critical chưa miễn trừ: thoát 3", rc == 3 and "không tạo artifact" in out and not (d / "art/s6b").exists(), out)
 
+    # ---- chạy riêng stage 1 (curate) cũng phải qua báo cáo cổng của stage 0
+    rc, out = run_exp(env, exp(d, "s1a"), "--stages", "1")
+    check("stage 1 không có báo cáo cổng: thoát 3, không curate", rc == 3 and "chưa có báo cáo cổng" in out
+          and not (d / "work/s1a/train_curated.jsonl").exists(), out)
+    (d / "work/s1b").mkdir(parents=True)
+    (d / "work/s1b/leak_report.json").write_text((d / "work/leak/leak_report.json").read_text(encoding="utf-8"), encoding="utf-8")
+    rc, out = run_exp(env, exp(d, "s1b"), "--stages", "1")
+    check("stage 1 với báo cáo còn critical chưa miễn trừ: thoát 3", rc == 3 and not (d / "work/s1b/train_curated.jsonl").exists(), out)
+
     # ---- catalog from_bench
     rc, out = run_exp(env, exp(d, "cb", catalog="catalog/benchcat"), "--stages", "0", "--dry-run")
     check("catalog from_bench: thoát 3 ngay cả khi --dry-run", rc == 3 and "from_bench" in out and "build_train_catalog" in out, out)

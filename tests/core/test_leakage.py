@@ -40,6 +40,13 @@ def vamped(d: Path):
           au.get("severity") == "critical" and au.get("test_rows") == 1 and au.get("train_rows") == 1, au)
     k = kinds_of(audit(t2, tr2))
     check("D.3-2 không require -> audio_unverifiable mức review", k.get("audio_unverifiable", {}).get("severity") == "review", k)
+    # miễn trừ theo test_id chỉ miễn đúng câu đó, không miễn cả finding gộp "*"
+    t3 = [{"id": "x", "text": "a"}, {"id": "w", "text": "b"}, {"id": "v", "text": "c"}]
+    ex1 = [{"kind": "audio_unverifiable", "test_id": "x", "reason": "test", "approved_by": "u", "date": "2026-11-24"}]
+    k = kinds_of(audit(t3, tr2, require_audio_sha=True, exemptions=ex1))
+    au, ae = k.get("audio_unverifiable", {}), k.get("audio_unverifiable:exempted", {})
+    check("miễn 1 test_id của finding '*' -> 2 câu còn lại vẫn critical, 1 câu được miễn",
+          au.get("severity") == "critical" and au.get("test_rows") == 2 and ae.get("test_rows") == 1, k)
     # D.3 ca 3: cùng clip gốc nhưng resample (sha khác, id khác) -> clip_overlap qua mã clip gốc
     t3 = [{"id": "e0_cv17_vi_common_voice_vi_123.mp3", "upstream_id": "common_voice_vi_123.mp3", "audio_sha256": "a" * 64,
            "speaker": "cv_1111222233334444", "text": "một"}]
@@ -85,6 +92,12 @@ def vamped(d: Path):
           "text_exact_overlap" not in k and k.get("lexical_overlap_read_corpus", {}).get("severity") == "review", k)
     k = kinds_of(audit(tv, [dict(trv[0], dataset="vss_cs", domain="other")], check_audio_sha=False))
     check("trùng text khác họ -> text_exact_overlap critical", "text_exact_overlap" in k, k)
+    # Common Voice tách câu giữa các split: trùng câu test CV dù cùng họ, cùng domain read vẫn là critical
+    cv_t = [{"id": "g0_cv_1", "dataset": "commonvoice_vi_27", "domain": "read", "text": "hôm nay trời đẹp quá"}]
+    cv_tr = [{"id": "cv_other_9", "dataset": "commonvoice:validated", "domain": "read", "text": "Hôm nay trời đẹp quá."}]
+    k = kinds_of(audit(cv_t, cv_tr, check_audio_sha=False))
+    check("trùng câu test Common Voice cùng họ đọc -> text_exact_overlap critical",
+          k.get("text_exact_overlap", {}).get("severity") == "critical" and "lexical_overlap_read_corpus" not in k, k)
     # miễn trừ: finding được miễn vẫn in, không tính critical
     ex = [{"kind": "source_norm_overlap", "value": f"yt:{YT}", "reason": "test", "approved_by": "u", "date": "2026-11-17"}]
     rep = audit(t, tr, check_audio_sha=False, exemptions=ex)
