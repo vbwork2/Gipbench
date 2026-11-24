@@ -90,10 +90,12 @@ Mục đích: đủ sự kiện để thử trigger mà không bị in-sample. *
   - Ở những frame đó, piece không-blank tốt nhất đứng hạng 2, nên luôn nằm trong top-10. Gate vì vậy luôn bật đúng ở mọi frame mà penalty có tác dụng, và output giống hệt `uniform`.
   - Gate theo margin của chính frame (blank − piece tốt nhất ≤ δ) cũng quy về `uniform` với penalty min(λ, δ).
   - Vậy mọi gate theo rank hay margin trên logit của chính frame đều quy về `phase3b_blank_penalty.md`. Gate theo xác suất tuyệt đối không trùng hệt, chỉ gần, nên không gộp vào kết luận này.
-  - Một gate khác được `uniform` phải dùng thông tin ngoài logit của frame: trạng thái ẩn của Joiner, hoặc context. Đó chính là 2.2.
+  - Lập luận này chỉ loại các gate theo rank hay margin của blank so với piece tốt nhất. Gate dùng **hình dạng của cả vector logit** vẫn có thể khác `uniform`. Trạng thái ẩn h của Joiner không chứa gì thêm: W có kích thước 2000 × 512 và hạng 512, nên h là hàm affine của vector logit. Probe trên h chính là một gate như vậy (mục 2.2).
 - [ ] **2.2 Trigger học được trên Joiner** (gần với hook trong bài Qwen nhất). Chia fold theo bản ghi, theo từ **và theo văn bản chuẩn hoá**, để cùng một câu không nằm ở cả hai phía.
-  - 👤 Chọn ngưỡng số sự kiện tái lập tối thiểu trước khi chạy. Dưới ngưỡng thì dừng, không thử.
-  - Xong khi: tỉ lệ sửa so với random-direction cùng layer, cộng số câu clean bị hỏng. Bài Qwen báo "8/8 sửa, 0/8 hỏng, ngẫu nhiên 1,6/8 và 2,2/8".
+  - [x] Ngưỡng ≥ 300 sự kiện tái lập (bạn chốt 24/11). Ngưỡng này chốt **sau khi** đã biết có 654 sự kiện, nên chỉ là thủ tục, không lọc gì.
+  - Trần (đo trước khi đăng ký, chỉ mô tả): 264 / 654 sự kiện có piece đích là piece không-blank tốt nhất (hạng 2), nằm trong 219 span. Đây là trần của mọi trigger chỉ phạt blank. Các sự kiện còn lại, phạt blank sẽ phát ra piece sai khác.
+  - [x] Đăng ký thiết kế trong docstring `scripts/09_joiner_trigger.py`, commit trước khi train probe: probe logistic trên h, 2 fold theo văn bản, lưới penalty {4, 8} × tỉ lệ bật {0,1%, 0,5%} chọn trên fold train; đối chứng ở fold kiểm gồm **gate margin** (tương đương penalty toàn cục) và 5 hướng ngẫu nhiên, cùng tỉ lệ bật. Đạt khi ở **cả hai fold**: P1 sửa nhiều hơn margin và mọi hướng ngẫu nhiên; P2 clean damage < 0,5% và WER câu ngẫu nhiên không tăng; P3 số từ CS sửa được trừ số làm hỏng > 0. Luật dừng: < 100 span có sự kiện hạng 2.
+  - Xong khi: `reports/phase5_joiner_trigger.md`. Đạt thì mới được kiểm xác nhận một lần trên heldout mới (đăng ký riêng), rồi mới kiểm chuyển miền trên `dev_interim_cs` và ViMedCSS (chỉ mô tả).
 - [ ] 👤 Quyết định có mở cổng quét encoder không. Mình không khuyến nghị: encoder bug chỉ 1,4% (ngưỡng 25%), và bằng chứng nói lỗi nằm sau encoder. Mở là bỏ một cổng đã đăng ký.
 
 ## 3 · Độ tin cậy của chẩn đoán (quyết định A hay B phụ thuộc mục này)
