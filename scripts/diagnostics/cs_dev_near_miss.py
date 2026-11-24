@@ -27,12 +27,22 @@ Registered before the diagnose stage, with the FPT rules unchanged:
   START, LOCAL) is reported without a threshold; none was set for it on FPT.
 Nothing here selects or tunes anything, and this set stays out of the training and selection of any
 trigger (TODO_rea 2.2) so that it can check one later.
+
+`--dataset vimedcss_train` (registered before its decode stage) runs the same check, rules and
+predictions unchanged, on the ViMedCSS train pool (`data/pools/vimedcss_train_v4/manifest.jsonl`):
+3,868 rows, 7.5 h of medical Vietnamese-English speech from YouTube, original human labels and no ASR
+agreement filter, so its gap-like share is not biased the way the interim dev set's is. The reference
+is `text_tagged` with the `<en>` tags removed. If more than 1,200 rows have a CS error, the diagnose
+stage takes a seeded sample of 1,200 of them (`random.Random(0).sample` over the rows sorted by id);
+the report says so. It is a training pool of direction B, not a locked bench (E0 holds the ViMedCSS
+test split, which is not read).
 """
 
 import argparse
 from collections import Counter
 import json
 from pathlib import Path
+from random import Random
 import re
 import sys
 
@@ -45,6 +55,44 @@ from gipformer_mech.metrics import score, summarize
 from gipformer_mech.text_norm import cs_positions, tokens
 
 TAG = re.compile(r"<en>(.*?)</en>", re.S)
+SAMPLE_LIMIT = 1200
+VSS_BIAS = [
+    "## Selection bias (read before comparing the gap share)",
+    "",
+    "The rows come from the `vss_cs` pool, whose labels started as a Zipformer-30M pseudo-label. Every row kept "
+    "has every English span confirmed by at least one of two ASR hypotheses (`agreement.confirmed`, 471 of 471 "
+    "spans), and a person then reviewed it. English words that ASR systems do not hear were filtered out before "
+    "this set existed. The low gap-like share is therefore partly built into the set and does not compare with "
+    "FPT. The bug-side predictions (H1 to H3) are still informative: on words that an ASR can hear, Gipformer's "
+    "CS errors are mostly near misses and cascades.",
+]
+VIMEDCSS_NOTE = [
+    "## Labels",
+    "",
+    "Original human labels of the ViMedCSS dataset, no ASR agreement filter, so the gap-like share is not biased "
+    "toward words an ASR can hear. Medical terms (drug, disease and anatomy names) are frequent. This is the train "
+    "split, a training pool of direction B; the ViMedCSS test split (bench E0) was not read.",
+]
+DATASETS = {
+    "dev_interim_cs": {
+        "manifest": "data/dev/dev_interim_cs.jsonl", "report": "reports/phase2_dev_interim_near_miss.md",
+        "title": "the interim CS dev set",
+        "about": "`data/dev/dev_interim_cs.jsonl`: natural speech from YouTube talks (VietSuperSpeech), 323 rows, "
+                 "61 sources, labels listened to by a person.",
+        "note": VSS_BIAS,
+    },
+    "vimedcss_train": {
+        "manifest": "data/pools/vimedcss_train_v4/manifest.jsonl", "report": "reports/phase2_vimedcss_train_near_miss.md",
+        "title": "the ViMedCSS train pool",
+        "about": "`data/pools/vimedcss_train_v4/manifest.jsonl`: medical Vietnamese-English speech from YouTube, "
+                 "3,868 rows, 7.5 h, original human labels.",
+        "note": VIMEDCSS_NOTE,
+    },
+}
+
+
+def reference(row: dict) -> str:
+    return row["text"] if row.get("text") else TAG.sub(r"\1", row["text_tagged"])
 
 
 def tagged_words(text_tagged: str, case: str) -> list[str]:
@@ -52,7 +100,7 @@ def tagged_words(text_tagged: str, case: str) -> list[str]:
 
 
 def tag_coverage(row: dict, case: str, cs_terms: list[str]) -> dict:
-    words = tokens(row["text"], case)
+    words = tokens(reference(row), case)
     found = Counter(words[index] for index in cs_positions(words, cs_terms))
     tagged = Counter(tagged_words(row["text_tagged"], case))
     return {"tagged": sum(tagged.values()), "rule": sum(found.values()),
@@ -74,9 +122,9 @@ def decode(args, config: dict, case: str) -> None:
         chunk = rows[start:start + batch]
         waves = [read_waveform(audio_path(args.manifest, row).read_bytes()) for row in chunk]
         for row, hyp in zip(chunk, transcribe(rec, waves), strict=True):
-            out.append({"id": row["id"], "audio": row["audio"], "reference": row["text"],
-                        "text_tagged": row["text_tagged"], "domain": row["domain"], "source": row["source"],
-                        "baseline_hyp": hyp, "score_counts": score(row["text"], hyp, case, cs_terms),
+            out.append({"id": row["id"], "audio": row["audio"], "reference": reference(row),
+                        "text_tagged": row["text_tagged"], "domain": row.get("domain"), "source": row.get("source"),
+                        "baseline_hyp": hyp, "score_counts": score(reference(row), hyp, case, cs_terms),
                         "tags": tag_coverage(row, case, cs_terms)})
         print(f"Decoded {len(out)} of {len(rows)}", flush=True)
     write_rows(args.out_dir / "scored.jsonl", out)
@@ -100,7 +148,11 @@ def diagnose(args, config: dict, case: str) -> None:
     model_map = json.loads((ROOT / "configs/model_map.json").read_text(encoding="utf-8"))
     torch.manual_seed(config["seed"])
     torch.set_num_threads(config["decode"]["threads"])
-    rows = [row for row in read_rows(args.out_dir / "scored.jsonl") if row["score_counts"]["cs_word_errors"]]
+    rows = sorted((row for row in read_rows(args.out_dir / "scored.jsonl") if row["score_counts"]["cs_word_errors"]),
+                  key=lambda row: row["id"])
+    if len(rows) > SAMPLE_LIMIT:
+        rows = sorted(Random(0).sample(rows, SAMPLE_LIMIT), key=lambda row: row["id"])
+    (args.out_dir / "diagnosed_ids.json").write_text(json.dumps([row["id"] for row in rows]) + "\n", encoding="utf-8")
     out = args.out_dir / "findings.jsonl"
     done = {json.loads(line)["utt_id"] for line in out.read_text(encoding="utf-8").splitlines() if line.strip()} \
         if out.exists() else set()
@@ -126,9 +178,15 @@ def report(args) -> None:
     findings = relabel([json.loads(line) for line in (args.out_dir / "findings.jsonl").read_text(
         encoding="utf-8").splitlines() if line.strip()])
     decoded = json.loads((args.out_dir / "decode_summary.json").read_text(encoding="utf-8"))
+    ids = set(json.loads((args.out_dir / "diagnosed_ids.json").read_text(encoding="utf-8")))
+    scored = {row["id"]: row for row in read_rows(args.out_dir / "scored.jsonl")}
+    expected = sum(len(scored[key]["score_counts"]["cs_word_errors"]) for key in ids)
     p = profile(findings)
-    if (p["recordings"], p["spans"]) != (decoded["rows_with_cs_errors"], decoded["cs_error_spans"]):
-        raise ValueError("Findings do not cover every CS error of the decode stage.")
+    if {row["utt_id"] for row in findings} != ids or p["spans"] != expected:
+        raise ValueError("Findings do not cover every diagnosed CS error.")
+    spec = DATASETS[args.dataset]
+    sampled = (f" The diagnosis covers a seeded sample of {len(ids)} of these rows ({p['spans']} spans)."
+               if len(ids) < decoded["rows_with_cs_errors"] else "")
     n, cat = p["spans"], p["categories"]
     chain = sum(count for (label, _), count in p["cascade"].items() if label == "CHAIN")
     gap_like = cat["TRUE_GAP"] + sum(count for (label, _), count in p["cascade"].items() if label in ("START", "LOCAL"))
@@ -136,14 +194,14 @@ def report(args) -> None:
     h1, h2 = cat["NEAR_MISS"] >= 0.30 * n, cat["ENCODER_BUG"] < 0.25 * n
     tags, greedy = decoded["tags"], decoded["greedy"]
     lines = [
-        "# Phase 2 diagnosis on the interim CS dev set (cross-dataset check)",
+        f"# Phase 2 diagnosis on {spec['title']} (cross-dataset check)",
         "",
-        "`data/dev/dev_interim_cs.jsonl`: natural speech from YouTube talks (VietSuperSpeech), 323 rows, 61 sources, "
-        "labels listened to by a person. Rules and predictions were registered in the docstring of "
+        f"{spec['about']} Rules and predictions were registered in the docstring of "
         "`scripts/diagnostics/cs_dev_near_miss.py` before the diagnosis ran. Locked benches not used.",
         "",
         f"Baseline greedy INT8: WER {greedy['wer_global']:.2%}, CS-WER {greedy['cs_wer']:.2%}. "
-        f"{decoded['rows_with_cs_errors']} rows with a CS substitution or deletion, {n} spans.",
+        f"{decoded['rows_with_cs_errors']} rows with a CS substitution or deletion, {decoded['cs_error_spans']} spans."
+        f"{sampled}",
         "",
         f"CS words by the FPT rule (`cs_terms` + `en_like`): {tags['rule']}. Words inside `<en>` tags: {tags['tagged']}. "
         f"Tagged words the rule misses: {tags['tagged_missed_by_rule']}; rule words without a tag: {tags['rule_untagged']}.",
@@ -171,18 +229,11 @@ def report(args) -> None:
         f"- H2 encoder bug below 25%: {'holds' if h2 else 'fails'} ({cat['ENCODER_BUG'] / n:.1%}).",
         f"- H3 cascade prediction: {'holds' if h3 else 'fails'} ({h3_text}).",
         "",
-        "## Selection bias (read before comparing the gap share)",
+        *spec["note"],
         "",
-        "The rows come from the `vss_cs` pool, whose labels started as a Zipformer-30M pseudo-label. Every row kept "
-        "has every English span confirmed by at least one of two ASR hypotheses (`agreement.confirmed`, 471 of 471 "
-        "spans), and a person then reviewed it. English words that ASR systems do not hear were filtered out before "
-        "this set existed. The low gap-like share is therefore partly built into the set and does not compare with "
-        "FPT. The bug-side predictions (H1 to H3) are still informative: on words that an ASR can hear, Gipformer's "
-        "CS errors are mostly near misses and cascades.",
-        "",
-        f"Descriptive beyond these three. Small set: one span is about {1 / n:.1%} of the total.",
+        f"Descriptive beyond these three. One span is about {1 / n:.1%} of the total.",
     ]
-    out = ROOT / "reports/phase2_dev_interim_near_miss.md"
+    out = ROOT / spec["report"]
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
 
@@ -190,12 +241,15 @@ def report(args) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("decode", "diagnose", "report"))
-    parser.add_argument("--manifest", type=Path, default=ROOT / "data/dev/dev_interim_cs.jsonl")
+    parser.add_argument("--dataset", choices=sorted(DATASETS), default="dev_interim_cs")
+    parser.add_argument("--manifest", type=Path, help="Default: the dataset's manifest.")
     parser.add_argument("--model-dir", type=Path, default=ROOT / "models/gip15")
     parser.add_argument("--icefall", type=Path)
-    parser.add_argument("--out-dir", type=Path, default=ROOT / "artifacts/dev_interim_near_miss")
+    parser.add_argument("--out-dir", type=Path, help="Default: artifacts/<dataset>_near_miss.")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
+    args.manifest = args.manifest or ROOT / DATASETS[args.dataset]["manifest"]
+    args.out_dir = args.out_dir or ROOT / f"artifacts/{args.dataset}_near_miss"
     args.out_dir.mkdir(parents=True, exist_ok=True)
     config, case = settings()
     if args.stage == "decode":
