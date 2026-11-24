@@ -39,7 +39,20 @@ Hệ quả: tỉ lệ lỗi sau encoder là 51,2% theo nhãn `classify`, 60,8% n
 - Mình nghiêng về cách đọc "top-10 cộng prefix đúng" thành **bằng chứng ủng hộ X2** nhưng không dùng nó để tuyên bố vượt ngưỡng. Phép thử thật là mục 4.1 (X2 có sửa được các span này không).
 - Dự đoán đăng ký trước cho X2: X2 phải sửa được một phần near miss trên danh sách span đã khoá (mục 4.1). X2 cải thiện WER mà không sửa near miss nghĩa là cơ chế giả định sai.
 
-Giới hạn: chỉ một dataset (FPT), chỉ greedy, chưa có kết luận người nghe cho nhãn, heldout chưa dùng cho chẩn đoán.
+**Kiểm chứng chéo ngoài FPT** (24/11). Cùng luật, dự đoán đăng ký và commit trước khi chẩn đoán (`scripts/diagnostics/cs_dev_near_miss.py`); không dùng bench khoá:
+
+| Tập | Span | Near miss | Dây chuyền | Encoder + predictor | Gần gap | H1 / H2 / H3 |
+|---|---:|---:|---:|---:|---:|---|
+| FPT dev (đọc) | 365 | 50,1% | 30,1% | 2,5% | 17,3% | (gốc) |
+| FPT pool mới | 1 487 | 51,3% | 29,9% | 4,0% | 14,8% | đạt / đạt / đạt |
+| `dev_interim_cs` (nói tự nhiên, 8 domain) | 174 | 71,3% | 20,7% | 6,9% | 1,1%* | đạt / đạt / đạt |
+| ViMedCSS train (y khoa, nhãn gốc) | 2 113 (mẫu 1 200 / 3 099 câu) | 42,5% | 31,6% | 3,2% | 22,6% | đạt / đạt / đạt |
+
+\* `dev_interim_cs` chỉ giữ câu mà mọi span tiếng Anh đã được một ASR nghe ra, nên phần gap bị ép thấp từ lúc dựng tập và không so được. Báo cáo: [phase2_dev_interim_near_miss.md](reports/phase2_dev_interim_near_miss.md), [phase2_vimedcss_train_near_miss.md](reports/phase2_vimedcss_train_near_miss.md).
+
+Đọc: bug sau encoder (near miss cộng dây chuyền) chiếm 74–92% ở cả bốn tập; encoder bug tối đa 4,0% ở mọi tập (ngưỡng mở quét encoder là 25%); dự đoán dây chuyền giữ ở cả bốn. Phần gap phụ thuộc domain: cao nhất ở y khoa (22,6%, tên thuốc, bệnh, giải phẫu), nên X3 (dữ liệu CS) quan trọng hơn ở domain có nhiều thuật ngữ hiếm.
+
+Giới hạn: chỉ greedy, chưa có kết luận người nghe cho nhãn FPT, heldout chưa dùng cho chẩn đoán. Hai tập ngoài FPT đều là YouTube; chưa kiểm trên bench khoá (cố ý, để giữ chúng cho hướng B).
 
 ---
 

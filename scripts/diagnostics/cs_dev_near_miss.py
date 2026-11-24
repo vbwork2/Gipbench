@@ -231,7 +231,7 @@ def report(args) -> None:
         "",
         *spec["note"],
         "",
-        f"Descriptive beyond these three. One span is about {1 / n:.1%} of the total.",
+        f"Descriptive beyond these three. One span is about {1 / n:.2%} of the total.",
     ]
     out = ROOT / spec["report"]
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")

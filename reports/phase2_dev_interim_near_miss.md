@@ -34,4 +34,4 @@ Blank leads a non-top piece in 68 near-miss spans; 94 blank-led pieces in 58 row
 
 The rows come from the `vss_cs` pool, whose labels started as a Zipformer-30M pseudo-label. Every row kept has every English span confirmed by at least one of two ASR hypotheses (`agreement.confirmed`, 471 of 471 spans), and a person then reviewed it. English words that ASR systems do not hear were filtered out before this set existed. The low gap-like share is therefore partly built into the set and does not compare with FPT. The bug-side predictions (H1 to H3) are still informative: on words that an ASR can hear, Gipformer's CS errors are mostly near misses and cascades.
 
-Descriptive beyond these three. One span is about 0.6% of the total.
+Descriptive beyond these three. One span is about 0.57% of the total.
