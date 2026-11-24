@@ -61,6 +61,12 @@ A hotword-only comparison can set `evaluation_kind` to `decoder_only`. This veri
 
 Under WSL with Docker Desktop running, the shared 6 GB VM can fail to read `model.pt` or the FPT parquet files from `/mnt/d` with `ENOMEM`. Copying `models/gip15` and the parquet files to the WSL ext4 home and passing `--model-dir` and `--data-dir` avoids it.
 
+## Learned trigger and output-row edit on the Joiner
+
+`scripts/09_joiner_trigger.py` trains a logistic probe on the Joiner hidden state of replicated near-miss events and lowers the blank logit where it fires, against a margin gate and random directions at the same firing rate. It reads only `extra_diagnostic.jsonl` (hash checked against the split lock), the replayed events and the cached encoder outputs, and splits two folds by normalized reference text. The result is in `reports/phase5_joiner_trigger.md`: no setting was eligible on either training fold. `scripts/diagnostics/fpt_trigger_confound.py` refits the same probes and reports where they fire on the baseline trajectory (appended to the Phase 5 report): 24-28% of blank frames near an event and 1.6-2.5% of held-out negatives at a 0.1% tau.
+
+`scripts/10_joiner_null_edit.py` uses the same rows, folds and primary spans. It raises the output rows of the target pieces along directions confined to the low-energy subspace of ordinary hidden states, applies a static stop rule before decoding, and compares with random same-norm directions in that subspace. It also counts Vietnamese word errors inside event rows. The result is in `reports/phase6_joiner_null_edit.md`: it fixed 22-34 primary spans on the training folds but damaged 3.9-14.6% of clean rows, and held-out events reached the target in only 8-12% of cases. Both scripts need the WSL environment, pass the worktree paths with `--extra-dir`, `--events`, `--findings` and `--encoder-dir`, and take about 15 minutes for the baseline replay plus a few minutes per decode with eight workers. `tests/mech/test_null_edit.py` checks the edit arithmetic.
+
 ## Reviewed-name decoding preset
 
 `configs/diagnostics/fpt/gip15_mbs4_fpt_reviewed_names.yaml` enables context biasing for ANDY MURRAY, CHAPLIN, CROWELL and SMITH. It uses beam 4, hotword score 3.0 and one recording per batch. It is a diagnostic preset for the FPT development splits, not a benchmark system: the names were chosen from four development recordings, SMITH also occurs in benchmark text, and the bench guard does not inspect plain word lists. Keep it out of `configs/bench/`.
