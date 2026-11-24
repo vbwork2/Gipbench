@@ -1,0 +1,29 @@
+{
+  "spans": 365,
+  "recordings": 279,
+  "groups": {
+    "chain": 110,
+    "gap_like": 63,
+    "near_miss": 183,
+    "other_post_encoder": 9
+  },
+  "categories": {
+    "INCONCLUSIVE": 165,
+    "NEAR_MISS": 183,
+    "TRUE_GAP": 8,
+    "PREDICTOR_OVERRIDE_BUG": 4,
+    "ENCODER_BUG": 5
+  },
+  "span_types": {
+    "CHAIN": 110,
+    "START": 33,
+    "LOCAL": 22
+  },
+  "mechanism_spans": 293,
+  "spans_sha256": "5e98822692c7fc1c640699797564802898b131d7acfa39b6745dc53c99e23453",
+  "development_pool_sha256": "6d8d698604c1e58b79948119731dd4b2b2bec4ab7170bf73d0dd39992a899ef5",
+  "input_sha256": {
+    "bug_mining": "32f89a6b4ea9348b166356105b262f3202a232e46b69a96a90bff9b04c081054",
+    "pool": "d06f35ac0fa442f4102ff2c66507c76bae20770155a3959d1354af14f1c4fa17"
+  }
+}
