@@ -1,0 +1,64 @@
+{
+  "rules": {
+    "salt": "fpt-extra-heldout-v1",
+    "heldout_fraction": 0.3,
+    "case": "upper",
+    "unit": "normalized reference text group",
+    "stratum": "Set of lowest audio_idx row x any cs_tokens",
+    "development_text_rows": "forced to diagnostic"
+  },
+  "input_sha256": {
+    "extra_scored": "344b7e5142cbdc20a2bfef75dabcbb67038d71957492711fb3578b3906344ad3",
+    "development_pool": "6d8d698604c1e58b79948119731dd4b2b2bec4ab7170bf73d0dd39992a899ef5"
+  },
+  "heldout": {
+    "rows": 5603,
+    "sets": {
+      "Set001": 2975,
+      "Set002": 2628
+    },
+    "rows_with_cs_tokens": 625,
+    "rows_with_cs_errors": 471,
+    "cs_error_spans": 685,
+    "sha256": "8ce672ce7b53e5f5a0f1d5c819672da7b6cddfb7948af3acf19799d9cf5e7f70"
+  },
+  "diagnostic": {
+    "rows": 14122,
+    "sets": {
+      "Set001": 7865,
+      "Set002": 6257
+    },
+    "rows_with_cs_tokens": 1492,
+    "rows_with_cs_errors": 1070,
+    "cs_error_spans": 1487,
+    "sha256": "e193ae5d05fce78c518644dbbb623a2084573df7b095e484a35adf08402210ee"
+  },
+  "strata": {
+    "Set001|no_cs": {
+      "groups": 7839,
+      "rows": 9271,
+      "heldout_rows": 2782,
+      "heldout_fraction": 0.30007550426059754
+    },
+    "Set001|cs": {
+      "groups": 616,
+      "rows": 720,
+      "heldout_rows": 217,
+      "heldout_fraction": 0.3013888888888889
+    },
+    "Set002|no_cs": {
+      "groups": 7146,
+      "rows": 7319,
+      "heldout_rows": 2196,
+      "heldout_fraction": 0.3000409892061757
+    },
+    "Set002|cs": {
+      "groups": 1332,
+      "rows": 1359,
+      "heldout_rows": 408,
+      "heldout_fraction": 0.30022075055187636
+    }
+  },
+  "forced_development_text_rows": 1056,
+  "forced_development_text_cs_spans": 26
+}

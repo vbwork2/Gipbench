@@ -47,7 +47,7 @@ Giới hạn: chỉ một dataset (FPT), chỉ greedy, chưa có kết luận ng
 
 - **Đã bị loại trên dev:** hotword (FAIL trên heldout), blank penalty toàn cục, blank penalty có điều kiện (word-continuation), tắt đơn vị Joiner tĩnh. Báo cáo pha 3, 3b, 3c, 4.
 - **Chưa thử:** gate theo top-10, trigger học được, đo near miss được sửa theo checkpoint FT.
-- **Nút thắt:** số sự kiện near miss. Pha 4 chỉ có 65 sự kiện tái lập. Pool mới đã chấm xong (1.1): 2 172 span lỗi CS trong 1 541 câu. Bước kế tiếp là 👤 1.2 (heldout mới), chưa được chẩn đoán gì trên pool mới trước đó.
+- **Nút thắt:** số sự kiện near miss. Pha 4 chỉ có 65 sự kiện tái lập. Pool mới đã chấm xong (1.1): 2 172 span lỗi CS trong 1 541 câu. Heldout mới đã khoá (1.2): 685 span heldout, 1 487 span để chẩn đoán. Bước kế tiếp là 1.3 trên `extra_diagnostic.jsonl`.
 
 ---
 
@@ -60,12 +60,12 @@ Mục đích: đủ sự kiện để thử trigger mà không bị in-sample. *
   - `shard_000`: 1 566 câu chấm, 34 dòng bị loại (33 trùng văn bản heldout), 74 span lỗi CS trong 61 câu.
   - Lúc audit (9 shard, 13 994 câu): 895 câu có lỗi CS. Sha256 của pool gốc và heldout vẫn khớp `heldout_lock.json`. Heldout chỉ được đọc để lấy hash, id và văn bản làm danh sách loại trừ.
   - ⚠ **Không ngoại suy từ shard dở.** Dataset có thứ tự: trong mẫu gốc, câu có CS chiếm 7,2% ở chỉ số ≤16 289 và 16,3% ở chỉ số cao hơn. Ước lượng "khoảng 128 sự kiện" là tạm, cập nhật khi có `extra_summary.json`.
-- [ ] **1.2 👤 Quyết định có dùng một phần pool mới làm heldout mới không.** Làm ngay sau 1.1, trước 1.3 và 1.4. Heldout cũ đã dùng một lần cho hotword nên không còn kiểm được gì mới. Nếu dùng:
-  - Loại các dòng có văn bản trùng pool dev. Lúc audit có 999 / 13 994 dòng. Script hiện chỉ loại trùng văn bản heldout.
-  - Tách theo **văn bản chuẩn hoá** (`tokens(text, case)`), không theo dòng. Lúc audit có 3 365 dòng mà văn bản lặp lại ngay trong pool mới.
-  - Pool mới không có nhãn speaker. Heldout cũ cũng chỉ tách theo bản ghi và có 57 câu trùng văn bản dev. Ghi rõ giới hạn này.
-  - Đăng ký luật tách, lock và sha riêng trước khi chạy bất kỳ chẩn đoán nào trên pool mới.
-- [ ] **1.3** Cho `fpt_pool_near_miss.py` đọc được pool mới (hiện chỉ đọc `full_scored.jsonl`), **chỉ phần không thuộc heldout mới**, rồi chạy chẩn đoán trên các câu có lỗi CS.
+- [x] **1.2 Heldout mới** (24/11, bạn chọn phương án B: 30% theo văn bản, cân bằng theo Set). Script `scripts/diagnostics/fpt_extra_split.py` (chạy một lần, từ chối ghi đè), test `tests/mech/test_extra_split.py`, lock `reports/phase1_extra_split_lock.json`. Dữ liệu ở `data/manifests_extra/extra_heldout.jsonl` và `extra_diagnostic.jsonl` trong worktree.
+  - Luật: đơn vị là nhóm văn bản chuẩn hoá (`tokens(reference, "upper")`); tầng là Set × có `cs_tokens` trong nhãn (mình thêm tầng CS để hai phía có cùng mật độ CS; chỉ dùng nhãn, không dùng lỗi baseline); trong mỗi tầng sắp nhóm theo `sha256(salt + văn bản)`, salt `fpt-extra-heldout-v1`, lấy đến khi ≥ 30% số dòng. 1 056 dòng trùng văn bản pool dev bị **ép sang phía chẩn đoán**, không bỏ.
+  - Kết quả: heldout 5 603 dòng, 471 câu có lỗi CS, **685 span** (sha `8ce672ce…7f70`); chẩn đoán 14 122 dòng, 1 070 câu, **1 487 span**, gồm 26 span của dòng trùng dev (sha `e193ae5d…10ee`). Tỉ lệ heldout ở bốn tầng 30,0–30,1%.
+  - Mục đích dùng heldout đã đăng ký trong docstring, mỗi thứ kiểm một lần: bản tốt nhất của 2.1, trigger tốt nhất của 2.2, preset tên riêng, có thể thêm một lần lặp P1/P2 cho X2 (đăng ký riêng). 1.3, 1.4 và mọi bước thiết kế chỉ đọc `extra_diagnostic.jsonl`.
+  - Giới hạn: không có nhãn speaker nên một người nói có thể ở cả hai phía; Set chỉ là đại diện cho đợt thu.
+- [ ] **1.3** Cho `fpt_pool_near_miss.py` đọc được pool mới (hiện chỉ đọc `full_scored.jsonl`), **chỉ `extra_diagnostic.jsonl`**, rồi chạy chẩn đoán trên các câu có lỗi CS.
   - Xong khi: bảng giống `phase2_pool_near_miss.md` cho pool mới, báo riêng từng nhóm.
 - [ ] **1.4** Chạy replay Joiner (`scripts/08_joiner_decomposition.py`) trên các câu đó để biết số sự kiện **tái lập thật**, thay cho ước lượng 62,5%.
   - Xong khi: một con số sự kiện tái lập cho cả pool dev và pool mới.
@@ -114,7 +114,7 @@ Mục đích: đủ sự kiện để thử trigger mà không bị in-sample. *
   - merge giữ thứ tự và bỏ trùng giữa các shard;
   - nếu thêm luật ở 1.2: lọc trùng văn bản dev và gom văn bản lặp khi tách;
   - resume khi `shard_*.dropped.jsonl` bị ghi dở. Hiện có file đó là shard được coi là xong, nên một lần ngắt giữa lúc ghi sẽ để lại shard thiếu dòng. Nên ghi ra file tạm rồi đổi tên.
-- [ ] Ghi vào IMPLEMENTATION.md cách chạy `fpt_extra_pool.py` và kết quả khi có.
+- [x] Ghi vào IMPLEMENTATION.md cách chạy `fpt_extra_pool.py` và `fpt_extra_split.py` cùng kết quả (24/11).
 - [ ] Môi trường WSL `gipbench-ft` thiếu `jiwer` và `kaldi-native-fbank`. Hiện cài ở `~/jiwer_target` và thêm vào PYTHONPATH khi chạy. Python Windows gốc không có numpy và pytest, nên test `tests/mech` phải chạy trong WSL (4/4 file đạt lúc audit). Cần ghi cách cài chính thức hoặc thêm vào extra `mechanistic`.
 - [ ] Hypothesis greedy phụ thuộc thành phần batch (đã biết từ pha 3c). Mọi lượt chấm lại phải giữ batch 16 và thứ tự chỉ số.
 
