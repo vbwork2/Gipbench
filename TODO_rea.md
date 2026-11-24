@@ -72,9 +72,12 @@ Mục đích: đủ sự kiện để thử trigger mà không bị in-sample. *
 
 Đăng ký luật chọn trước khi chạy, ghi vào docstring script như các pha trước.
 
-- [ ] **2.1 Gate theo top-10:** chỉ phạt blank ở frame đã có piece không-blank trong top-10. Đây là gợi ý ở kết luận pha 3b, chưa thử (pha 3c thử gate khác).
-  - Rủi ro đã biết: margin median 5,7 nats, nên rất có thể giống 3c (sửa vài span, làm hỏng câu clean). Rẻ vì đã có cache encoder và `onnx_greedy`.
-  - Xong khi: bảng giống 3c, cùng control ngẫu nhiên khớp tỉ lệ frame.
+- [x] **2.1 Gate theo top-10: đóng bằng lập luận, không chạy** (24/11). Gate này trùng hệt blank penalty toàn cục mà pha 3b đã loại:
+  - Greedy chọn argmax từng frame. Phạt blank chỉ đổi kết quả ở frame mà blank đang là argmax.
+  - Ở những frame đó, piece không-blank tốt nhất đứng hạng 2, nên luôn nằm trong top-10. Gate vì vậy luôn bật đúng ở mọi frame mà penalty có tác dụng, và output giống hệt `uniform`.
+  - Gate theo margin của chính frame (blank − piece tốt nhất ≤ δ) cũng quy về `uniform` với penalty min(λ, δ).
+  - Vậy mọi gate theo rank hay margin trên logit của chính frame đều quy về `phase3b_blank_penalty.md`. Gate theo xác suất tuyệt đối không trùng hệt, chỉ gần, nên không gộp vào kết luận này.
+  - Một gate khác được `uniform` phải dùng thông tin ngoài logit của frame: trạng thái ẩn của Joiner, hoặc context. Đó chính là 2.2.
 - [ ] **2.2 Trigger học được trên Joiner** (gần với hook trong bài Qwen nhất). Chia fold theo bản ghi, theo từ **và theo văn bản chuẩn hoá**, để cùng một câu không nằm ở cả hai phía.
   - 👤 Chọn ngưỡng số sự kiện tái lập tối thiểu trước khi chạy. Dưới ngưỡng thì dừng, không thử.
   - Xong khi: tỉ lệ sửa so với random-direction cùng layer, cộng số câu clean bị hỏng. Bài Qwen báo "8/8 sửa, 0/8 hỏng, ngẫu nhiên 1,6/8 và 2,2/8".

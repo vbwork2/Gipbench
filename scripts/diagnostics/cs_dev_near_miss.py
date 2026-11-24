@@ -171,9 +171,16 @@ def report(args) -> None:
         f"- H2 encoder bug below 25%: {'holds' if h2 else 'fails'} ({cat['ENCODER_BUG'] / n:.1%}).",
         f"- H3 cascade prediction: {'holds' if h3 else 'fails'} ({h3_text}).",
         "",
-        "Descriptive beyond these three. Small set: one span is about "
-        f"{1 / n:.1%} of the total. Labels started as a Zipformer pseudo-label before review, which can bias them "
-        "toward Zipformer-style spellings.",
+        "## Selection bias (read before comparing the gap share)",
+        "",
+        "The rows come from the `vss_cs` pool, whose labels started as a Zipformer-30M pseudo-label. Every row kept "
+        "has every English span confirmed by at least one of two ASR hypotheses (`agreement.confirmed`, 471 of 471 "
+        "spans), and a person then reviewed it. English words that ASR systems do not hear were filtered out before "
+        "this set existed. The low gap-like share is therefore partly built into the set and does not compare with "
+        "FPT. The bug-side predictions (H1 to H3) are still informative: on words that an ASR can hear, Gipformer's "
+        "CS errors are mostly near misses and cascades.",
+        "",
+        f"Descriptive beyond these three. Small set: one span is about {1 / n:.1%} of the total.",
     ]
     out = ROOT / "reports/phase2_dev_interim_near_miss.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
