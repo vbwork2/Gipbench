@@ -91,7 +91,7 @@ class OnnxTransducer:
         out, lengths = self._encoder.run(None, {"x": features[None], "x_lens": np.array([len(features)], dtype=np.int64)})
         return out[0, :int(lengths[0])]
 
-    def _decoder_out(self, context: tuple[int, ...]) -> np.ndarray:
+    def decoder_out(self, context: tuple[int, ...]) -> np.ndarray:
         if context not in self._decoder_cache:
             y = np.array([context], dtype=np.int64)
             self._decoder_cache[context] = self.decoder.run(None, {"y": y})[0]
@@ -105,7 +105,7 @@ class OnnxTransducer:
         if gate == "random" and penalty and rng is None:
             raise ValueError("A random gate needs a seeded generator.")
         context = tuple(initial) if initial is not None else (-1,) * (self.context_size - 1) + (self.blank,)
-        decoder_out = self._decoder_out(context)
+        decoder_out = self.decoder_out(context)
         ids, held, fired = [], 0, 0
         for frame in range(len(encoder_out)):
             logit = self.joiner.run(None, {"encoder_out": encoder_out[frame:frame + 1], "decoder_out": decoder_out})[0][0]
@@ -122,6 +122,6 @@ class OnnxTransducer:
             if token != self.blank and token != self.unk:
                 ids.append(token)
                 context = context[1:] + (token,)
-                decoder_out = self._decoder_out(context)
+                decoder_out = self.decoder_out(context)
         return {"ids": ids, "text": pieces_to_text(ids, self.pieces), "frames": len(encoder_out),
                 "condition_frames": held, "penalized_frames": fired}
