@@ -47,10 +47,10 @@ A hotword-only comparison can set `evaluation_kind` to `decoder_only`. This veri
 
 ## Reviewed-name decoding preset
 
-`configs/bench/asr_models/gip15_mbs4_fpt_reviewed_names.yaml` enables context biasing for ANDY MURRAY, CHAPLIN, CROWELL and SMITH. It uses beam 4, hotword score 3.0 and one recording per batch. This preset is available through the standard bench transcribe entry point wherever those names are appropriate context.
+`configs/diagnostics/fpt/gip15_mbs4_fpt_reviewed_names.yaml` enables context biasing for ANDY MURRAY, CHAPLIN, CROWELL and SMITH. It uses beam 4, hotword score 3.0 and one recording per batch. It is a diagnostic preset for the FPT development splits, not a benchmark system: the names were chosen from four development recordings, SMITH also occurs in benchmark text, and the bench guard does not inspect plain word lists. Keep it out of `configs/bench/`.
 
 ```sh
 python scripts/diagnostics/fpt_targeted_names.py --model-dir models/gip15
 ```
 
-The diagnostic compares the preset with unbiased decoding on the locked development manifests. Its report checks the exact phrases, newly incorrect clean recordings and introduced name triggers. The previous heldout was used for a separate acceptance run.
+The diagnostic compares the preset with unbiased decoding on the locked development manifests and writes `reports/fpt_targeted_name_probe.md`. The exact-phrase result is in-sample, because the names came from the scored recordings. The checks on newly incorrect clean recordings and introduced name triggers are the informative part. The previous heldout was used for a separate acceptance run and cannot test this preset.

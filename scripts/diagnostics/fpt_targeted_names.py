@@ -136,9 +136,9 @@ def comparison(args) -> bool:
         and degraded / len(clean) < 0.005 and clean_insertions < 0.003 and false_triggers == 0
     )
     lines = [
-        "# Gipformer FPT reviewed-name regression",
+        "# Gipformer FPT reviewed-name development probe",
         "",
-        f"Development check **{'PASS' if passed else 'FAIL'}**. "
+        f"In-sample probe, criteria **{'met' if passed else 'not met'}**. "
         f"Same INT8 decoder and batch size of {config['batch']} in both runs. The candidate supplies {len(phrases)} reviewed name "
         f"phrases at hotword score {config['context_vocab']['score']:g}.",
         "",
@@ -162,8 +162,10 @@ def comparison(args) -> bool:
         f"- Clean recordings with a newly introduced erroneous target phrase {false_triggers}/{len(clean)}.",
         f"- Clean insertion-rate change {clean_insertions * 100:+.3f} percentage points.",
         "",
-        "The name list was selected from the reviewed development cases. This is a targeted regression check "
-        "for an opt-in decoding preset. The previous heldout was outside the run.",
+        "The name list was selected from the same four reviewed recordings that the target table scores, so the "
+        "exact-phrase gain above is in-sample and shows only that the biasing mechanism can reach those spans. It "
+        "is not evidence that the preset generalizes. The clean-control rows check for collateral damage. Names "
+        "that did not come from these recordings were not tested here. The heldout was outside the run.",
     ])
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -174,12 +176,12 @@ def comparison(args) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-dir", type=Path)
-    parser.add_argument("--preset", type=Path, default=ROOT / "configs/bench/asr_models/gip15_mbs4_fpt_reviewed_names.yaml")
+    parser.add_argument("--preset", type=Path, default=ROOT / "configs/diagnostics/fpt/gip15_mbs4_fpt_reviewed_names.yaml")
     parser.add_argument("--data-dir", type=Path, default=ROOT / "artifacts/fpt_fosd")
     parser.add_argument("--manifests", type=Path, default=ROOT / "data/manifests")
     parser.add_argument("--review-sample", type=Path, default=ROOT / "artifacts/phase2_review/sample.jsonl")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts/targeted_decode/regression")
-    parser.add_argument("--report", type=Path, default=ROOT / "reports/fpt_targeted_name_fix.md")
+    parser.add_argument("--report", type=Path, default=ROOT / "reports/fpt_targeted_name_probe.md")
     raise SystemExit(0 if comparison(parser.parse_args()) else 1)
 
 
