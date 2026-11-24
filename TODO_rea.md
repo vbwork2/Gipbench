@@ -47,7 +47,7 @@ Giới hạn: chỉ một dataset (FPT), chỉ greedy, chưa có kết luận ng
 
 - **Đã bị loại trên dev:** hotword (FAIL trên heldout), blank penalty toàn cục, blank penalty có điều kiện (word-continuation), tắt đơn vị Joiner tĩnh. Báo cáo pha 3, 3b, 3c, 4.
 - **Chưa thử:** gate theo top-10, trigger học được, đo near miss được sửa theo checkpoint FT.
-- **Nút thắt:** số sự kiện near miss. Pha 4 chỉ có 65 sự kiện tái lập. Pool mới đã chấm xong (1.1): 2 172 span lỗi CS trong 1 541 câu. Heldout mới đã khoá (1.2): 685 span heldout, 1 487 span để chẩn đoán. Bước kế tiếp là 1.3 trên `extra_diagnostic.jsonl`.
+- **Nút thắt:** số sự kiện near miss. Pha 4 chỉ có 65 sự kiện tái lập. Pool mới đã chấm xong (1.1): 2 172 span lỗi CS trong 1 541 câu. Heldout mới đã khoá (1.2): 685 span heldout, 1 487 span để chẩn đoán. **Đã gỡ** (1.3, 1.4): pool mới có 654 sự kiện tái lập, pool dev 144. Bước kế tiếp là 👤 chọn ngưỡng sự kiện tối thiểu cho 2.2 và quyết thứ tự 2.1 / 2.2.
 
 ---
 
@@ -65,10 +65,8 @@ Mục đích: đủ sự kiện để thử trigger mà không bị in-sample. *
   - Kết quả: heldout 5 603 dòng, 471 câu có lỗi CS, **685 span** (sha `8ce672ce…7f70`); chẩn đoán 14 122 dòng, 1 070 câu, **1 487 span**, gồm 26 span của dòng trùng dev (sha `e193ae5d…10ee`). Tỉ lệ heldout ở bốn tầng 30,0–30,1%.
   - Mục đích dùng heldout đã đăng ký trong docstring, mỗi thứ kiểm một lần: bản tốt nhất của 2.1, trigger tốt nhất của 2.2, preset tên riêng, có thể thêm một lần lặp P1/P2 cho X2 (đăng ký riêng). 1.3, 1.4 và mọi bước thiết kế chỉ đọc `extra_diagnostic.jsonl`.
   - Giới hạn: không có nhãn speaker nên một người nói có thể ở cả hai phía; Set chỉ là đại diện cho đợt thu.
-- [ ] **1.3** Cho `fpt_pool_near_miss.py` đọc được pool mới (hiện chỉ đọc `full_scored.jsonl`), **chỉ `extra_diagnostic.jsonl`**, rồi chạy chẩn đoán trên các câu có lỗi CS.
-  - Xong khi: bảng giống `phase2_pool_near_miss.md` cho pool mới, báo riêng từng nhóm.
-- [ ] **1.4** Chạy replay Joiner (`scripts/08_joiner_decomposition.py`) trên các câu đó để biết số sự kiện **tái lập thật**, thay cho ước lượng 62,5%.
-  - Xong khi: một con số sự kiện tái lập cho cả pool dev và pool mới.
+- [x] **1.3** (24/11) `fpt_pool_near_miss.py --extra` chẩn đoán 1 070 câu, 1 487 span của `extra_diagnostic.jsonl` (sha kiểm với lock tách). Report `reports/phase2_extra_near_miss.md` do `scripts/diagnostics/fpt_extra_report.py` viết, script tự kiểm rằng cột dev tái tạo đúng số đã công bố. **Tái lập pool dev:** near miss 51,3% (dev 50,1%), dây chuyền 29,9% (30,1%), encoder + predictor 4,0% (2,5%), gần gap 14,8% (17,3%). Dự đoán dây chuyền của 3.2 **giữ lại** trên pool mới: CHAIN 95,1% ở nhóm đạt được, 47,0% ở nhóm còn lại.
+- [x] **1.4** (24/11) `scripts/diagnostics/fpt_event_replay.py` mã hoá lại audio bằng encoder ONNX và replay theo luật của script 08. Report `reports/phase4_event_replay.md`. **Sự kiện tái lập: pool mới 654 / 857 (76,3%, 389 câu, 360 từ), pool dev 144 / 204 (70,6%)**, so với 65 ở pha 4. Kiểm harness: trên cache encoder của pha 4, bug-mining ra lại đúng 65 / 104; trên encoder tính mới ra 66, vì encoder INT8 nhạy với sai số filterbank cỡ 6e-5 (lật 1 / 104 sự kiện). Ước lượng 62,5% cũ là thấp: câu không bị chọn tái lập 76–78%.
 
 ## 2 · Thử can thiệp còn mở
 
