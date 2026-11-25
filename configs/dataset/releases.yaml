@@ -180,6 +180,26 @@ releases:
     notes: "v4 bỏ 24 video giữ lại cho dev_interim_vi (383 câu) + 1 video có >= 2 câu gần trùng text dev, cùng các câu
       cùng nguồn (tổng 473 câu). 1 394 câu / 5.02 h / 93 nguồn."
 
+  # --- 25/11/2026, lỗi B1 (RESEARCH_RECOVERY.md mục 4): vss_cs@v4 và distill@v5 được đăng ký trên Windows bằng
+  # core.release ở 5caaf6a (trước fbbed01), nên trường audio dùng "\" và không đọc được trên Linux / Colab. Hai bản dưới
+  # đăng ký lại TỪ CÙNG file nguồn (sha nguồn = parents của bản cũ) trên WSL: cùng dòng, cùng thứ tự, cùng mọi trường trừ
+  # đường dẫn audio (dùng "/"). Bản cũ giữ nguyên (release bất biến).
+  pool/vss_cs@v5:
+    manifest: data/pools/vss_cs_v4/manifest.jsonl
+    built_by: gipbench.dataset.release.register (đăng ký lại nguồn của pool/vss_cs@v4, đường dẫn audio di động)
+    flags: {train_only: true, label_source: "pseudo:Zipformer-30M-RNNT-6000h", clean_against: locked_benches,
+            parent: pool/vss_cs@v4, audio_screened: true, acoustic_checked: true, portable_paths_of: pool/vss_cs@v4,
+            excludes_dev: [data/listen/dev_interim_cs/heldout.jsonl, data/listen/dev_interim_vi/heldout.jsonl]}
+    notes: "Nội dung = pool/vss_cs@v4 (1 087 câu / 4.01 h / 241 video); chỉ sửa dấu phân cách đường dẫn audio (lỗi B1)."
+
+  pool/distill@v6:
+    manifest: data/pools/distill_v5/manifest.jsonl
+    built_by: gipbench.dataset.release.register (đăng ký lại nguồn của pool/distill@v5, đường dẫn audio di động)
+    flags: {label_source: "distill:gip15", clean_against: locked_benches, parent: pool/distill@v5, audio_screened: true,
+            acoustic_checked: true, portable_paths_of: pool/distill@v5,
+            excludes_dev: [data/listen/dev_interim_cs/heldout.jsonl, data/listen/dev_interim_vi/heldout.jsonl]}
+    notes: "Nội dung = pool/distill@v5 (1 394 câu / 5.02 h / 93 nguồn); chỉ sửa dấu phân cách đường dẫn audio (lỗi B1)."
+
   pool/tts_train@e4_v1:
     manifest: data/tts/e4/train_tts.jsonl
     catalog: catalog/train-v1
