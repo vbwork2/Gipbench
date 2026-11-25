@@ -529,6 +529,41 @@ most of them; ablations do that.
      skip a truncated one.
 
   Training restarts from batch 0 with the same seed and data. The diagnostics read checkpoints from `keep/`.
+- **Attempt 2 completed (11:05–11:36)**, one segment (`segments.log`: `rc=0`, no watchdog event).
+  - All 8 checkpoints (300 … 2400) were kept, each 1.10 GB and a valid zip.
+  - Stage 6 wrote the artifact `$R/exp/artifacts/e4_x0/seed-0` (encoder `5568836d…`; Colab X0: `4d0072e8…`).
+  - **Identity vs the Colab model card:** the sampler state at 2400 is identical (`kept_cuts 25776`,
+    `kept_batches 2404`, 0 discarded). The mix block is identical. The train block is identical except the
+    environment-only watchdog fields.
+
+### 6.4 Verdict: X0 reproduces (ck2400 only, rules of 6.2)
+
+Decode `$R/diag/decode/dev_v2_vi/ck2400`, score `$R/diag/score/dev_v2_vi/ck2400` (baseline = Phase 1 official hyps).
+
+| dev_v2_vi@1 | Base | Local X0 ck2400 | Δ |
+| --- | ---: | ---: | --- |
+| WER | 8.81 | 12.88 | **+4.07 [3.67, 4.45]** |
+| CER | 6.76 | 10.70 | +3.94 [3.55, 4.31] |
+| S / D / I (% of ref words) | 2.83 / 1.00 / 4.97 | 2.93 / **7.33** / 2.62 | +0.10 / **+6.33** / −2.35 |
+| Output BPE tokens / s | 3.62 | 3.33 | −8% |
+
+| Duration bin (utts) | Base WER | ck2400 WER | ΔWER | D: base → ck2400 | Tokens / s |
+| --- | ---: | ---: | ---: | --- | --- |
+| < 10 s (128) | 11.00 | 12.42 | +1.42 | 0.84 → 3.62 | 3.91 → 3.75 |
+| 10–15 s (333) | 10.49 | 12.54 | +2.05 | 1.00 → 5.31 | 3.74 → 3.51 |
+| 15–20 s (448) | 8.89 | 12.84 | +3.95 | 1.14 → 7.40 | 3.67 → 3.37 |
+| 20–25 s (412) | 8.32 | 12.26 | +3.94 | 0.97 → 6.89 | 3.60 → 3.33 |
+| ≥ 25 s (370) | 8.24 | 13.65 | **+5.41** | 0.94 → 8.93 | 3.54 → 3.18 |
+
+Rules:
+1. CI95 lower 3.67 > +0.5. ✔
+2. ΔD (+6.33) > ΔS (+0.10) and > ΔI (−2.35). ✔
+3. ΔWER in every ≥ 15 s bin (3.94–5.41) > ΔWER < 10 s (1.42). ✔
+
+**→ Reproduced.** Retention (Δ ≤ +0.3, CI upper ≤ +0.5) fails, as on Colab. The point estimate is +4.07 against
+Colab's +4.83 [4.38, 5.25]. The intervals overlap only at their edges, so this run is slightly less damaged; the run
+log records the possible reasons (GPU, CUDA / torch versions, fp16). The same pattern appears: deletions grow with
+utterance length. The paired comparison with the Colab hyps follows in 6.5 with the per-checkpoint analysis.
 
 ---
 
