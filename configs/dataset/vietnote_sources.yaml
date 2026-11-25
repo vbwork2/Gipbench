@@ -5,6 +5,8 @@ sources:
     revision: 21beffb18c4974550a4bec66adb59c516cad1947
     license: unresolved
     repository_bytes: 29138240610
+    pilot_shard: data/train-00000.parquet
+    pilot_sha256: c3b2f808f79698795d5d9382a77fb7fec8e84437204cb1c6b4803b28b43c9301
     next_action: Resolve video-level recording rights and compare hand transcripts against gold and subtitle provenance.
   vss:
     status: reuse_local_research_pools_pending_original_recording_rights

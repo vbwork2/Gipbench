@@ -3,6 +3,7 @@
 import hashlib
 import json
 import math
+import re
 import shutil
 from pathlib import Path
 
@@ -63,6 +64,29 @@ def eligible_release(release, sources, kind):
     source = sources.get(approval.get("source"), {})
     rights = source.get("recording_rights") or {}
     evidence = rights.get("evidence")
+    review = source.get("release_reviews", {}).get(release.ref, {})
+    if not review.get("path") or release.manifest is None:
+        return False
+    path = X.abspath(review["path"])
+    if not path.is_file() or R.sha256(path) != review.get("sha256"):
+        return False
+    audit = read_json(path)
+    if (audit.get("release") != release.ref or audit.get("manifest_sha256") != R.sha256(release.manifest)
+            or audit.get("source_revision") != source.get("revision") or not audit.get("reviewer")):
+        return False
+    decisions = audit.get("decisions", {})
+    rows = read_jsonl(release.manifest)
+    if not rows or len(rows) != len(decisions):
+        return False
+    for row in rows:
+        decision = decisions.get(row["id"], {})
+        if (decision.get("decision") != "accept" or decision.get("language") != kind
+                or decision.get("audio_sha256") != row.get("audio_sha256")
+                or not eligible_row(row, kind)
+                or decision.get("speaker") != row["speaker"] or decision.get("domain") != row.get("domain")
+                or not row.get("domain") or decision.get("speech_type") != row.get("speech_type")
+                or row.get("speech_type") not in {"natural", "read"}):
+            return False
     return bool(evidence and rights.get("training_allowed") is True and rights.get("license")
                 and R.sha256(X.abspath(evidence)) == rights.get("sha256") and approval.get("kind") == kind
                 and source.get("revision") and approval.get("source_revision") == source.get("revision")
@@ -71,9 +95,14 @@ def eligible_release(release, sources, kind):
 
 
 def eligible_row(row, kind):
+    text = row.get("text_tagged") or ""
+    spans = re.findall(r"<en>([^<>]+)</en>", text)
+    outside = re.sub(r"<en>[^<>]+</en>", "", text)
     return bool(row.get("audio_sha256") and row.get("speaker") and row.get("source") and row.get("split") == "train"
-                and not row.get("synthetic") and row.get("text_tagged")
-                and ("<en>" in row["text_tagged"]) == (kind == "cs"))
+                and not row.get("synthetic") and not row.get("augmentation")
+                and row.get("language_category") in ({"vi"} if kind == "vi" else {"mixed", "cs"})
+                and any(c.isalpha() for c in outside) and "<" not in outside and ">" not in outside
+                and bool(spans) == (kind == "cs"))
 
 
 def inventory(config, sources):
@@ -108,7 +137,7 @@ def inventory(config, sources):
                 if identity not in seen:
                     seen.add(identity)
                     summary["available_hours"] += sec / 3600
-                if approved and eligible_row(row, kind) and identity not in seen_eligible:
+                if approved and eligible_row(row, kind) and identity not in seen_eligible and R.sha256(audio) == identity:
                     seen_eligible.add(identity)
                     summary["eligible_hours"] += sec / 3600
             sources_hours[ref] = summary
@@ -139,7 +168,37 @@ def independent_cs(config, spec):
     return {"rows": len(rows), "domains": len(domains), "verified_speakers": len(speakers)}
 
 
-def model_validation(config, research, expected_gpu=None):
+def check_memory(result, protocol, train, expected_gpu, environment=None, available_vram=None):
+    limit = train["max_duration"]
+    precision = "fp16" if train["fp16"] else "fp32"
+    if result.get("selected_limit") != limit or precision != protocol["precision"]:
+        raise ValueError("Missing selected batch configuration or precision")
+    if not result.get("gpu") or (expected_gpu is not None and expected_gpu != result["gpu"]):
+        raise ValueError("Batch evidence used a different GPU")
+    if not result.get("environment") or (environment is not None and result["environment"] != environment):
+        raise ValueError("Batch evidence used a different runtime environment")
+    for kind in ("pooled", "long"):
+        cases = [c for c in result["cases"] if c["kind"] == kind and c["limit"] == limit]
+        if len(cases) != 1:
+            raise ValueError(f"Missing {kind} batch probe at {limit} seconds")
+        case, = cases
+        steps = case.get("steps", [])
+        if (case.get("passed") is not True or case.get("precision") != precision
+                or len(steps) != protocol["steps_per_case"]
+                or not (0 < case["peak_allocated_bytes"] <= case["peak_reserved_bytes"]
+                        <= case["gpu_free_before_bytes"] - protocol["min_free_fraction"] * case["gpu_total_bytes"])
+                or not (0 < case["gpu_free_before_bytes"] <= case["gpu_total_bytes"])
+                or any(not (limit * protocol["min_batch_fraction"] <= step["padded_seconds"] <= limit
+                            and 0 < step["audio_seconds"] <= step["padded_seconds"] + 1e-6) for step in steps)
+                or (kind == "long" and case["longest_clip"] < protocol["long_clip_min_seconds"])):
+            raise ValueError(f"Unsupported {kind} batch at {limit} seconds")
+        if available_vram is not None:
+            free, total = available_vram
+            if total != case["gpu_total_bytes"] or free < case["peak_reserved_bytes"] + protocol["min_free_fraction"] * total:
+                raise ValueError(f"Current CUDA memory cannot support the verified {kind} batch")
+
+
+def model_validation(config, research, expected_gpu=None, environment=None, available_vram=None):
     base = X.abspath(config["base_model"])
     lock = read_json(LOCK)
     checkpoint = R.sha256(base / "pytorch/pretrained.pt")
@@ -147,6 +206,10 @@ def model_validation(config, research, expected_gpu=None):
     if checkpoint != spec["sha256"]:
         raise ValueError("Checkpoint differs from the VietNote revision lock")
     evidence = {key: REPO / val for key, val in research["evidence"].items()}
+    if environment and environment.get("backend") == "kaggle":
+        evidence["memory"] = evidence["memory_kaggle"]
+    elif environment and environment.get("colab"):
+        evidence["memory"] = evidence["memory_colab"]
     protocol = R.sha256(REPO / research["validation_config"])
     scorer = code_sha256([REPO / "src/gipbench" / path for path in research["scorer_files"]])
     identity = {"model_revision": lock["revision"], "checkpoint_input_sha256": checkpoint}
@@ -159,7 +222,7 @@ def model_validation(config, research, expected_gpu=None):
                 raise ValueError("stale model or checkpoint identity")
             if name != "tensors" and result.get("config_sha256") != protocol:
                 raise ValueError("stale validation protocol")
-            if result.get("passed") is not True:
+            if name != "memory" and result.get("passed") is not True:
                 raise ValueError("registered criteria failed")
             if name == "parity":
                 comparisons = {"offline_fp32", "offline_int8", "streaming_fp32", "streaming_int8"}
@@ -191,12 +254,7 @@ def model_validation(config, research, expected_gpu=None):
                         or result.get("pool_manifest_sha256") != R.sha256(resolve_manifest(memory["pool"]).manifest)
                         or result.get("long_pool_manifest_sha256") != R.sha256(resolve_manifest(memory["long_pool"]).manifest)):
                     raise ValueError("stale memory protocol")
-                limit = config["train"]["max_duration"]
-                if config["train"]["fp16"] or not any(case["kind"] == "pooled" and case["limit"] == limit
-                                                      and case.get("passed") is True for case in result["cases"]):
-                    raise ValueError(f"missing matching FP32 batch validation at {limit} seconds")
-                if expected_gpu is not None and result.get("gpu") != expected_gpu:
-                    raise ValueError("batch evidence used a different GPU")
+                check_memory(result, memory, config["train"], expected_gpu, environment, available_vram)
         except (OSError, KeyError, TypeError, ValueError) as exc:
             problems[name] = str(exc)
     if {"parity", "tensors"} <= details.keys():
@@ -253,8 +311,10 @@ def cutset_hours(config, cuts):
     hours = {"vi": 0.0, "cs": 0.0}
     for filename, rows, identities in (("train.jsonl.gz", expected, seen), ("valid.jsonl.gz", valid, seen_dev)):
         kinds = set()
+        recording_ids = set()
         for cut in CutSet.from_file(cuts / filename):
             kind, row = rows[cut.recording_id]
+            recording_ids.add(cut.recording_id)
             path = Path(row["_audio_path"]).resolve()
             digest = R.sha256(path)
             recording = cut.recording
@@ -272,9 +332,29 @@ def cutset_hours(config, cuts):
                 hours[kind] += cut.duration / 3600
         if kinds != {"vi", "cs"}:
             raise ValueError(f"{filename} must contain both VI and CS")
+        if filename == "valid.jsonl.gz":
+            require_dev_coverage(valid, recording_ids)
     if seen & seen_dev:
         raise ValueError("Audio overlap between train and dev CutSets")
+    check_mixture(config, hours)
     return hours
+
+
+def require_dev_coverage(expected, observed):
+    missing = set(expected) - observed
+    if missing:
+        raise ValueError(f"Development CutSet missing {len(missing)} rows: {sorted(missing)[:5]}")
+
+
+def check_mixture(config, hours):
+    groups = X.groups(config)
+    total_weight = sum(g["weight"] for g in groups)
+    total_hours = sum(hours.values())
+    tolerance = config["features"]["max_duration"] / 3600
+    for group in groups:
+        kind = GROUP_KINDS[group["group"]]
+        if abs(hours[kind] - total_hours * group["weight"] / total_weight) > tolerance:
+            raise ValueError(f"CutSet hours differ from registered mixture for {kind}")
 
 
 def build_bundle(config, seed, staged, out):
@@ -330,11 +410,19 @@ def verify_bundle(config, seed, cuts):
 
 
 def require_training(config, seed, cuts, gpu):
+    import os
+    import platform
+    import torch
     research = registry()
     if Path(config["_path"]).resolve() != (REPO / research["experiment_config"]).resolve():
         raise ValueError("Select the registered V03 training configuration")
     _, issues = data_ready(config, research)
-    _, model_issues = model_validation(config, research, expected_gpu=gpu)
+    environment = {"platform": platform.system(), "kernel": platform.release(), "torch": str(torch.__version__),
+                   "cuda": torch.version.cuda, "colab": bool(os.environ.get("COLAB_RELEASE_TAG"))}
+    if Path("/kaggle/input").is_dir() and Path("/kaggle/working").is_dir():
+        environment["backend"] = "kaggle"
+    _, model_issues = model_validation(config, research, expected_gpu=gpu, environment=environment,
+                                       available_vram=torch.cuda.mem_get_info())
     issues.extend(f"{name}: {reason}" for name, reason in model_issues.items())
     if issues:
         raise ValueError("\n".join(issues))

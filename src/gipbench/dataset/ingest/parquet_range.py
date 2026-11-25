@@ -19,6 +19,7 @@ class ParquetRanges(io.RawIOBase):
         self.url, self.size, self.cache = url, size, cache
         self.budget, self.reserve = budget, reserve
         self.offset = self.transferred = 0
+        self._last_start, self._last_block = None, b""
         cache.mkdir(parents=True, exist_ok=True)
 
     def readable(self):
@@ -73,7 +74,10 @@ class ParquetRanges(io.RawIOBase):
         done = 0
         while done < length:
             start = self.offset // self.block_size * self.block_size
-            data = self.block(start)
+            if start != self._last_start:
+                self._last_block = self.block(start)
+                self._last_start = start
+            data = self._last_block
             local = self.offset - start
             count = min(length - done, len(data) - local)
             view[done:done + count] = data[local:local + count]

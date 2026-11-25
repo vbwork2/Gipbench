@@ -1,0 +1,9 @@
+purpose: Exercise the official training and export lifecycle and screen for gross retention failure.
+train_manifest: data/work/vietnote/v02/tiny/train.jsonl
+train_manifest_sha256: f3ff60b1e7739fcc78dbf1eb99e92342113a3ff6958dfca157b26f4d3831b46a
+train_rows: 4
+dev_rows_per_kind: 12
+selection: Lowest strict development WER across epochs, earlier epoch breaks ties.
+retention_stop_vi_wer_delta_pp: 5
+train: {num_epochs: 1, fp16: false, lr: 0.0015, max_duration: 16, bucketing_sampler: false, buckets: 2, workers: 0, save_every: 500, keep_last_k: 1}
+seed: 0

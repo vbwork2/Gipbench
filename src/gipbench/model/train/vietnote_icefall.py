@@ -9,6 +9,7 @@ import tarfile
 from pathlib import Path
 
 from gipbench.core.download import verify_file
+from gipbench.core.paths import REPO
 from gipbench.model.families import family
 from gipbench.model.recipe import experiment
 from gipbench.model.vietnote import LOCK, verify_tokenizer
@@ -54,7 +55,8 @@ def prepare_recipe(card, base, icefall, out):
 def train_cmd(config, card, base, recipe, cuts, output, seed, start_epoch, start_batch):
     t = config["train"]
     return [
-        sys.executable, str(recipe / "finetune.py"), "--world-size", "1", "--seed", str(seed),
+        sys.executable, str(REPO / "scripts/diagnostics/vietnote_logged_cli.py"),
+        str(recipe / "finetune.py"), "--world-size", "1", "--seed", str(seed),
         "--num-epochs", str(t["num_epochs"]), "--start-epoch", str(start_epoch),
         "--start-batch", str(start_batch), "--use-fp16", str(int(t["fp16"])),
         "--exp-dir", str(output), "--manifest-dir", str(cuts), "--bpe-model", str(base / "bpe.model"),
@@ -151,8 +153,12 @@ def main():
         parser.error(str(exc))
     icefall = icefall_source(card, icefall)
     strict_check(card, recipe, icefall, base)
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(icefall), str(recipe)]))
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(map(str, [REPO / "src", recipe, icefall, base / "upstream/src"])))
     subprocess.run(command, cwd=recipe, env=env, check=True)
+    subprocess.run([sys.executable, str(REPO / "scripts/diagnostics/vietnote_cli_pilot.py"),
+                    "--experiment", str(args.experiment.resolve()), "--cuts", str(cuts),
+                    "--seed", str(args.seed), "--checkpoints", str(output), "--out", str(output / "evaluation")],
+                   cwd=REPO, env=env, check=True)
 
 
 if __name__ == "__main__":

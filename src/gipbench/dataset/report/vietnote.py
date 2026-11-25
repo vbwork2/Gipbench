@@ -74,11 +74,19 @@ def fragmentation(terms):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pool", nargs="*", default=CORPUS_POOLS)
+    parser.add_argument("--pool", nargs="*")
     parser.add_argument("--candidates", nargs="*", type=Path, default=[])
     parser.add_argument("--audio-sample", type=int, default=12)
     parser.add_argument("--out", type=Path, default=path("data_root") / "work/vietnote/corpus.json")
     args = parser.parse_args()
+    if args.pool is None:
+        args.pool = []
+        for ref in CORPUS_POOLS:
+            revised = ref.removesuffix("@v1") + "@v2"
+            if ref.startswith(("pool/vietnote_fleurs_vi@", "pool/vietnote_librispeech_en@")) and (
+                    R.release_dir(revised) / "release.json").is_file():
+                ref = revised
+            args.pool.append(ref)
     cat = Catalog.load(str(R.resolve("catalog/train-v1").catalog))
     sources, missing, flags = {}, {}, {}
     for ref in args.pool:
@@ -117,16 +125,27 @@ def main():
             all_released.extend(unique)
     union, _ = identify_audio(all_released, known_hashes)
     words = Counter(w for r in union for span in r["_spans"] for w in span.split())
-    durations = defaultdict(float)
+    durations, composition = defaultdict(float), defaultdict(float)
     for row in union:
         label = row.get("label_source") or "unknown"
         durations[label.split(":")[0]] += row["_duration"] / 3600
+        category = row.get("language_category")
+        if row.get("synthetic") or label.startswith("synthetic"):
+            group = "synthetic"
+        elif category == "native_en":
+            group = "native_en"
+        elif category == "accented_en":
+            group = "accented_en"
+        else:
+            group = "other_released_speech"
+        composition[group] += row["_duration"] / 3600
     report["released_union"] = {
         "unique_audio_rows": len(union), "unique_audio_hours": sum(r["_duration"] for r in union) / 3600,
         "duplicate_rows_removed": sum(len(by_source[ref]) - report["pools"][ref]["rows_missing_audio"]
                                       for ref in args.pool if ref in by_source) - len(union),
         "identity": "Recorded SHA256 where available, resolved audio path otherwise",
         "hours_by_label_source_prefix": dict(durations),
+        "hours_by_speech_group": dict(composition),
         "unique_tagged_english_words": len(words), "rare_tagged_english_words_le_4": sum(n <= 4 for n in words.values()),
         "tokenizer_fragmentation": fragmentation(words), "sampling_exposure": None,
     }

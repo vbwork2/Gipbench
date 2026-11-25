@@ -38,14 +38,14 @@ def selected_rows(config):
     return selected, {row["id"]: row for row in checked["negative_control"]}
 
 
-def score_pilot(directory, config):
+def score_pilot(directory, config, primary="zerotts"):
     from gipbench.bench import evaluate, transcribe
     from gipbench.dataset.synth import verify
 
     catalog = R.resolve(config["catalog"]).catalog
     script = {row["id"]: row for row in selected_rows(config)[0]}
     systems = {"gipformer": "gip15_mbs4_open", "vietnote": "vietnote78_offline_int8"}
-    datasets = {"zerotts": "pilot.jsonl", "espeak": "espeak_matched.jsonl"}
+    datasets = {primary: "pilot.jsonl", "espeak": "espeak_matched.jsonl"}
     scores = {}
     review = []
     for engine, filename in datasets.items():
@@ -108,43 +108,69 @@ def score_pilot(directory, config):
             key.writerow([identifier, engine, row["id"], kept])
 
 
+def load_engine(engine, cfg, revision):
+    from huggingface_hub import HfApi, snapshot_download
+
+    info = HfApi().model_info(cfg["model"], revision=revision or cfg.get("revision"), token=False)
+    if not info.sha or not info.card_data or str(info.card_data.license).lower() != cfg["weights_license"].lower():
+        raise ValueError("Missing or changed TTS model license")
+    cache = REPO / "models/vietnote78/tts_cache"
+    if engine == "vieneu":
+        from vieneu import Vieneu
+
+        if version("vieneu") != cfg["runtime"].split("==", 1)[1].split(",", 1)[0]:
+            raise ValueError(f"Install the registered runtime {cfg['runtime']}")
+        if shutil.disk_usage(cache.parent).free < 4 * 2**30:
+            raise OSError("Insufficient disk space for the pinned ONNX pilot")
+        root = Path(snapshot_download(cfg["model"], revision=info.sha, cache_dir=cache, token=False,
+                                      allow_patterns=["onnx_update/*", "README.md"], max_workers=2))
+        tts = Vieneu(mode="v3turbo", backend="onnx", device="cpu", backbone_repo=str(root),
+                     onnx_dir=str(root / "onnx_update"), threads=4)
+        return info.sha, tts.sample_rate, tts.infer
+
+    from zerotts import ZeroTTS, load_voice, resolve_model_dir
+
+    if f"zerotts=={version('zerotts')}" != cfg["runtime"]:
+        raise ValueError(f"Install the registered runtime {cfg['runtime']}")
+    root = resolve_model_dir(cfg["model"], revision=info.sha, cache_dir=str(cache))
+    voice = load_voice(root / "voices", cfg["voice"])
+    tts = ZeroTTS(root, intra_op_num_threads=4)
+    return info.sha, tts.sample_rate, lambda text: tts.synthesize(text, voice=voice, max_frames=250)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--revision", help="Use the recorded revision to reproduce a previous pilot")
+    parser.add_argument("--engine", default="zerotts", choices=["zerotts", "vieneu"])
     parser.add_argument("--score", action="store_true", help="Score existing audio and prepare blind human review")
     args = parser.parse_args()
     config = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     if args.score:
-        score_pilot(args.out, config)
+        score_pilot(args.out, config, args.engine)
         return
-    from huggingface_hub import HfApi
-    from zerotts import ZeroTTS, load_voice, resolve_model_dir
+    import soundfile as sf
 
-    cfg = config["engines"]["zerotts"]
-    if f"zerotts=={version('zerotts')}" != cfg["runtime"]:
-        raise ValueError(f"Install the registered runtime {cfg['runtime']}")
+    cfg = config["engines"][args.engine]
     R.forbid_bench_catalog(config["catalog"], "Neural TTS")
     catalog = R.resolve(config["catalog"]).catalog
     rows, negative = selected_rows(config)
-    info = HfApi().model_info(cfg["model"], revision=args.revision, token=False)
-    if not info.sha or not info.card_data or info.card_data.license.lower() != cfg["weights_license"].lower():
-        raise ValueError("Missing or changed ZeroTTS model license")
-    root = resolve_model_dir(cfg["model"], revision=info.sha, cache_dir=str(REPO / "models/vietnote78/tts_cache"))
-    voice = load_voice(root / "voices", cfg["voice"])
+    revision, sample_rate, synthesize = load_engine(args.engine, cfg, args.revision)
     args.out.mkdir(parents=True, exist_ok=False)
     audio = args.out / "audio"
     audio.mkdir()
-    tts = ZeroTTS(root, intra_op_num_threads=4)
+    voice = cfg.get("voice", "default_preset")
     generated = []
     for row in rows:
         np.random.seed(int(hashlib.sha256(f"{config['seed']}:{row['id']}".encode()).hexdigest()[:8], 16))
-        wave = tts.synthesize(plain_text(row["text_tagged"]), voice=voice, max_frames=250)
+        wave = synthesize(plain_text(row["text_tagged"]))
+        if not wave.size or not np.isfinite(wave).all() or float(np.max(np.abs(wave))) < 0.001:
+            raise ValueError(f"Invalid generated audio for {row['id']}")
         dest = audio / f"{row['id']}.wav"
-        tts.save_audio(wave, str(dest))
+        sf.write(dest, wave, sample_rate, subtype="PCM_16")
         generated.append({"id": row["id"], "audio": f"audio/{dest.name}", "text_tagged": row["text_tagged"],
-                          "source": f"custom_tts:{row['id']}", "speaker": f"tts:zerotts:{cfg['voice']}",
-                          "dataset": "custom_zerotts_pilot", "split": "train", "duration": wave.size / tts.sample_rate,
+                          "source": f"custom_tts:{row['id']}", "speaker": f"tts:{args.engine}:{voice}",
+                          "dataset": f"custom_{args.engine}_pilot", "split": "train", "duration": wave.size / sample_rate,
                           "domain": row["domain"], "audio_sha256": R.sha256(dest), "synthetic": True,
                           "train_only": True, "label_source": "synthetic:conditioning_text",
                           "quality_status": "pending_human_review", "weights_license": cfg["weights_license"]})
@@ -160,7 +186,7 @@ def main():
         writer.writerow(["sample", "audio", "text_tagged", *dimensions, "decision"])
         for number, row in enumerate(review, 1):
             writer.writerow([f"sample-{number:02d}", row["audio"], row["text_tagged"], *[""] * (len(dimensions) + 1)])
-    evidence = {"model": cfg["model"], "revision": info.sha, "voice": cfg["voice"], "runtime": cfg["runtime"],
+    evidence = {"model": cfg["model"], "revision": revision, "voice": voice, "runtime": cfg["runtime"],
                 "weights_license": cfg["weights_license"], "catalog_sha256": R.sha256(catalog),
                 "script_sha256": config["script_sha256"], "rows": len(generated),
                 "hours": sum(row["duration"] for row in generated) / 3600, "human_approved_rows": 0,

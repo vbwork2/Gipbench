@@ -51,7 +51,7 @@ def infer(session, inputs):
         for item, tensor in zip(session.get_inputs(), inputs, strict=True)})
 
 
-def compare_mode(base, icefall, mode, rows, card, export):
+def compare_mode(base, icefall, mode, rows, card, export, checkpoint=None):
     streaming = mode == "streaming"
     script = "export-onnx-streaming.py" if streaming else "export-onnx.py"
     wrappers = runpy.run_path(str(icefall / "egs/librispeech/ASR/zipformer" / script))
@@ -64,9 +64,10 @@ def compare_mode(base, icefall, mode, rows, card, export):
     params.update(vars(wrappers["get_parser"]().parse_args(flags)))
     params.update(vocab_size=card["vocab_size"], blank_id=0)
     model = wrappers["get_model"](params)
-    checkpoint = base / "pytorch/pretrained.pt"
-    verify_file(checkpoint, next(item for item in card["model_files"] if item["path"] == "pytorch/pretrained.pt"))
-    model.load_state_dict(torch.load(checkpoint, weights_only=True, map_location="cpu")["model"], strict=True)
+    if checkpoint is None:
+        checkpoint = base / "pytorch/pretrained.pt"
+        verify_file(checkpoint, next(item for item in card["model_files"] if item["path"] == "pytorch/pretrained.pt"))
+    model.load_state_dict(torch.load(checkpoint, weights_only=True, mmap=True, map_location="cpu")["model"], strict=True)
     model.eval()
     convert_options = {} if streaming else {"is_onnx": True}
     wrappers["convert_scaled_to_non_scaled"](model, inplace=True, **convert_options)
@@ -131,6 +132,8 @@ def main():
     parser.add_argument("--icefall", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--pilot-model", type=Path, help="Model-only file from a selected pilot checkpoint export")
+    parser.add_argument("--pairs", type=int, choices=(1, 12), default=1, help="Pairs for a selected fine-tuned model")
     args = parser.parse_args()
     if args.out.exists():
         raise FileExistsError(args.out)
@@ -140,13 +143,14 @@ def main():
     rows = read_jsonl(args.manifest)
     long = sorted([row for row in rows if float(row["duration"]) >= 20], key=lambda row: row["id"])
     short = sorted([row for row in rows if float(row["duration"]) < 20], key=lambda row: row["id"])
-    selected = [*long[:12], *short[:12]]
-    if len(selected) != 24:
-        raise ValueError("The tensor check requires 12 short and 12 long utterances")
+    count = args.pairs if args.pilot_model else 12
+    selected = [*long[:count], *short[:count]]
+    if len(selected) != 2 * count:
+        raise ValueError(f"The tensor check requires {count} short and {count} long utterances")
     for row in selected:
         if sha256(row["_audio_path"]) != row["audio_sha256"]:
             raise ValueError(f"Audio digest mismatch: {row['id']}")
-    measurements = {mode: compare_mode(base, args.icefall, mode, selected, card, args.export)
+    measurements = {mode: compare_mode(base, args.icefall, mode, selected, card, args.export, args.pilot_model)
                     for mode in ("offline", "streaming")}
     quantized = {f"{kind}/{mode}/{part}": quantization(directory / f"{part}.int8.onnx")
                  for mode in measurements
@@ -154,9 +158,9 @@ def main():
                  for part in ("encoder", "decoder", "joiner")}
     passed = all(stat["comparisons"] > 0 and not stat["failures"] for stats in measurements.values() for stat in stats.values())
     evidence = {"passed": passed and all(x["passed"] for x in quantized.values()), "measurements": measurements,
-                "quantization": quantized, "atol": ATOL, "rtol": RTOL, "rows": len(selected), "long_rows": 12,
+                "quantization": quantized, "atol": ATOL, "rtol": RTOL, "rows": len(selected), "long_rows": count,
                 "manifest_sha256": manifest_sha256(rows), "selected_ids": [row["id"] for row in selected],
-                "model_revision": card["revision"], "checkpoint_input_sha256": sha256(base / "pytorch/pretrained.pt"),
+                "model_revision": card["revision"], "checkpoint_input_sha256": sha256(args.pilot_model or base / "pytorch/pretrained.pt"),
                 "export_metadata_sha256": sha256(args.export / "export.json"),
                 "onnxruntime_version": ort.__version__, "torch_version": torch.__version__}
     args.out.parent.mkdir(parents=True, exist_ok=True)

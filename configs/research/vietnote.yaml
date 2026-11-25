@@ -22,14 +22,26 @@ evidence:
   tiny: data/work/vietnote/v02/tiny/result.json
   tiny_followup: data/work/vietnote/v02/tiny_low_lr/result.json
   tiny_followup_attempt: data/work/vietnote/v02/tiny_low_lr_attempt.json
-  memory: data/work/vietnote/v02/memory_serial/result.json
+  memory_historical: data/work/vietnote/v02/memory_serial/result.json
+  memory: data/work/vietnote/v02/memory_selected/result.json
+  memory_colab: data/work/vietnote/v02/memory_colab/result.json
+  memory_kaggle: data/work/vietnote/v02/memory_kaggle/result.json
+  cli_pilot: data/work/vietnote/v02/official_pilot/result.json
   zerotts: data/work/vietnote/tts/zerotts_pilot/result.json
   zerotts_asr: data/work/vietnote/tts/zerotts_pilot/asr_metrics.json
+  vieneu: data/work/vietnote/tts/vieneu_pilot/result.json
+  vieneu_asr: data/work/vietnote/tts/vieneu_pilot/asr_metrics.json
   espeak: data/work/vietnote/tts/espeak_control/two_family_review.jsonl.report.md
   diagnostic_dev: data/work/vietnote/dev/interim_cs_quick.lock.json
-  source_review: data/work/vietnote/source_review/result.json
+  source_review_historical: data/work/vietnote/source_review/result.json
+  source_review: data/work/vietnote/source_review_post_audit/result.json
   conventional_results: results/vietnote/v03/result.json
 experiments:
+  V02P:
+    strategy: conventional
+    title: Official CLI engineering pilot on reviewed speech
+    requires: []
+    protocol: configs/model/experiments/vietnote_cli_pilot.yaml
   V00: {strategy: conventional, title: Released checkpoint on quick and full development sets, requires: []}
   V01: {strategy: conventional, title: Re-export and compare FP32 and per-channel INT8, requires: []}
   V02: {strategy: conventional, title: Tiny-set learning and separate CUDA memory validation, requires: []}

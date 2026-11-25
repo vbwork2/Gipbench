@@ -1,6 +1,7 @@
 """Acquire deterministic train pilots from pinned public snapshots."""
 
 import argparse
+import csv
 import hashlib
 import io
 import json
@@ -9,12 +10,13 @@ import random
 import shutil
 from collections import Counter
 from pathlib import Path
+from urllib.request import urlopen
 
 import yaml
 
-from gipbench.core.download import download_file
+from gipbench.core.download import download_file, verify_file
 from gipbench.core.fileio import sha256_file
-from gipbench.core.manifest import write_jsonl
+from gipbench.core.manifest import read_jsonl
 from gipbench.core.paths import REPO, path
 from gipbench.dataset.ingest.evalsets import read_fleurs, write_audio
 from gipbench.dataset.ingest.parquet_range import ByteBudgetExceeded, ParquetRanges
@@ -100,64 +102,144 @@ def parquet_rows(ranges, fields, key, seed):
             yield rg, i, batch.slice(i, 1).to_pylist()[0]
 
 
-def fleurs_rows(ranges, tsv, seed):
-    # Sample within the archive prefix because the original gzip stream is sequential.
-    rng = random.Random(seed)
+def fleurs_rows(ranges, tsv):
     for i, (name, meta, data, _) in enumerate(read_fleurs({}, [tsv, ranges])):
-        if rng.random() < 0.65:
-            yield None, i, {"audio": {"path": name, "bytes": data}, **meta}
+        yield None, i, {"audio": {"path": name, "bytes": data}, **meta}
+
+
+def write_review_queue(out, rows):
+    fields = ["id", "audio", "audio_sha256", "duration", "text_tagged", "speaker", "decision", "notes"]
+    previous = {}
+    if out.exists():
+        with out.open(encoding="utf-8-sig", newline="") as handle:
+            previous = {(row["id"], row["audio_sha256"], row["text_tagged"]): row for row in csv.DictReader(handle)}
+    reviewed = 0.0
+    pending = out.with_suffix(".tmp")
+    with pending.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            old = previous.get((row["id"], row["audio_sha256"], row["text_tagged"]), {})
+            decision = old.get("decision", "")
+            if decision in {"accept", "reject", "fix", "ok"}:
+                reviewed += float(row["duration"]) / 3600
+            writer.writerow({**row, "decision": decision, "notes": old.get("notes", "")})
+    pending.replace(out)
+    return reviewed
+
+
+def recover_journal(manifest):
+    # A terminated write may leave an incomplete final record.
+    if not manifest.exists():
+        return
+    with manifest.open("r+b") as handle:
+        content = handle.read()
+        if content and not content.endswith(b"\n"):
+            handle.truncate(content.rfind(b"\n") + 1)
 
 
 def acquire(key, spec, out, args):
-    budget = args.byte_budget_mib * 1024**2
+    budget = 0 if args.cache_only else args.byte_budget_mib * 1024**2
     base = f"https://huggingface.co/datasets/{spec['repo']}/resolve/{spec['revision']}"
     dl = path("data_root") / "dl/vietnote" / key / spec["revision"] / spec["sha256"]
     out.mkdir(parents=True, exist_ok=True)
     (out / "audio").mkdir(exist_ok=True)
     fields = {"audio", spec["text"], *spec.get("filters", {}), *spec.get("metadata", []),
               *(spec[k] for k in ("id", "source", "speaker") if spec.get(k))}
-    rows, seen, drops = [], set(), Counter()
-    seconds = 0.0
+    manifest = out / "candidates.jsonl"
+    if manifest.exists() and not args.resume:
+        raise ValueError(f"Candidate manifest already exists. Use --resume: {manifest}")
+    if args.resume:
+        recover_journal(manifest)
+    rows = read_jsonl(manifest) if manifest.exists() else []
+    for row in rows:
+        if (row["upstream_revision"] != spec["revision"] or row["upstream_shard"] != spec["file"]
+                or sha256_file(row["_audio_path"]) != row["audio_sha256"]):
+            raise ValueError(f"Stale candidate: {row['id']}")
+    count = len(rows)
+    seen = {row["upstream_audio_sha256"] for row in rows}
+    previous = out / "acquisition.json"
+    prior = json.loads(previous.read_text(encoding="utf-8")) if previous.exists() else {}
+    drops = Counter()
+    seconds = sum(row["duration"] for row in rows)
     tsv = None
     metadata_bytes = 0
     if spec.get("tsv"):
         metadata = spec["tsv"]
         tsv = dl / Path(metadata["path"]).name
         metadata_bytes = 0 if tsv.exists() else metadata["bytes"]
-        if metadata_bytes >= budget:
-            raise ByteBudgetExceeded("The TSV exceeds the download budget")
-        download_file(f"{base}/{metadata['path']}", tsv, metadata, 3 * 2**30)
-    with ParquetRanges(f"{base}/{spec['file']}", spec["bytes"], dl, budget - metadata_bytes, 3 * 2**30) as ranges:
+        if args.cache_only:
+            verify_file(tsv, metadata)
+        else:
+            if metadata_bytes >= budget:
+                raise ByteBudgetExceeded("The TSV exceeds the download budget")
+            download_file(f"{base}/{metadata['path']}", tsv, metadata, 3 * 2**30)
+    with (ParquetRanges(f"{base}/{spec['file']}", spec["bytes"], dl, budget - metadata_bytes, 3 * 2**30) as ranges,
+          manifest.open("a", encoding="utf-8") as journal):
         stop = "shard_exhausted"
         try:
-            raw_rows = fleurs_rows(ranges, tsv, args.seed) if tsv else parquet_rows(ranges, fields, key, args.seed)
-            for rg, i, raw in raw_rows:
+            raw_rows = fleurs_rows(ranges, tsv) if tsv else parquet_rows(ranges, fields, key, args.seed)
+            while count < args.max_rows and args.hours * 3600 - seconds >= 1:
+                current = next(raw_rows, None)
+                if current is None:
+                    break
+                rg, i, raw = current
                 row, reject = make_row(key, spec, raw, rg, i, out, args.hours * 3600 - seconds, seen)
                 if reject:
                     drops[reject] += 1
                 else:
-                    rows.append(row)
+                    journal.write(json.dumps(row, ensure_ascii=False) + "\n")
+                    journal.flush()
+                    count += 1
                     seconds += row["duration"]
-                if len(rows) >= args.max_rows or args.hours * 3600 - seconds < 1:
-                    stop = "pilot_limit"
-                    break
+            else:
+                stop = "pilot_limit"
         except ByteBudgetExceeded:
             stop = "byte_budget"
         transferred = ranges.transferred + metadata_bytes
-    write_jsonl(str(out / "candidates.jsonl"), rows)
+        cached = [dl / f"{start:014d}.block" for start in range(0, spec["bytes"], ranges.block_size)]
+        verified = False
+        if all(file.exists() for file in cached):
+            digest = hashlib.sha256()
+            for file in cached:
+                digest.update(file.read_bytes())
+            if digest.hexdigest() != spec["sha256"]:
+                raise ValueError(f"Complete shard digest differs from the pinned digest: {key}")
+            verified = True
     report = dict(source=key, revision=spec["revision"], shard=spec["file"], shard_bytes=spec["bytes"],
-                  upstream_shard_sha256=spec["sha256"], shard_hash_verified=False, seed=args.seed,
-                  candidate_rows=len(rows), candidate_hours=round(seconds / 3600, 6), usable_registered_hours=0,
+                  upstream_shard_sha256=spec["sha256"], shard_hash_verified=verified, seed=args.seed,
+                  previous_candidate_rows=len(rows), candidate_rows=count,
+                  candidate_hours=round(seconds / 3600, 6), usable_registered_hours=0,
                   new_download_bytes=transferred, status=stop, dropped=dict(drops), license=spec["license"],
-                  sampling="seeded_archive_prefix" if tsv else "seeded_row_groups")
-    (out / "acquisition.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+                  cache_only=args.cache_only,
+                  recorded_download_bytes=transferred + prior.get(
+                      "recorded_download_bytes", prior.get("new_download_bytes", prior.get("new_range_bytes", 0))),
+                  sampling="archive_prefix" if tsv else "seeded_row_groups")
+    if args.cache_only and spec["status"] != "pilot_eligible":
+        report["human_reviewed_hours"] = write_review_queue(out / "quarantine-review.csv", read_jsonl(manifest))
+    pending = previous.with_suffix(".tmp")
+    pending.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    pending.replace(previous)
     print(json.dumps(report), flush=True)
+
+
+def discover_shard(spec):
+    parent = Path(spec["file"]).parent.as_posix()
+    url = f"https://huggingface.co/api/datasets/{spec['repo']}/tree/{spec['revision']}/{parent}"
+    with urlopen(url, timeout=30) as response:
+        shard = next((item for item in json.load(response) if item.get("path") == spec["file"]), None)
+    if not shard or shard["size"] != spec["bytes"] or (shard.get("lfs") or {}).get("oid") != spec["sha256"]:
+        raise ValueError("The upstream shard no longer matches the registered size and digest")
+    return {"path": shard["path"], "bytes": shard["size"], "sha256": spec["sha256"]}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", nargs="*")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--discover", action="store_true", help="Verify the pinned train shard against Hugging Face metadata")
+    parser.add_argument("--cache-only", action="store_true", help="Process cached bytes without downloading recordings")
     parser.add_argument("--hours", type=float, default=0.5)
     parser.add_argument("--byte-budget-mib", type=int, default=128)
     parser.add_argument("--max-rows", type=int, default=160)
@@ -167,20 +249,24 @@ def main():
     if args.hours <= 0 or args.byte_budget_mib < 1 or args.max_rows < 1:
         parser.error("Hours, byte budget and max rows must be positive")
     specs = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))["sources"]
-    if not args.dry_run and not args.source:
+    if not (args.dry_run or args.discover) and not args.source:
         parser.error("Select at least one source")
     failed = False
     for key in args.source or list(specs):
         if key not in specs:
             parser.error(f"Unknown source: {key}")
         spec = specs[key]
-        if args.dry_run or "file" not in spec:
-            print(json.dumps({"source": key, "status": spec["status"], "shard": spec.get("file"),
-                              "shard_bytes": spec.get("bytes"), "max_download_mib": args.byte_budget_mib,
-                              "max_hours": args.hours, "license": spec.get("license")}, ensure_ascii=False))
-            continue
         try:
-            acquire(key, spec, args.out / key, args)
+            approved = spec["status"] == "pilot_eligible"
+            if args.discover and approved:
+                print(json.dumps({"source": key, "revision": spec["revision"], **discover_shard(spec)}))
+            elif args.dry_run or args.discover or "file" not in spec or not (approved or args.cache_only):
+                print(json.dumps({"source": key, "status": spec["status"], "shard": spec.get("file"),
+                                  "shard_bytes": spec.get("bytes"), "max_download_mib": args.byte_budget_mib,
+                                  "max_hours": args.hours, "license": spec.get("license")}, ensure_ascii=False))
+                failed |= not (args.dry_run or args.discover)
+            else:
+                acquire(key, spec, args.out / key, args)
         except (OSError, ValueError, RuntimeError) as exc:
             failed = True
             print(f"{key}: {exc}", flush=True)

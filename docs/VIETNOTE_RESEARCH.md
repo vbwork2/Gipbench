@@ -4,6 +4,8 @@ Ngày bắt đầu 25/11/2026. Nhánh làm việc `feature/zip-ft`. VietNote-Zip
 
 ## Trạng thái hiện tại
 
+Quy trình thu thập song song và điều khiển GPU từ Windows dùng lệnh trong [hướng dẫn Kaggle](VIETNOTE_KAGGLE.md). Cổng V03 dùng kết quả bộ nhớ từ chính backend đã chọn và tiếp tục yêu cầu dev CS độc lập.
+
 [Báo cáo trạng thái sinh từ artifact](../reports/vietnote_status.md) ghi kết quả hiện tại. V00 đã có quick baseline, full dev vẫn mở. V01 đạt parity sau khi exporter tính softmax FP32 từ `encoder.encoders.3.downsample.bias` của checkpoint gốc trước khi lượng tử hóa. INT8 offline tăng từ 81/113 lên 113/113 transcript khớp bản phát hành, streaming tăng từ 95/113 lên 113/113. Trên 24 câu dài, thời điểm phát chữ đầu tiên trùng nhau và không câu nào mất lượt phát chữ sau nửa câu. Kết quả và transcript từng câu nằm trong `data/work/vietnote/v01/parity_softmax/`. V03 vẫn bị chặn bởi điều kiện dữ liệu, dev CS độc lập và các kiểm tra V02.
 
 Đối chiếu INT8 dùng 113 câu đã khóa. Bản chính thức và các biến thể cùng chạy trên một runtime Windows với Sherpa-ONNX 2.0.1, beam 4 và 4 luồng CPU. Báo cáo hiển thị riêng phép lượng tử hóa lại FP32 chính thức, phép hoán đổi thành phần và re-export toàn bộ.

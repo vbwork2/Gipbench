@@ -28,10 +28,50 @@ class ReadinessTests(unittest.TestCase):
                 "audio_screened": True, "acoustic_checked": True, "vietnote_v03": {
                     "source": "fixture", "source_revision": "r1", "kind": "vi",
                     "transcripts_verified": True, "speakers_verified": True}}})
+            self.assertFalse(V.eligible_release(release, sources, "vi"))
+            row = dict(id="one", source="source", speaker="speaker", domain="news", speech_type="natural",
+                       language_category="vi", split="train", audio_sha256="audio", text_tagged="xin chào")
+            (release.dir / "manifest.jsonl").write_text(json.dumps(row) + "\n")
+            review = release.dir / "review.json"
+            review.write_text(json.dumps(dict(release=release.ref, source_revision="r1", reviewer="listener",
+                              manifest_sha256=R.sha256(release.manifest), decisions={
+                                  "one": dict(row, language="vi", decision="accept")})))
+            sources["fixture"]["release_reviews"] = {release.ref: {"path": str(review), "sha256": R.sha256(review)}}
             self.assertTrue(V.eligible_release(release, sources, "vi"))
             self.assertFalse(V.eligible_release(release, sources, "cs"))
             proof.write_text("Changed", encoding="utf-8")
             self.assertFalse(V.eligible_release(release, sources, "vi"))
+
+    def test_memory_checks_only_selected_workload(self):
+        spec = dict(precision="fp32", steps_per_case=1, min_batch_fraction=.8, min_free_fraction=.1,
+                    long_clip_min_seconds=25)
+        case = dict(limit=32, precision="fp32", passed=True, peak_allocated_bytes=50, peak_reserved_bytes=60,
+                    gpu_total_bytes=100, gpu_free_before_bytes=90, longest_clip=30,
+                    steps=[dict(audio_seconds=30, padded_seconds=30)])
+        evidence = dict(selected_limit=32, gpu="local", environment={"colab": False}, passed=False,
+                        cases=[dict(case, kind="pooled"), dict(case, kind="long"), dict(kind="pooled", limit=200, passed=False)])
+        train = dict(max_duration=32, fp16=False)
+        V.check_memory(evidence, spec, train, "local")
+        V.check_memory(evidence, spec, train, "local", available_vram=(70, 100))
+        with self.assertRaisesRegex(ValueError, "Current CUDA memory"):
+            V.check_memory(evidence, spec, train, "local", available_vram=(69, 100))
+        with self.assertRaises(ValueError):
+            V.check_memory(evidence, spec, train, "T4")
+        with self.assertRaises(ValueError):
+            V.check_memory(evidence, spec, dict(train, max_duration=200), "local")
+        with self.assertRaises(ValueError):
+            V.check_memory(evidence, spec, dict(train, fp16=True), "local")
+        evidence["cases"][1]["peak_allocated_bytes"] = 150
+        with self.assertRaises(ValueError):
+            V.check_memory(evidence, spec, train, "local")
+
+    def test_missing_dev_and_inconsistent_mixture(self):
+        with self.assertRaisesRegex(ValueError, "missing 1"):
+            V.require_dev_coverage({"vi1", "vi2", "cs1"}, {"vi1", "cs1"})
+        groups = [dict(group="replay_real", weight=.6), dict(group="cs_real", weight=.4)]
+        with patch.object(V.X, "groups", return_value=groups):
+            with self.assertRaisesRegex(ValueError, "registered mixture"):
+                V.check_mixture({"features": {"max_duration": 45}}, {"vi": 18, "cs": 8})
 
     def test_bundle_rejects_stale_release_or_cutset(self):
         config = {"research": {"target_unique_hours": {"vi": 12, "cs": 8}}}

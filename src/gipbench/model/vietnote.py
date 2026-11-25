@@ -5,12 +5,22 @@ import json
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from gipbench.core.download import download_file, verify_file
 from gipbench.core.paths import REPO
 
 LOCK = REPO / "configs/model/vietnote.json"
+
+
+def load_checkpoint(checkpoint):
+    import torch
+
+    # Treat training metadata paths as values even when they come from another OS.
+    allowed = [(PurePosixPath, "pathlib.PosixPath"), (PureWindowsPath, "pathlib.WindowsPath"),
+               torch.torch_version.TorchVersion]
+    with torch.serialization.safe_globals(allowed):
+        return torch.load(checkpoint, weights_only=True, map_location="cpu", mmap=True)
 
 
 def verify_tokenizer(root, vocab_size):

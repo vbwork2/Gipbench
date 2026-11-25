@@ -5,6 +5,7 @@ import csv
 import json
 import os
 import random
+import platform
 from pathlib import Path
 
 import torch
@@ -137,7 +138,8 @@ def measure(model, sp, rows, features, out, catalog):
     recs = score_rows(rows, hyps, catalog, get_profile("gipbench_strict_v1"), "text_tagged", "speaker", [])
     report = summarize(recs, 0, 0, with_ci=False)
     model.train()
-    return {key: report[key] for key in ("utt", "wer", "cs_wer", "term_recall")}
+    return {**{key: report[key] for key in ("utt", "wer", "cs_wer", "term_recall")},
+            **{key: sum(rec[key] for rec in recs) for key in ("S", "D", "I")}}
 
 
 def tiny(base, rows, settings, out):
@@ -159,7 +161,9 @@ def tiny(base, rows, settings, out):
         for epoch in range(settings["passes"]):
             for batch in batches(rows, limit, random.Random(seed + epoch)):
                 result = run_step(model, sp, params, opt, sched, make_batch(batch, features))
-                log.write(json.dumps({**result, "ids": [row["id"] for row in batch]}) + "\n")
+                log.write(json.dumps({**result, "ids": [row["id"] for row in batch],
+                                      "audio_seconds": sum(row["duration"] for row in batch),
+                                      "learning_rates": [g["lr"] for g in opt.param_groups]}) + "\n")
                 log.flush()
             metrics.append(measure(model, sp, rows, features, out / f"pass-{epoch + 1}.jsonl", catalog))
             print(f"Pass {epoch + 1}, {params.batch_idx_train} steps: {metrics[-1]}", flush=True)
@@ -185,7 +189,7 @@ def tiny(base, rows, settings, out):
             "peak_allocated_bytes": peak_allocated, "peak_reserved_bytes": peak_reserved}
 
 
-def memory(base, cfg):
+def memory(base, cfg, selected_limit):
     settings = yaml.safe_load(MEMORY_PROTOCOL.read_text(encoding="utf-8"))
     release = R.resolve(settings["pool"])
     source = sorted(read_jsonl(release.manifest), key=lambda row: float(row["duration"]), reverse=True)
@@ -204,8 +208,20 @@ def memory(base, cfg):
                 groups = [rows[i::count] for i in range(count)]
                 break
         planned.append(("pooled", limit, groups))
-    planned.append(("long", int(max((float(row["duration"]) for row in long), default=0)) + 1,
-                    [[long[i % len(long)]] for i in range(count)] if long else []))
+    if selected_limit not in settings["cases"]:
+        raise ValueError("Selected batch duration is outside the registered probe cases")
+    qualifying = [row for row in long if float(row["duration"]) <= selected_limit
+                  and int(selected_limit / float(row["duration"])) * float(row["duration"])
+                  >= settings["min_batch_fraction"] * selected_limit]
+    long_groups = []
+    for index in range(count):
+        if not qualifying:
+            break
+        first = qualifying[index % len(qualifying)]
+        size = int(selected_limit / float(first["duration"]))
+        fillers = [row for row in source if float(row["duration"]) <= float(first["duration"])]
+        long_groups.append([first, *fillers[index * size:index * size + size - 1]])
+    planned.append(("long", selected_limit, long_groups))
     results = []
     for kind, limit, groups in planned:
         if not groups:
@@ -235,7 +251,13 @@ def memory(base, cfg):
             torch.cuda.empty_cache()
         results.append(log)
         print(json.dumps(log), flush=True)
-    return {"cases": results, "passed": all(case["passed"] for case in results),
+    environment = {"platform": platform.system(), "kernel": platform.release(), "torch": str(torch.__version__),
+                   "cuda": torch.version.cuda, "colab": bool(os.environ.get("COLAB_RELEASE_TAG"))}
+    if Path("/kaggle/input").is_dir() and Path("/kaggle/working").is_dir():
+        environment["backend"] = "kaggle"
+    return {"cases": results, "selected_limit": selected_limit,
+            "passed": all(case["passed"] for case in results if case["limit"] == selected_limit),
+            "environment": environment,
             "pool_manifest_sha256": R.sha256(release.manifest),
             "long_pool_manifest_sha256": R.sha256(long_release.manifest),
             "memory_config_sha256": R.sha256(MEMORY_PROTOCOL)}
@@ -245,6 +267,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["tiny", "memory"])
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--batch-seconds", type=int, help="Selected training batch duration for the memory probe")
     parser.add_argument("--lr-protocol", type=Path, help="Preregistered learning-rate arm for the tiny-set test")
     args = parser.parse_args()
     if not torch.cuda.is_available():
@@ -260,20 +283,22 @@ def main():
         if not 0 < arm["lr"] < cfg["tiny"]["lr"]:
             parser.error("The follow-up tests a lower, positive learning rate")
         cfg["tiny"]["lr"] = arm["lr"]
-    rows = reviewed_rows(cfg["tiny"])
     base = ROOT / "models/vietnote78"
     args.out.mkdir(parents=True, exist_ok=False)
     if args.mode == "tiny":
+        rows = reviewed_rows(cfg["tiny"])
         write_jsonl(args.out / "train.jsonl",
                     ({**row, "audio": os.path.relpath(row["_audio_path"], args.out)} for row in rows))
         result = tiny(base, rows, cfg["tiny"], args.out)
+        result.update(train_rows=len(rows), train_hours=sum(float(row["duration"]) for row in rows) / 3600,
+                      train_manifest_sha256=manifest_sha256(rows))
     else:
-        result = memory(base, cfg)
+        if args.batch_seconds is None:
+            parser.error("Memory validation requires --batch-seconds matching the training configuration")
+        result = memory(base, cfg, args.batch_seconds)
     card = json.loads(LOCK.read_text(encoding="utf-8"))
     result.update(config_sha256=R.sha256(PROTOCOL), model_revision=card["revision"],
-                  checkpoint_input_sha256=R.sha256(base / "pytorch/pretrained.pt"), train_rows=len(rows),
-                  train_hours=sum(float(row["duration"]) for row in rows) / 3600,
-                  train_manifest_sha256=manifest_sha256(rows), torch_version=torch.__version__,
+                  checkpoint_input_sha256=R.sha256(base / "pytorch/pretrained.pt"), torch_version=torch.__version__,
                   gpu=torch.cuda.get_device_name())
     if args.lr_protocol:
         result.update(lr=cfg["tiny"]["lr"], lr_protocol_sha256=R.sha256(args.lr_protocol))

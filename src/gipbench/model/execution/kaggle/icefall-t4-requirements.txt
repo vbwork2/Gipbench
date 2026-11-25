@@ -1,0 +1,5 @@
+k2 @ https://huggingface.co/csukuangfj2/k2/resolve/main/ubuntu-cuda/1.24.4.dev20260625/k2-1.24.4.dev20260625%2Bcuda13.0.torch2.11.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl --hash=sha256:93cf4b1ae963df6c0d7688206a7389302bf84361c79d9664c3d24d46389b2625
+lhotse==1.33.0 --hash=sha256:8697bc74a8f3101594fca5661c7318c30899f3fdb132a44c7e99e794be6ac061
+intervaltree==3.2.1 --hash=sha256:a8a8381bbd35d48ceebee932c77ffc988492d22fb1d27d0ba1d74a7694eb8f0b
+kaldialign==0.12.0 --hash=sha256:d488613310771e7f9f749320f26afcdfadf476e08b8821f2b309a046e7ff2c62
+pypinyin==0.50.0 --hash=sha256:a6ff9a58b8c3ba4599e5ebccf7fab7850257114be70c05a7baab435d1208358f
