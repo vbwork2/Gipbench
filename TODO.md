@@ -2,6 +2,8 @@
 
 Cập nhật: 17/11/2026 · Nguồn: [audit 17/11](reports/audits/full_research_audit_vi.md) (mã rủi ro `Rxx`) và [implementation_plan.md](reports/audits/implementation_plan.md) (mã `IP-xx`, có đặc tả sửa + test chi tiết).
 
+> **25/11: xem [RESEARCH_RECOVERY.md](RESEARCH_RECOVERY.md) trước.** Đã kiểm lại: đường export + INT8 khớp model gốc (Phase 1 đạt). X0 làm hỏng tiếng Việt thật, cả trên dev độc lập `dev_v2_vi` (WER +4,83 [4,38; 5,25]); nguyên nhân chưa tách được. Pool `vss_cs@v4` / `distill@v5` lưu đường dẫn audio kiểu Windows (lỗi B1). Phase 3 (học thuộc 163 câu CS đã nghe kiểm, GPU) đạt: CS-WER 40,5 → 1,8; tắt loss warm-up không nhanh hơn rõ. Bước kế: tái lập X0 seed 0 trên máy để có log và checkpoint, chấm dev_v2_vi theo từng checkpoint.
+
 Cách dùng: làm **từ trên xuống**. Thứ tự các phần là thứ tự phụ thuộc. Tick `[x]` khi đạt điều kiện "Xong khi". Mục gắn **👤** là việc chỉ bạn quyết định được.
 
 ---
