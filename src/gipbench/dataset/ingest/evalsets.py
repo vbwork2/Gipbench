@@ -16,7 +16,6 @@ Dùng lại trong gipbench.dataset.release.fetch (kind "evalset") để người
 """
 import argparse
 import csv
-import hashlib
 import io
 import json
 import os
@@ -27,6 +26,7 @@ import time
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
+from gipbench.core.fileio import sha256_file
 from gipbench.dataset.ingest.common import safe
 
 DERIVED_TAG = "soxr_hq_16k_mono_pcm16"
@@ -132,14 +132,6 @@ SPECS: Dict[str, Dict] = {
 }
 # Trường lời thoại bị bỏ khỏi bản share khi bộ không cho phân phối lại (fetch lấy lại từ nguồn, cùng giá trị)
 TEXT_FIELDS = ("text_tagged", "text_orig", "text_norm_upstream")
-
-
-def sha256_file(p) -> str:
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 # ------------------------------------------------------------------ đọc nguồn -> (upstream_id, meta, bytes, ext)

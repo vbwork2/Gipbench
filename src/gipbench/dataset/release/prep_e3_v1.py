@@ -14,16 +14,11 @@ Chỉ lấy mẫu theo seed; không đụng tới audio. Audio ghi đường d�
 import argparse
 import json
 import random
-import sys
 from collections import defaultdict
 from pathlib import Path
 
-from gipbench.core.paths import REPO as G
+from gipbench.core.fileio import hours
 from gipbench.core.manifest import read_jsonl, write_jsonl
-
-
-def hours(rows):
-    return sum(float(r["duration"]) for r in rows) / 3600
 
 
 def split_by_speaker(rows, frac, rnd):

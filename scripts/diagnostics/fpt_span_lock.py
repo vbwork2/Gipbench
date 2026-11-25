@@ -75,7 +75,6 @@ Conditions for the result to count:
 
 import argparse
 from collections import Counter
-import hashlib
 import json
 from pathlib import Path
 import sys
@@ -84,11 +83,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from fpt_inconclusive_cascade import BLANK, kind, reachable
+from gipbench.core.fileio import sha256_file as sha
 from gipformer_mech.logit_lens import blank_led_near_miss, classify
-
-
-def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def group_of(category: str, span_type: str | None) -> str:

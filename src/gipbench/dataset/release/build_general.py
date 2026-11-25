@@ -22,7 +22,6 @@ số câu so với số câu split công bố, câu bị loại kèm lý do, man
 """
 import argparse
 import csv
-import hashlib
 import json
 import os
 import subprocess
@@ -31,8 +30,8 @@ from collections import Counter
 from pathlib import Path
 
 from gipbench.core import paths as P
-from gipbench.core.decontam import sha256_file
-from gipbench.core.manifest import read_jsonl, write_jsonl
+from gipbench.core.fileio import sha256_file
+from gipbench.core.manifest import manifest_sha256, read_jsonl, write_jsonl
 from gipbench.dataset.release.fetch import DERIVED
 
 EXPECTED = {"vivos": 760, "commonvoice_vi_27": 1593, "ggroup_tech": 508, "ggroup_edu": 495, "ggroup_finance": 529,
@@ -188,14 +187,6 @@ def external(data: Path, limit: int):
                 row["text_tagged"] = auto_tag(r["text_tagged"], None, terms, vi_words=set(), heuristic=False,
                                               term_dec={})["text_tagged"]
             yield row
-
-
-def manifest_sha256(rows) -> str:
-    h = hashlib.sha256()
-    for r in sorted(rows, key=lambda x: str(x["id"])):
-        h.update(json.dumps({k: v for k, v in r.items() if not k.startswith("_") and k != "audio"}, sort_keys=True,
-                            ensure_ascii=False).encode("utf-8") + b"\n")
-    return h.hexdigest()
 
 
 def main():

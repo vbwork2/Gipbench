@@ -19,13 +19,13 @@ Ghi: <out>.md, <out>.json, và (nếu --spotcheck) <out>_spotcheck.csv để ng�
 import argparse
 import csv
 import glob
-import hashlib
 import json
 import random
 import re
 import sys
 from pathlib import Path
 
+from gipbench.core.fileio import sha256_file
 from gipbench.core.tagging import VI_WORD_FILES, auto_tag, load_vi_words
 from gipbench.core.term_decisions import load_term_decisions
 from gipbench.core.textnorm import Catalog
@@ -128,7 +128,7 @@ def main():
     args = ap.parse_args()
     term_dec = None if args.term_decisions is None else load_term_decisions(args.term_decisions)
     vi_files = VI_WORD_FILES if args.vi_words is None else [Path(p) for p in args.vi_words]
-    vi_used = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()[:12] for p in vi_files if p.exists()}
+    vi_used = {str(p): sha256_file(p)[:12] for p in vi_files if p.exists()}
     vi_words = load_vi_words(vi_files)
 
     rows = []

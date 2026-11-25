@@ -16,7 +16,6 @@ Ra: <out> (catalog.tsv) + <out>.meta.json (nguồn + sha256, số thuật ngữ 
 `catalog/train-v1` (flags.from_bench: false) bằng configs/dataset/releases.yaml + dataset.release.register; --preview chỉ in số liệu.
 """
 import argparse
-import hashlib
 import json
 import re
 import sys
@@ -25,6 +24,7 @@ from pathlib import Path
 
 from gipbench.core import release as R
 from gipbench.core.decontam import dup_key, read_lines
+from gipbench.core.fileio import sha256_file
 from gipbench.core.manifest import read_jsonl
 from gipbench.core.textnorm import parse_tagged
 
@@ -108,7 +108,7 @@ def main(argv=None):
     if args.preview:
         return meta
     write_catalog(kept, args.out)
-    meta["catalog_sha256"] = hashlib.sha256(Path(args.out).read_bytes()).hexdigest()
+    meta["catalog_sha256"] = sha256_file(args.out)
     Path(str(args.out) + ".meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"đã ghi {args.out} ({len(kept)} thuật ngữ) + {args.out}.meta.json")
     return meta

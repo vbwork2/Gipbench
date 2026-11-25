@@ -44,10 +44,10 @@ import json
 import os
 import random
 import re
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from gipbench.core.fileio import hours
 from gipbench.core.paths import REPO as _ROOT
 from gipbench.dataset.ingest.common import REVIEW_COLS, add_vi_words_arg, auto_tag, is_vietnamese_token, load_vi_words
 from gipbench.core.sampling import pick_diverse
@@ -308,10 +308,6 @@ def write_review(path, rows):
                         "flags": " ".join(at.get("flags", [])), "decision": "", "text_tagged_fixed": "",
                         "viet_levels": "", "reading_note": "", "region": r.get("region", ""), "gender": r.get("gender", ""),
                         "note": "", "hint": r["_hint"], "status": r["consensus"]["status"], "turn": r["consensus"]["turn"]})
-
-
-def hours(rows):
-    return sum(float(r["duration"]) for r in rows) / 3600
 
 
 def main():

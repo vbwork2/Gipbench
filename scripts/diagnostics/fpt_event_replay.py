@@ -21,7 +21,6 @@ Counting only; nothing is selected.
 
 import argparse
 from collections import defaultdict
-from hashlib import sha256
 import json
 from pathlib import Path
 import sys
@@ -31,6 +30,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import numpy as np
 
+from gipbench.core.fileio import sha256_file as file_sha
 from gipformer_mech import joiner_probe as jp
 from gipformer_mech.fpt import audio_indices, manifest_waveform, parquet_files, read_rows
 from gipformer_mech.logit_lens import classify
@@ -38,10 +38,6 @@ from gipformer_mech.onnx_greedy import OnnxTransducer
 from gipformer_mech.rnnt_loader import resample
 
 PHASE4 = {"events": 104, "replicated": 65}
-
-
-def file_sha(path: Path) -> str:
-    return sha256(path.read_bytes()).hexdigest()
 
 
 def events_of(findings: list[dict], blank: int) -> list[dict]:
@@ -124,11 +120,10 @@ def main() -> None:
         raise ValueError("extra_diagnostic.jsonl differs from the split lock.")
     rows = {row["utt_id"]: row for path in (pool_path, extra_path) for row in read_rows(path)}
 
-    read = lambda path: [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     groups = {
         "bug_mining": events_of(json.loads(args.bug_mining.read_text(encoding="utf-8"))["findings"], blank),
-        "other_development": events_of(read(args.pool), blank),
-        "extra_diagnostic": events_of(read(args.extra), blank),
+        "other_development": events_of(read_rows(args.pool), blank),
+        "extra_diagnostic": events_of(read_rows(args.extra), blank),
     }
     model = OnnxTransducer(args.model_dir, threads=args.threads)
     weight, bias = jp.load_output_layer(args.model_dir, model_map)

@@ -13,14 +13,14 @@ skip. Hash audio KHÔNG bắt được audio đã resample / cắt khác; trùng
 chính, và báo cáo luôn ghi rõ chế độ audio đã dùng.
 """
 import datetime as dt
-import hashlib
 import json
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from gipbench.core import release as R
-from gipbench.core.decontam import audit, load_exemptions, overlap_counts, read_lines, sha256_file
+from gipbench.core.decontam import audit, load_exemptions, overlap_counts, read_lines
+from gipbench.core.fileio import sha256_file
 from gipbench.core.manifest import read_jsonl
 
 AUDIO_SHA_MODES = ("hash", "metadata", "skip")
@@ -191,4 +191,4 @@ def card_summary(res: Dict, report_json: Path) -> Dict:
             "exempted": res["exempted"], "benches_checked": sorted(res["benches"]), "dev_checked": sorted(res.get("dev", {})),
             "unresolved": sorted(res["unresolved"]),
             "audio_sha": res["audio_sha"], "reserved_terms_sha256": res["reserved_terms_sha256"],
-            "exemptions_sha256": res["exemptions_sha256"], "report_sha256": hashlib.sha256(Path(report_json).read_bytes()).hexdigest()}
+            "exemptions_sha256": res["exemptions_sha256"], "report_sha256": sha256_file(report_json)}

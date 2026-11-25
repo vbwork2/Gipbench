@@ -17,16 +17,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
+from gipbench.core.fileio import sha256_file
 from gipbench.core.normprofiles import canon_v1
 from gipbench.core.textnorm import basic_tokens, plain_text
-
-
-def sha256_file(path, bufsize: int = 1 << 20) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(bufsize), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def audio_check(path) -> Dict:

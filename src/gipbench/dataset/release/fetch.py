@@ -21,7 +21,6 @@ Ghi: <out>/audio/<dataset>/..., <out>/manifest.jsonl (manifest gốc + trường
 --local-source DATASET=PATH: dùng file nguồn đã có (vẫn kiểm sha256). Nên đặt HF_HUB_DISABLE_XET=1 nếu tải bị treo.
 """
 import argparse
-import hashlib
 import io
 import json
 import os
@@ -30,6 +29,8 @@ import sys
 import tarfile
 from collections import Counter, defaultdict
 from pathlib import Path
+
+from gipbench.core.fileio import sha256_file
 
 GG_REV = {"tech": "0b8c87452173239063fe389662c2f034307bedb6", "edu": "9a15ad66d229187c9acc1a5c5ea9811c2e27ddf7",
           "finance": "ebadeb02804de29423668802f797e5f563143da5", "pubadmin": "40aabb05703f30cda255890aaf11f15be21a970f"}
@@ -63,14 +64,6 @@ SOURCES.update(_evalset_sources())
 
 def is_derived(r) -> bool:
     return r.get("audio_derivation") == "soxr_hq_16k_mono_pcm16" or r["dataset"] in DERIVED
-
-
-def sha256_file(p) -> str:
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def download(src, cache):

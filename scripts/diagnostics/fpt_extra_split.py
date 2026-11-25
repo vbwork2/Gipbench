@@ -45,20 +45,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from gipbench.core.fileio import read_jsonl_rows as read_rows, sha256_file as file_sha
 from gipformer_mech.text_norm import tokens
 
 SALT = "fpt-extra-heldout-v1"
 HELDOUT_FRACTION = 0.30
 SET = re.compile(r"_(Set\d+)_")
-
-
-def file_sha(path: Path) -> str:
-    return sha256(path.read_bytes()).hexdigest()
-
-
-def read_rows(path: Path) -> list[dict]:
-    with path.open(encoding="utf-8") as source:
-        return [json.loads(line) for line in source if line.strip()]
 
 
 def write_rows(path: Path, rows: list[dict]) -> None:

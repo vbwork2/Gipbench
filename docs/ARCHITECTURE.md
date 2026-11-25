@@ -12,7 +12,8 @@ pipeline đó. Hai pipeline còn lại không sửa code, không chạy lại.
 ```
 gipbench.core      textnorm · align · manifest · leak · tagging · term_decisions · domain · sampling · scoring ·
                    agreement_rules · release · paths · svgcharts ·
-                   normprofiles (chuẩn hoá có phiên bản) · evalstats (bootstrap cụm / ghép cặp) · decontam · langspans
+                   normprofiles (chuẩn hoá có phiên bản) · evalstats (bootstrap cụm / ghép cặp) · decontam · langspans ·
+                   fileio (sha256 file, JSONL thô, tổng giờ: dùng thay cho bản chép riêng ở từng module / script)
 gipbench.infer     decode (sherpa-onnx) · asr_hyps (faster-whisper, Qwen3-ASR) · cache ·
                    adapters (Gipformer / VieGem / faster-whisper / Qwen3; model bất kỳ)   -> hyps.jsonl + run_meta.json
 gipbench.dataset   ingest (+ evalsets: bộ test công khai) · label · pseudolabel · synth · derive ·
@@ -33,7 +34,8 @@ gipbench.bench     run · score · leaderboard · report ·
 `tests/test_boundaries.py` kiểm luật này bằng AST, gồm cả import nằm trong hàm và chuỗi `python -m gipbench.<tầng>`
 truyền qua subprocess. Nó cũng cấm `sys.path.insert` và import module cũ (`lib`, `tools`, `ft`, `converters`). Code
 dùng chung cho hai pipeline thì đưa xuống `core`, không import chéo. Ví dụ: công thức metric nằm ở `core.scoring` vì model
-dùng nó để chọn checkpoint trên dev, còn bench dùng nó để chấm. Nhờ vậy hai bên không thể lệch nhau.
+dùng nó để chọn checkpoint trên dev, còn bench dùng nó để chấm. Nhờ vậy hai bên không thể lệch nhau. Tương tự,
+`manifest_sha256` (hash khoá benchmark) nằm ở `core.manifest`, dùng chung cho `bench.registry` và `dataset.release`.
 
 ## Ranh giới trách nhiệm
 

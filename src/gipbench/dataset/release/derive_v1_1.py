@@ -18,7 +18,6 @@ Không đổi lời thoại, id, thứ tự câu. Ghi manifest.jsonl + build_met
 pool train dùng để đánh dấu, số câu mỗi loại).
 """
 import argparse
-import hashlib
 import json
 import re
 import time
@@ -27,19 +26,11 @@ from pathlib import Path
 
 from gipbench.core import paths as P
 from gipbench.core.decontam import source_key
-from gipbench.core.manifest import read_jsonl, write_jsonl
+from gipbench.core.fileio import sha256_file as file_sha
+from gipbench.core.manifest import manifest_sha256, read_jsonl, write_jsonl
 from gipbench.core.textnorm import plain_text
-from gipbench.dataset.release.build_general import manifest_sha256
 
 _YT_ID = re.compile(r"^yt:(.+)$")
-
-
-def file_sha(p: Path):
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def train_videos(pool: Path):

@@ -4,10 +4,11 @@ export_cmd / collect: trước đây là hàm export_onnx() của ft/run_e3_v1*.
 bench (docs/CONTRACTS.md): <artifact>/onnx/{encoder,decoder,joiner}.int8.onnx + tokens.txt + bpe.model, <artifact>/model_card.json.
 """
 import datetime as dt
-import hashlib
 import json
 import shutil
 from pathlib import Path
+
+from gipbench.core.fileio import sha256_file as sha256
 
 PARTS = ("encoder", "decoder", "joiner")
 
@@ -32,14 +33,6 @@ def collect(exp_dir, out_onnx, model_dir):
             f.unlink()
     for f in ("tokens.txt", "bpe.model"):
         shutil.copy(Path(model_dir) / f, out / f)
-
-
-def sha256(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def write_artifact(artifact_dir, src_model_dir, card):

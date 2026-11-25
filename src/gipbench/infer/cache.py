@@ -12,19 +12,12 @@ Một hyp chỉ được dùng lại cho một câu khi CẢ id lẫn hash audio
   theo id khi không có (chế độ cũ, dùng cho dữ liệu nhỏ / test).
 """
 import csv
-import hashlib
 import json
 import os
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-
-def file_sha256(path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
+from gipbench.core.fileio import sha256_file as file_sha256  # noqa: F401  (tên cũ, caller ngoài dùng)
 
 
 def audio_rel(row: Dict, audio_root: Optional[str] = None) -> str:

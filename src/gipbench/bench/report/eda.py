@@ -11,15 +11,14 @@ mức trùng với train (nếu có --train), chất lượng audio (nếu có -
 """
 import argparse
 import datetime as dt
-import hashlib
 import json
 import statistics
-import sys
 from collections import Counter, defaultdict
 from html import escape
 from pathlib import Path
 
 from gipbench.core import svgcharts as C
+from gipbench.core.fileio import hours, sha256_file
 from gipbench.core.manifest import BENCH_SPLITS, CS_SPLITS, TARGET_HOURS, read_jsonl, span_meta
 from gipbench.core.textnorm import Catalog, basic_tokens, normalize_ref, plain_text
 
@@ -67,10 +66,6 @@ def pct(a, b):
     return 100.0 * a / b if b else 0.0
 
 
-def hours(rows):
-    return sum(float(r["duration"]) for r in rows) / 3600
-
-
 def audio_stats(path):
     import numpy as np
     import soundfile as sf
@@ -102,7 +97,7 @@ def main():
     rows = read_jsonl(args.bench)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    bench_hash = hashlib.sha256(Path(args.bench).read_bytes()).hexdigest()[:12]
+    bench_hash = sha256_file(args.bench)[:12]
     splits = [s for s in BENCH_SPLITS if any(r["split"] == s for r in rows)]
     by = defaultdict(list)
     for r in rows:

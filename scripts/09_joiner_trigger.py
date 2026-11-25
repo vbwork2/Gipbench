@@ -45,7 +45,6 @@ cross-domain sets are then a descriptive transfer check of that one setting, nev
 
 import argparse
 from collections import defaultdict
-from hashlib import sha256
 import json
 from multiprocessing import get_context
 from pathlib import Path
@@ -58,6 +57,7 @@ sys.path.insert(0, str(ROOT / "scripts/diagnostics"))
 
 import numpy as np
 
+from gipbench.core.fileio import sha256_file as file_sha
 from gipformer_mech import joiner_probe as jp
 from gipformer_mech import trigger as tg
 from gipformer_mech.fpt import read_rows, settings
@@ -112,10 +112,6 @@ def _decode(task):
     model = _STATE["model"]
     out = tg.gated_replay(model, _encoder(audio_idx), _STATE["weight"], _STATE["bias"], gate, penalty)
     return utt_id, pieces_to_text(out["ids"], model.pieces), out["fired"], out["frames"]
-
-
-def file_sha(path: Path) -> str:
-    return sha256(path.read_bytes()).hexdigest()
 
 
 def build_sets(args, case: str) -> dict:

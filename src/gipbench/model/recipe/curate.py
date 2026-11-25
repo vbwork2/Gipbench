@@ -39,6 +39,7 @@ from pathlib import Path
 from gipbench.core import release as R
 from gipbench.core.agreement_rules import agree
 from gipbench.core.decontam import clip_key
+from gipbench.core.fileio import hours
 from gipbench.core.sampling import pick_diverse
 from gipbench.infer.cache import HashIndex, HypLookup
 from gipbench.core.leak import add_block_arg, is_test_only, load_block_texts, norm_text
@@ -48,10 +49,6 @@ from gipbench.core.textnorm import Catalog, basic_tokens, plain_text
 
 def is_cs(r):
     return "<en" in (r.get("text_tagged") or "")
-
-
-def hours(rows):
-    return sum(float(r["duration"]) for r in rows) / 3600
 
 
 def dataset(r):

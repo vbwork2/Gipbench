@@ -21,7 +21,6 @@ khớp allowlist, (2) không file text nào chạm regex cấm (đường dẫn 
 `distinct_utterances` (hợp theo mã clip / audio_sha256 / (họ bộ, upstream_id)) và `scorer_code_sha256` của code kèm gói.
 """
 import argparse
-import hashlib
 import json
 import re
 import shutil
@@ -32,10 +31,10 @@ from pathlib import Path
 
 from gipbench.core import paths as P
 from gipbench.core.decontam import clip_key, dataset_family
-from gipbench.core.manifest import read_jsonl
+from gipbench.core.fileio import sha256_file
+from gipbench.core.manifest import manifest_sha256, read_jsonl
 from gipbench.core.normprofiles import code_sha256
-from gipbench.dataset.release.build_general import manifest_sha256
-from gipbench.dataset.release.fetch import DERIVED, SOURCES, sha256_file
+from gipbench.dataset.release.fetch import DERIVED, SOURCES
 
 PRIVATE_LICENSES = {"test_only"}
 SHARE_POLICY_CONFIG = P.REPO / "configs" / "dataset" / "share_policy.yaml"
@@ -367,7 +366,7 @@ def main(argv=None):
                              + "\n  ".join(bad[:50]) + (f"\n  ... và {len(bad) - 50} chỗ khác" if len(bad) > 50 else ""))
         lines = []
         for p in sorted(x for x in tmp.rglob("*") if x.is_file()):
-            lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(tmp).as_posix()}")
+            lines.append(f"{sha256_file(p)}  {p.relative_to(tmp).as_posix()}")
         (tmp / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
         if args.emit_repo:
             emit_repo(tmp, target)

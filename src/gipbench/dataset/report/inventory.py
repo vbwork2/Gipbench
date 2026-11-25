@@ -20,10 +20,10 @@ from concurrent.futures import ThreadPoolExecutor
 from html import escape
 from pathlib import Path
 
+from gipbench.core.fileio import sha256_file
 from gipbench.core.paths import REPO as ROOT
 from gipbench.core.leak import is_test_only, norm_text
-from gipbench.core.manifest import span_meta
-from gipbench.core.manifest import write_jsonl
+from gipbench.core.manifest import span_meta, write_jsonl
 from gipbench.core.textnorm import Catalog, normalize_ref, tagged_well_formed
 from gipbench.core.scoring import train_term_freq
 from gipbench.dataset.report.lineage import collect_lineage, render_lineage, LINEAGE_CSS
@@ -270,12 +270,8 @@ def inspect_audio_file(filename):
     if not result['exists']:
         return result
     result['bytes'] = path.stat().st_size
-    digest = hashlib.sha256()
     try:
-        with path.open('rb') as source:
-            for chunk in iter(lambda: source.read(1024 * 1024), b''):
-                digest.update(chunk)
-        result['sha256'] = digest.hexdigest()
+        result['sha256'] = sha256_file(path)
         if path.suffix.lower() == '.wav':
             result.update(wav_metadata(path))
     except (OSError, wave.Error, EOFError) as error:
@@ -444,7 +440,7 @@ def analyze_lhotse(datasets, summaries, catalog, audit, overlaps, coverage):
                         raise ValueError(f'Cut audio differs from curated audio: {rid}')
                 originals.append((rid, cut['duration']))
         relative = path.relative_to(ROOT).as_posix()
-        PROVENANCE[relative] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size,
+        PROVENANCE[relative] = {'sha256': sha256_file(path), 'bytes': path.stat().st_size,
                                 'rows': cut_count, 'invalid_json': 0,
                                 'modified_utc': dt.datetime.fromtimestamp(path.stat().st_mtime, dt.timezone.utc).isoformat()}
         manifests.append(relative)
@@ -533,7 +529,7 @@ def analyze_mix(pool_rows):
              'median_uses': statistics.median(values), 'max_uses': max(values)} for group, values in sorted(by_group.items())]
     write_csv('mix_exposure.csv', [{'id': row['id'], 'group': row['group'], 'uses_in_mix': exposures[base]} for base, row in index.items()])
     relative = path.relative_to(ROOT).as_posix()
-    PROVENANCE[relative] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size,
+    PROVENANCE[relative] = {'sha256': sha256_file(path), 'bytes': path.stat().st_size,
                             'rows': sum(counts.values()), 'invalid_json': 0,
                             'modified_utc': dt.datetime.fromtimestamp(path.stat().st_mtime, dt.timezone.utc).isoformat()}
     return {'groups': rows, 'cuts': sum(counts.values()), 'hours': sum(hours.values()),
@@ -627,7 +623,7 @@ def collect():
     v1_ids = {row.get('id') for row in datasets['train_v1']}
     v1b_ids = {row.get('id') for row in datasets['train_v1b']}
     result = {'generated_at': dt.datetime.now(dt.timezone(dt.timedelta(hours=7))).isoformat(),
-              'catalog': str(CATALOG.relative_to(ROOT)), 'catalog_sha256': hashlib.sha256(CATALOG.read_bytes()).hexdigest(),
+              'catalog': str(CATALOG.relative_to(ROOT)), 'catalog_sha256': sha256_file(CATALOG),
               'views': summaries, 'inventory': inventory, 'overlaps': overlaps, 'coverage': coverage,
               'audio_sample': samples, 'audio_files_checked': len(audit),
               'audio_files_missing': sum(not value['exists'] for value in audit.values()),

@@ -9,7 +9,6 @@ Tham chiếu bằng chuỗi "<kind>/<name>@<version>" (bench / catalog: "bench/v
 sha256 nên release bị sửa tay sẽ báo lỗi. Đặc tả đầy đủ: docs/CONTRACTS.md.
 """
 import datetime as dt
-import hashlib
 import json
 import os
 import subprocess
@@ -19,6 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from gipbench.core import paths
+from gipbench.core.fileio import sha256_file as sha256
 
 KINDS = ("bench", "catalog", "pool", "dev")
 
@@ -66,14 +66,6 @@ def parse(ref: str):
 def release_dir(ref: str) -> Path:
     kind, name, ver = parse(ref)
     return root() / kind / (ver if kind in ("bench", "catalog") else f"{name}@{ver}")
-
-
-def sha256(path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def resolve(ref: str, verify: bool = True) -> Release:

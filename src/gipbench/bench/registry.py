@@ -8,8 +8,6 @@ manifest_sha256 = sha256 của các dòng manifest đã chuẩn hoá (JSON sort_
 đường dẫn phụ thuộc máy, và các trường bắt đầu bằng "_"). Danh tính audio nằm ở trường `audio_sha256` của từng dòng.
 """
 import argparse
-import hashlib
-import json
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -17,7 +15,8 @@ from typing import Dict, List, Optional
 import yaml
 
 from gipbench.core import paths as P
-from gipbench.core.manifest import read_jsonl
+from gipbench.core.fileio import sha256_file_or_none as file_sha256  # noqa: F401  (tên cũ: R.file_sha256)
+from gipbench.core.manifest import manifest_sha256, read_jsonl  # noqa: F401  (R.manifest_sha256)
 from gipbench.core.normprofiles import PROFILES
 
 REG_DIR = P.REPO / "configs" / "bench"
@@ -98,28 +97,6 @@ def validate_benchmark(bm: Dict, reg: Dict) -> List[str]:
     if bm.get("boot_unit") == "per_dataset" and not isinstance(bm.get("boot_units"), dict):
         errs.append(f"{n}: boot_unit per_dataset cần boot_units: {{default: ..., <bộ>: ...}}")
     return errs
-
-
-def canonical_row(r: Dict) -> Dict:
-    return {k: v for k, v in r.items() if not k.startswith("_") and k != "audio"}
-
-
-def manifest_sha256(rows: List[Dict]) -> str:
-    h = hashlib.sha256()
-    for r in sorted(rows, key=lambda x: str(x["id"])):
-        h.update(json.dumps(canonical_row(r), sort_keys=True, ensure_ascii=False).encode("utf-8"))
-        h.update(b"\n")
-    return h.hexdigest()
-
-
-def file_sha256(path) -> Optional[str]:
-    if not path or not Path(path).exists():
-        return None
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def check_frozen(bm: Dict, rows: List[Dict]) -> Optional[str]:

@@ -9,6 +9,7 @@ import json
 import numpy as np
 import yaml
 
+from gipbench.core.fileio import read_jsonl_rows as read_rows, write_jsonl_rows as write_rows  # noqa: F401
 from gipbench.infer.adapters.sherpa_transducer import SherpaTransducerAdapter
 
 
@@ -86,18 +87,6 @@ def transcribe(rec, items: Iterable[tuple[np.ndarray, int]]) -> list[str]:
     if streams:
         rec.decode_streams(streams)
     return [stream.result.text for stream in streams]
-
-
-def read_rows(path: Path) -> list[dict]:
-    with path.open(encoding="utf-8") as source:
-        return [json.loads(line) for line in source if line.strip()]
-
-
-def write_rows(path: Path, rows: Iterable[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as stream:
-        for row in rows:
-            stream.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def decode_rows(rows: list[dict], data_dir: Path, rec, batch_size: int) -> dict[int, str]:

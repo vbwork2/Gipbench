@@ -19,14 +19,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from gipbench.core import decontam, release  # noqa: E402
+from gipbench.core.fileio import sha256_file as sha256  # noqa: E402
 from gipbench.core.textnorm import Catalog, model_case_text  # noqa: E402
 
 POOLS = ("pool/vimedcss_train@v2", "pool/vivos_train@v2", "pool/cv_other@v2", "pool/vss_cs@e3_v1")
 FIELDS = ("text_tagged_orig", "text_tagged", "text")
-
-
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def main() -> None:

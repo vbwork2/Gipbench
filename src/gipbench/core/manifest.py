@@ -1,4 +1,5 @@
 """Đọc manifest JSONL của bench (1 utterance / dòng). Đặc tả: xem SCHEMA.md."""
+import hashlib
 import json
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
@@ -35,6 +36,20 @@ def write_jsonl(path: str, rows: Iterable[Dict]):
     with open(path, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps({k: v for k, v in r.items() if not k.startswith("_")}, ensure_ascii=False) + "\n")
+
+
+def canonical_row(r: Dict) -> Dict:
+    """Dòng manifest bỏ trường "_" (thêm lúc đọc) và `audio` (đường dẫn phụ thuộc máy)."""
+    return {k: v for k, v in r.items() if not k.startswith("_") and k != "audio"}
+
+
+def manifest_sha256(rows: List[Dict]) -> str:
+    """sha256 của các dòng đã chuẩn hoá (canonical_row, JSON sort_keys), xếp theo id. Không phụ thuộc máy / thứ tự dòng."""
+    h = hashlib.sha256()
+    for r in sorted(rows, key=lambda x: str(x["id"])):
+        h.update(json.dumps(canonical_row(r), sort_keys=True, ensure_ascii=False).encode("utf-8"))
+        h.update(b"\n")
+    return h.hexdigest()
 
 
 def span_meta(r: Dict, i: int) -> Dict:

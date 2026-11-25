@@ -18,7 +18,6 @@ inference_mode (bắt buộc trong config):
   context_bias : hotwords / từ vựng ngữ cảnh từ nguồn ngoài test (khai báo `context_vocab.provenance: external`)
   oracle_bias  : hotwords có thông tin từ test (cận trên chẩn đoán, không xếp hạng zero-shot)
 """
-import hashlib
 import json
 import os
 import platform
@@ -29,6 +28,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence
 
 import numpy as np
+
+from gipbench.core.fileio import sha256_file_or_none as file_sha256
 
 MODES = ("open_vocab", "lm", "context_bias", "oracle_bias")
 
@@ -70,16 +71,6 @@ class ASRAdapter:
 
     def transcribe_batch(self, audio_paths: Sequence[str]) -> List[str]:
         raise NotImplementedError
-
-
-def file_sha256(path) -> Optional[str]:
-    if not path or not Path(path).exists():
-        return None
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for b in iter(lambda: f.read(1 << 20), b""):
-            h.update(b)
-    return h.hexdigest()
 
 
 def load_audio(path: str, target_sr: Optional[int] = 16000):

@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fpt_inconclusive_cascade import BLANK, kind, reachable
+from gipbench.core.fileio import read_jsonl_rows as read_rows
 from gipformer_mech.logit_lens import blank_led_near_miss, classify
 
 CATEGORIES = [("NEAR_MISS", "Near miss"), ("ENCODER_BUG", "Encoder bug"),
@@ -89,9 +90,8 @@ def main() -> None:
     parser.add_argument("--check-only", action="store_true", help="Check the development counts and stop.")
     args = parser.parse_args()
 
-    read = lambda path: [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     bug = relabel(json.loads(args.bug_mining.read_text(encoding="utf-8"))["findings"])
-    other = relabel(read(args.pool))
+    other = relabel(read_rows(args.pool))
     pooled = profile(bug + other)
     got = {"spans": pooled["spans"], "near_miss": pooled["categories"]["NEAR_MISS"],
            "blank_led_spans": pooled["blank_led_spans"], "blank_led_pieces": pooled["blank_led_pieces"]}
@@ -101,7 +101,7 @@ def main() -> None:
         print(f"Development counts reproduce the published ones: {got}")
         return
 
-    extra = relabel(read(args.extra))
+    extra = relabel(read_rows(args.extra))
     lock = json.loads(args.split_lock.read_text(encoding="utf-8"))["diagnostic"]
     groups = {"Other development": profile(other), "Development pooled": pooled, "Extra diagnostic": profile(extra)}
     ex = groups["Extra diagnostic"]
