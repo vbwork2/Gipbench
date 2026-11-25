@@ -503,6 +503,33 @@ most of them; ablations do that.
 | H5 | **Over-large update**: LR 3e-4 × 2 400 batches moves the model too far | Damage grows with ‖Δθ‖ across all bins and error types; large relative updates in the trainable stacks |
 | H6 | **Blank dominance** (mechanism, not cause) | Tokens/s falls and mean blank posterior rises with step, most on long utterances |
 
+### 6.3 Run log (environment events; no metric was looked at)
+
+- **Pre-run checks (10:28–10:50):**
+  - The decode-path recheck on the current tree reproduces the Phase 1 official hyps on `dev_interim_cs@1`:
+    323 / 323 identical.
+  - Stage 0: the leak gate passes, with 0 critical and 6 for review, the same as the model card.
+  - Stage 1: `train_curated.jsonl` is identical to the 19/11 X0 preflight's (`_x0_preflight_20261119`): same 10 555
+    ids, same order, and every field except the absolute `audio` path equal.
+  - Stages 2–3: the mix stats equal the model card on every field (29 545 cuts, 40.0 h, 10 113 sources, max 3 views).
+- **Attempt 1, stopped at batch 900 (10:51–11:02; evidence in `$R/attempt1_ram_stop/`).** Two
+  environment-protection features of `icefall_runner` made this attempt unusable for the registered protocol:
+  1. Its watchdog sends SIGINT when RAM < `min_ram_mb` 1 024 MB on two polls. WSL is capped at 6 GB by the user's
+     `.wslconfig` (with 16 GB of swap on D:). Writing `checkpoint-900.pt` pushed MemAvailable to 592 MB. The stop
+     came mid-save, so `checkpoint-900.pt` was truncated (620 MB, not a zip) and the runner then resumed from it.
+     I stopped the runner and the resumed process before it trained further. The truncated file was deleted; the
+     logs are kept.
+  2. `cleanup()` deletes every checkpoint that is not a multiple of the virtual epoch (1 200) once a newer one
+     exists. So 300 and 600 were gone, which conflicts with "evaluate every 300-batch checkpoint". Colab's X0 kept
+     only 1 200 and 2 400 for the same reason.
+- **Attempt 2 (from 11:05), two environment-only changes, recipe untouched:**
+  1. `--set train.watchdog.min_ram_mb=256`, alongside the registered `disk_path` override.
+  2. `$R/keep_ckpts.py` hardlinks each complete checkpoint into `exp/.../keep/` before `cleanup()` removes it. A file
+     is linked only if it is ≥ 60 s old and its zip directory reads. It was tested to keep a complete checkpoint and
+     skip a truncated one.
+
+  Training restarts from batch 0 with the same seed and data. The diagnostics read checkpoints from `keep/`.
+
 ---
 
 ## 7. Experiment registry
