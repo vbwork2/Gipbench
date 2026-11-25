@@ -393,6 +393,116 @@ depth, LR 3e-4 × 2 400 batches. X0's checkpoint and training log are not on thi
 **Phase 4 verdict: continued Vietnamese-only training with the X0 recipe does NOT preserve pretrained quality.**
 Per TODO.md part 5 ("Không đạt thì lỗi nằm ở recipe … dừng mọi thí nghiệm CS"), all CS experiments stay stopped.
 
+### 6.2 X0 local reproduction: registration (written 2026-11-25 10:40, before stage 0)
+
+Approved by the user on 25/11: reproduce X0 with the unchanged `e4_x0.yaml`, seed 0, and evaluate every 300-batch
+checkpoint.
+
+**Run.**
+
+```bash
+GIPBENCH_EXP=$R/exp GIPBENCH_RESULTS=$R/results PYTHONPATH=src ~/.venvs/gipbench/bin/python -m gipbench.model.run \
+  configs/model/experiments/e4_x0.yaml --seed 0 --stages 0-6 --set train.watchdog.disk_path=/mnt/d
+```
+
+- `R=data/work/recovery/p4x0`.
+- The only override is the watchdog disk path. Colab used `/content`; the model card records it as an override
+  too. Outputs go to `$R/exp` and `$R/results`, and the work dir is `data/work/model/e4_x0/seed-0`, which did not
+  exist before. Nothing historical is overwritten.
+- The `--dry-run` finetune command matches the model card's `train` block: lr 3e-4, max_batches 2400,
+  max_duration 60, freeze, 2 workers, 10 buckets, keep_last_k 40, 4 segments, fp16, SpecAugment on, save every 300.
+
+**Code state.**
+- Commit `521b695` plus an uncommitted refactor that is not part of this recovery: `core/fileio.py` and 27 files
+  that move duplicated `sha256` / `hours` helpers there.
+- Audited before the run:
+  - The diffs on the X0 path (`curate`, `release`, `leakgate`, `manifest`, `onnx_export`, `infer/*`) are
+    import-only, apart from the new functions `canonical_row` and `manifest_sha256`.
+  - `tests/run_tests.sh` gives 35 / 35 passing. The 2 mech tests needed `~/jiwer_target` on the path.
+  - An empirical decode recheck is in section 6.3.
+- Snapshot: `$R/preflight/dirty_tree.patch` (sha `0900ac67…`) and `fileio.py.snapshot` (`5aa6d49e…`).
+
+**Environment** (differs from X0's Colab run; Colab versions not recorded):
+- WSL `gipbench-ft`: torch 2.15.0+cu132, k2 1.33.0, lhotse 1.33.0, Icefall `f8c8578`.
+- GPU RTX 3050 Laptop, 4 GB. WSL RAM 5.9 GB. D: 43 GB free.
+- Base `model.pt` `7315ea2e…`, equal to the model card's `base_model`.
+
+**Data preflight** (`$R/preflight/data_integrity.json`):
+- `pool/vivos_train@v3` `13528dbd…` (= model card), `dev_v2_vi@1` `208f8e18…`, `dev_interim_cs@1` `745e512b…`.
+- Every audio file is readable, header duration within 0.05 s of the manifest, 16 kHz, no backslash paths.
+
+| Set | Median (s) | p95 (s) | Max (s) | Share ≥ 15 s |
+| --- | ---: | ---: | ---: | ---: |
+| vivos_train@v3 (X0 train) | 4.03 | 9.51 | 17.1 | **0.19%** |
+| dev_v2_vi@1 | 19.47 | 29.39 | 31.8 | **72.7%** |
+| dev_interim_cs@1 | 13.3 | 15.0 | 15.0 | 17.0% |
+
+**Identity checks after stages 1–3 and 4.** Any mismatch with `results/e4_x0/artifacts/seed-0/model_card.json`
+means this is not a reproduction of the same run. In that case, stop and investigate before scoring.
+- Mix stats: `n_cuts 29545`, 40.0 h, `source_audios 10113`, `views_per_source_audio_max 3`.
+- Leak gate passed with 0 critical.
+- Sampler state at batch 2400: `kept_cuts 25776`, `kept_batches 2404`.
+- Bit-identical weights are **not** expected, because the GPU, the CUDA / torch versions and fp16 nondeterminism all
+  differ.
+
+**Evaluation protocol** (identical for base and every checkpoint):
+- **Export:** `export-onnx.py --iter N --avg 1 --use-averaged-model 0 --enable-int8-quantization 1 --use-ctc 0`,
+  the X0 artifact path.
+- **Decode:** `gipbench.infer.decode`, `modified_beam_search`, beam 4, INT8, **batch 1, 16 threads**, one `--system`
+  name and results dir per checkpoint. Not `run.py`'s `decode_dev`, which uses 2 threads.
+- **Sets:** `dev_v2_vi@1` (all 1 691) and `dev_interim_cs@1` (all 323), plus "train WER" on
+  `inputs/valid_from_train.jsonl`. Those are 200 VIVOS rows that are part of the training data, picked by hash.
+- **Scoring:** `gipbench.bench.evaluate --mode diagnostic --inference-mode open_vocab`. Baseline hyps are the
+  Phase 1 `official` hyps (same decode settings); speaker bootstrap.
+- **Order:** ck2400 first (verdict), then 300 … 2100.
+- **No selection:** intermediate checkpoints are used **only** to locate the onset, never to pick a model. No locked
+  bench is read.
+
+**Recorded per checkpoint** (`scripts/recovery_p4_x0_diag.py`, `$R/diag/`):
+- WER, CER and S / D / I rates from `utt_scores.jsonl`.
+- WER and S / D / I by duration bin: < 10, 10–15, 15–20, 20–25, ≥ 25 s.
+- CS-WER and term recall on dev_interim_cs.
+- Output tokens per second of audio: BPE pieces of the hyp / duration, from the beam-4 hyps.
+- Blank statistics:
+  - Fixed subset: 150 dev_v2_vi utterances, 30 per duration bin in sha256(id) order, plus 50 `valid_from_train`
+    rows.
+  - INT8 ONNX greedy via `gipformer_mech.onnx_greedy.OnnxTransducer`, 4 threads.
+  - Per frame: softmax blank probability at the greedy step.
+  - Reported: mean blank posterior, share of frames whose argmax is blank, and blank posterior by relative-position
+    decile.
+- Layer-wise relative update vs `init_ft.pt`: per encoder stack and per layer, decoder, joiner. Frozen
+  bit-equality.
+- Simple / pruned gradient contributions:
+  - On one fixed batch: the 6 `vivos_train@v3` rows of P2, CPU fp32, no augmentation, seeded dropout.
+  - Encoder gradient norm of each loss, their cosine, and the pruned share at the loss scales that were in force at
+    that batch (warm-up formula of `finetune.py`) and at post-warm-up scales.
+- From `finetune.log` / tensorboard: the actual LR, `batch_idx_train`, loss / simple / pruned, grad-norm quartiles,
+  clipping and `grad_scale`.
+
+**Verdict rules** (dev_v2_vi, ck2400 only):
+- **Reproduced:** ΔWER vs base has CI95 lower bound > +0.5, **and** the extra errors are deletion-dominated
+  (ΔD > ΔS and ΔD > ΔI), **and** ΔWER in the ≥ 15 s bins exceeds ΔWER in the < 10 s bin.
+  - Also reported: the point estimate vs X0's +4.83 [4.38, 5.25], and a paired comparison against the historical X0
+    hyps (`data/work/recovery/p4/decode/dev_v2_vi@1/x0_seed0`).
+- **Not reproduced:** CI95 upper ≤ +0.5. Stop, then compare environment, config and data with the Colab run before
+  any ablation.
+- **Partial:** anything else. Treat it as not reproduced for the purpose of ablations, and investigate the
+  differences first.
+- **Retention** (X0's own rule, for every checkpoint): ΔWER ≤ +0.3 and CI95 upper ≤ +0.5.
+- **Onset** = the first checkpoint whose dev_v2_vi ΔWER CI95 lower bound is > +0.3.
+
+**Candidate hypotheses and the signature each predicts.** Written before any curve was seen. One run cannot reject
+most of them; ablations do that.
+
+| | Hypothesis | Predicted signature in this run |
+| --- | --- | --- |
+| H1 | **Duration mismatch**: training only on short clips (median 4 s) teaches the model to stop emitting on long input | Δ grows with duration bin (≥ 25 s worst); deletions dominate; blank posterior rises with relative position in long utterances; train WER (short VIVOS) stays flat or improves |
+| H2 | **D1, loss warm-up**: the pruned (decoding) loss is down-weighted for 2 000 batches | Damage starts early (≤ ck900), while the pruned weight is ≤ 0.5, and stops growing or partly recovers after batch 2 000. Damage that keeps growing after batch 2 000 would weaken H2 as the main driver |
+| H3 | **Augmentation** (speed perturb, `phone_sim 0.3`, SpecAugment) | Not separable in this run; ablation |
+| H4 | **Domain narrowing**: read, clean, Vietnamese-only speech | Damage also in the < 10 s natural-speech bin (not only long), substitutions rise too, CS dev degrades (term recall drops); already partly seen on G0's short G-Group sets (section 6.1) |
+| H5 | **Over-large update**: LR 3e-4 × 2 400 batches moves the model too far | Damage grows with ‖Δθ‖ across all bins and error types; large relative updates in the trainable stacks |
+| H6 | **Blank dominance** (mechanism, not cause) | Tokens/s falls and mean blank posterior rises with step, most on long utterances |
+
 ---
 
 ## 7. Experiment registry
