@@ -2,6 +2,8 @@
 
 Cập nhật 16/11/2026, sau refactor (nhánh `refactor/pipelines`). Bản trước refactor: `docs/research/03_kien_truc.md`.
 
+[Lộ trình VietNote](VIETNOTE_RESEARCH.md) mô tả cách dùng registry model và cổng readiness trên ba pipeline hiện có. `model.research_report` đọc hồ sơ release, artifact chấm và kết quả thí nghiệm để tạo báo cáo tĩnh.
+
 ## Mục tiêu
 
 Đổi hướng tiếp cận ở một phần (engine TTS, cách lọc nhãn giả, cách FT, model ngoài, metric, luật chọn) chỉ phải sửa đúng

@@ -77,6 +77,11 @@ _CLIP = [(re.compile(r"(common_voice_[a-z]{2,3}_\d+)"), "cv_clip"),
          (re.compile(r"(VIVOS(?:SPK|DEV)\d+_R?\d+)"), "vivos_clip")]
 
 
+def is_video_unit(unit):
+    """Recognize video IDs used as a substitute for verified speaker identity."""
+    return unit.startswith(("yt:", "vss_", "vss:")) or (source_key({"speaker": unit}) or "").startswith("yt:")
+
+
 def source_key(r: Dict) -> Optional[str]:
     """Khoá nguồn chuẩn hoá của một dòng (video / người nói), hoặc None nếu không xác định được.
 

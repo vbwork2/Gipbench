@@ -1,0 +1,112 @@
+conventional:
+  branch: A
+  hypothesis: Diverse real Vietnamese replay preserves Vietnamese accuracy while verified real CS reduces English deletions.
+  prerequisites: Registered model and GPU validation, 12 h Vietnamese plus 8 h CS, and independent dev.
+  baseline: Official VietNote checkpoint with identical decoding.
+  controls: [architecture, tokenizer, optimizer, seeds, decoding, exposure]
+  metrics: [VI WER, CS-WER, English term recall, duration slices, hallucinations]
+  decision: Apply the preregistered V03 paired confidence bounds across matched seeds.
+replay:
+  branch: B
+  hypothesis: Increasing real Vietnamese replay trades CS improvement for Vietnamese retention.
+  prerequisites: V03 and a surplus of eligible unique Vietnamese and CS hours.
+  baseline: V03
+  controls: [exposure, source and speaker mix, duration, seed, optimizer]
+  metrics: [VI WER, CS-WER, English term recall]
+  decision: Select the smallest replay ratio meeting V03 retention and CS criteria on independent dev.
+duration:
+  branch: B
+  hypothesis: Longer replay reduces deletions on long utterances.
+  prerequisites: V03 and eligible examples across duration bands.
+  baseline: V03
+  controls: [real CS share, total exposure, seeds, domain and speaker mix]
+  metrics: [deletions by duration, VI WER, CS-WER]
+  decision: Require fewer deletions for clips of at least 20 s and meet the V03 retention limits.
+confusables:
+  branch: B
+  hypothesis: Matched confusable terms reduce substitutions on unseen names.
+  prerequisites: V03 and a train-only confusable catalog.
+  baseline: Equal-duration random addition to V03.
+  controls: [audio exposure, speaker, domain, word frequency, seeds]
+  metrics: [English substitutions, unseen-name recall, VI WER]
+  decision: Require a paired improvement in unseen-name recall and meet V03 retention limits.
+mining:
+  branch: B
+  hypothesis: Error mining targets failures more effectively than random sampling.
+  prerequisites: V03, V05 and verified labels drawn only from train.
+  baseline: V03 with a random sample of matched hours.
+  controls: [duration, speakers, domain, English frequency, seeds]
+  metrics: [CS-WER, English deletions, VI WER]
+  decision: Prefer a mined arm only if its paired CS-WER interval excludes zero and VI retention holds.
+distillation:
+  branch: B
+  hypothesis: Agreement-filtered teacher transcripts improve CS without transmitting major teacher errors.
+  prerequisites: V03, teacher comparison, rights and blinded verification of sampled labels.
+  baseline: Equal-exposure real-speech V03 control.
+  controls: [audio, tokenizer, label budget, decoding, seeds]
+  metrics: [teacher disagreement, CS-WER, recall, hallucinations]
+  decision: Require better independent CS-WER without worse retained VI WER or increased hallucination.
+accented:
+  branch: B
+  hypothesis: Vietnamese-L1 English improves recognition of English spans with a Vietnamese accent.
+  prerequisites: V03 and a rights-cleared speaker-disjoint accented-English release.
+  baseline: Equal-duration native-English addition.
+  controls: [text or vocabulary, duration, speaker counts, seeds]
+  metrics: [accent-sliced recall, CS-WER, VI WER]
+  decision: Require a benefit on the targeted accent slice and meet V03 retention limits.
+external_tts:
+  branch: B
+  hypothesis: Reviewed ZeroSpeech examples improve rare-term recall.
+  prerequisites: V03 and cleared source-text and recording terms for ZeroSpeech.
+  baseline: Equal-exposure V03 control and separate custom TTS comparison.
+  controls: [exposure, word frequency, seeds]
+  metrics: [unseen recall, CS-WER, English-span accuracy, VI WER]
+  decision: Advance only with a paired unseen-recall gain and V03 retention.
+custom_tts:
+  branch: B
+  hypothesis: Neural speech from the fixed train-only catalog provides useful Vietnamese-accented English spans.
+  prerequisites: V03, approved weights and voices, ASR triage and human listening pilot.
+  baseline: eSpeak negative control for the pilot and matched-exposure V03 for ASR.
+  controls: [text, audio budget, accent, scoring, seeds]
+  metrics: [pronunciation, span correctness, naturalness, alignment, CS-WER, VI WER]
+  decision: Expand only approved human-reviewed audio and require paired improvement on independent dev.
+mechanisms:
+  branch: C
+  hypothesis: Token near misses, cascading prefixes and blank dominance explain distinct CS errors.
+  prerequisites: V03 and compatible VietNote instrumentation.
+  baseline: Released checkpoint and V03 with identical inference.
+  controls: [features, transcript normalization, decode, duration and speaker strata]
+  metrics: [token rank, near-miss rate, cascade rate, blank posterior, deletions]
+  decision: Require a consistent effect across non-medical domains before selecting a training intervention.
+adaptation:
+  branch: C
+  hypothesis: Targeted encoder, predictor or joiner updates address measured failure modes.
+  prerequisites: V03 and a validated failure slice from V05.
+  baseline: V03 full fine-tuning and a matched random module control where practical.
+  controls: [corpus, schedule, trainable budget, seeds, decoding]
+  metrics: [error slices, VI WER, CS-WER, recall]
+  decision: Require an improvement on the targeted slice and pass V03 retention criteria.
+weights:
+  branch: D
+  hypothesis: WiSE-FT, task vectors, soups or compatible layer-wise merging recover VI retention while keeping CS gains.
+  prerequisites: V03 and strict architecture, tokenizer, state-key, shape and shared-checkpoint compatibility.
+  baseline: Released base and each constituent checkpoint.
+  controls: [initial checkpoint, data lineage, dev splits, decoding]
+  metrics: [VI WER, CS-WER, recall, streaming parity]
+  decision: Require a Pareto improvement over constituents or a paired CS gain at the V03 retention limit.
+combined:
+  branch: E
+  hypothesis: Combining independently validated improvements retains their benefits.
+  prerequisites: V03 and independent dev evidence for every selected change.
+  baseline: V03 and the best single intervention.
+  controls: [test holdout, decoding, seeds, stopping plan]
+  metrics: [VI WER, CS-WER, recall, slice stability]
+  decision: Freeze the simplest recipe that meets all preregistered dev criteria.
+final:
+  branch: E
+  hypothesis: The locked recipe transfers to held-out domains and speakers.
+  prerequisites: V14, locked benchmarks and a clean audit of training lineage.
+  baseline: Official VietNote and historical GipFormer with matched decode settings.
+  controls: [locked splits and scoring, precision, decoding, paired bootstrap units]
+  metrics: [VI WER, CS-WER, English term recall, hallucinations, RTF]
+  decision: Report the preregistered metrics and intervals once with the frozen recipe.

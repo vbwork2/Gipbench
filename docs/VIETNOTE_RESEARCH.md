@@ -2,7 +2,17 @@
 
 Ngày bắt đầu 25/11/2026. Nhánh làm việc `feature/zip-ft`. VietNote-Zipformer-78M là model nghiên cứu chính. GipFormer là baseline lịch sử và nguồn đối chiếu cho nghiên cứu cơ chế, chấm ASR và distillation. Hồ sơ GipFormer nằm trong [RESEARCH_RECOVERY.md](../RESEARCH_RECOVERY.md), [IMPLEMENTATION.md](../IMPLEMENTATION.md), [TODO.md](../TODO.md) và [TODO_rea.md](../TODO_rea.md).
 
-## Trạng thái ngày 25/11/2026
+## Trạng thái hiện tại
+
+[Báo cáo trạng thái sinh từ artifact](../reports/vietnote_status.md) ghi kết quả hiện tại. V00 đã có quick baseline, full dev vẫn mở. V01 đạt parity sau khi exporter tính softmax FP32 từ `encoder.encoders.3.downsample.bias` của checkpoint gốc trước khi lượng tử hóa. INT8 offline tăng từ 81/113 lên 113/113 transcript khớp bản phát hành, streaming tăng từ 95/113 lên 113/113. Trên 24 câu dài, thời điểm phát chữ đầu tiên trùng nhau và không câu nào mất lượt phát chữ sau nửa câu. Kết quả và transcript từng câu nằm trong `data/work/vietnote/v01/parity_softmax/`. V03 vẫn bị chặn bởi điều kiện dữ liệu, dev CS độc lập và các kiểm tra V02.
+
+Đối chiếu INT8 dùng 113 câu đã khóa. Bản chính thức và các biến thể cùng chạy trên một runtime Windows với Sherpa-ONNX 2.0.1, beam 4 và 4 luồng CPU. Báo cáo hiển thị riêng phép lượng tử hóa lại FP32 chính thức, phép hoán đổi thành phần và re-export toàn bộ.
+
+Artifact đối chiếu nằm tại `data/work/vietnote/v01/int8_isolation/matched_runtime.json`. Cờ `--verify-runtime` của `scripts/diagnostics/vietnote_int8_isolate.py` đọc lại manifest, kiểm SHA256, rồi giải mã lại tất cả biến thể trong một tiến trình. Dùng một thư mục isolation mới nếu cần tái lập và giữ kết quả cũ.
+
+Phép thử hằng FP32 lấy encoder re-export làm điểm xuất phát, khôi phục riêng hệ số nhân downsampling và nhóm bảng mã hóa vị trí từ encoder phát hành, rồi thử khôi phục cả hai. Mỗi biến thể độc nhất dùng 113 câu đã khóa và cùng runtime Windows. Biến thể trùng SHA256 với đối chứng dùng lại transcript đã khóa của đối chứng đó. [Báo cáo](../reports/vietnote_status.md) ghi kết quả từng phép thử.
+
+## Mốc trước đợt refactor ngày 25/11/2026
 
 | Hạng mục | Trạng thái và bằng chứng |
 | --- | --- |
@@ -159,23 +169,161 @@ Khi V03 qua các cổng, stages 0–3 tạo CutSet và file thống kê số lư
 
 Mỗi lần chạy chốt seed, checkpoint khởi đầu, hash dữ liệu và config, giờ audio thực tế theo nguồn và theo augmentation, decoding, sai số theo lát, bootstrap ghép cặp, diễn giải và bước kế. Đo FP32 và INT8 theo các nhóm có cùng precision, beam 4, batch 1 và 16 luồng CPU ở baseline. Dùng scorer hiện có cho WER, CER, CS-WER, CS-WER-SD, recall, lỗi S/D/I và hallucination. Dùng log emission cho thời điểm phát chữ đầu và tiến trình trên câu dài. Ghi RTF, kích thước model và peak memory khi runtime cung cấp được.
 
-| ID | Thử nghiệm | Cổng và diễn giải |
-| --- | --- | --- |
-| V00 | Model VietNote gốc streaming/offline | Baseline theo precision trên dev hiện có. CS tạm chỉ dùng chẩn đoán. |
-| V01 | Strict-load, PyTorch/FP32 và re-export INT8 | Kiểm tham số và vocab; so decode trên tập cố định; kiểm phát chữ đến nửa sau câu dài; lưu cấu hình quantize và hash. |
-| V02 | GPU smoke và tiny set | Rà lại 163 câu recovery theo pool mới, quyền dùng và contamination. Loss/gradient hữu hạn, cập nhật trọng số, save/reload và tiny-set WER giảm. |
-| V03 | Fine-tune chuẩn từ checkpoint gốc | Mục tiêu 12 giờ Việt thật đa dạng + 8 giờ CS thật trước augment. Báo số giờ thiếu. Phát hành dev CS độc lập, nghe duyệt, tối thiểu 1.500 câu, bốn domain và 100 người nói xác minh. |
-| V04 | Tỷ lệ replay | Giữ giờ tiếp xúc, seed và khởi điểm, đổi tỷ lệ thật. |
-| V05 | Chọn mẫu theo cơ chế | So random, chọn theo lỗi và chọn theo cơ chế trên dữ liệu train đủ điều kiện. Cân giờ, speaker, domain, độ dài và tần suất từ Anh. |
-| V06 | Cặp từ dễ nhầm | Dùng catalog train và pipeline confusable hiện có, giữ các view trùng audio khỏi giờ độc nhất. |
-| V07 | Nhãn giáo viên | Benchmark GipFormer, VietNote, Whisper large-v3 và Qwen3-ASR trước. Ghi vai trò, bất đồng và phiếu người duyệt. Phân biệt chuỗi đích với logits tokenizer khác. |
-| V08 | Tiếng Anh có âm sắc Việt | Ưu tiên L2-ARCTIC Việt-L1 khi truy cập, cân phần tiếng Anh bản ngữ theo ngân sách. |
-| V09 | ZeroSpeech | Đối chứng theo số giờ trên tập nghiên cứu phi thương mại, duyệt nhãn và nguồn chữ. |
-| V10 | TTS đích | So pilot engine theo điều kiện phát âm và giọng được cấp phép. Sau người nghe duyệt mới tăng quy mô. |
-| V11 | Predictor và Joiner | Dùng cùng corpus V03 và lịch train, đổi các tham số được cập nhật. |
-| V12 | Một phần encoder | Thử các stack được chọn sau chẩn đoán VietNote V05. |
-| V13 | Nội suy checkpoint | WiSE-FT và model soup với các đạo hàm của cùng checkpoint VietNote. |
-| V14 | Kết hợp tốt nhất trên dev | Chốt recipe dựa trên kết quả ghép cặp và điều kiện giữ tiếng Việt. |
-| V15 | Đánh giá cuối | Chạy benchmark khóa sau khi chốt cấu hình. |
+[Registry thí nghiệm](../configs/research/vietnote.yaml) giữ mã thí nghiệm, phụ thuộc và các đường dẫn bằng chứng. [Registry chiến lược](../configs/research/vietnote_strategies.yaml) giữ giả thuyết, tiền đề, baseline, biến kiểm soát, metric và quy tắc quyết định cho từng nhánh.
 
 V03 đăng ký trước điều kiện `ΔVI WER ≤ +0,3` điểm phần trăm với cận trên CI 95% ≤ +0,5. Cận trên CI 95% của `ΔCS-WER` trên dev độc lập phải nhỏ hơn 0. Kiểm thêm recall thuật ngữ chưa thấy, tên riêng, phân nhóm người nói, domain, accent, deletions theo thời lượng và hallucination trước khi chọn ứng viên. Phần quick dev cần đối chiếu thứ hạng và hướng thay đổi theo lát trên full dev. Chỉ dùng dữ liệu ngoài phần giữ lại để khai thác lỗi, pseudo-label và thiết kế TTS.
+
+## Sơ đồ nghiên cứu
+
+### Kiến trúc
+
+```mermaid
+flowchart LR
+  S["Registry nguồn"] --> D["Dataset"]
+  D --> R["Release bất biến"]
+  R --> M["Model và adapter theo family"]
+  R --> B["Benchmark"]
+  M --> B
+  B --> E["Metric và bằng chứng"]
+  E --> Q["Báo cáo từ registry thí nghiệm"]
+```
+
+### Thu nhận và kiểm chất lượng
+
+```mermaid
+flowchart LR
+  S["Nguồn và revision"] --> L{"Quyền bản ghi"}
+  L -->|Thiếu| P["Pilot cách ly"]
+  L -->|Đủ| Q["Nghe duyệt và gắn provenance"]
+  Q --> H["Audio SHA, fingerprint, text, người nói"]
+  H --> T["Pool train"]
+  H --> D["Dev độc lập"]
+  T --> R["Release có hash"]
+  D --> R
+```
+
+### Huấn luyện VietNote
+
+```mermaid
+flowchart LR
+  I["Pool + dev + hỗn hợp"] --> L["Kiểm nhiễm bẩn"]
+  L --> C["Curate và chuẩn hóa VietNote"]
+  C --> F["Lhotse CutSet"]
+  F --> G["Bundle có hash và kiểm giờ"]
+  G --> T["Icefall VietNote"]
+  P["Checkpoint + chứng cứ V01/V02"] --> T
+  T --> B["Suy luận và scorer GipBench"]
+```
+
+### Cây chiến lược
+
+```mermaid
+flowchart LR
+  A["A · Fine-tune chuẩn"] --> B["B · Dữ liệu, replay, thời lượng, confusables, mining, distill, accent, TTS"]
+  A --> C["C · Token rank, near miss, cascade, blank, encoder/predictor/joiner"]
+  A --> D["D · WiSE-FT, task vectors, soups, ghép layer"]
+  B --> E["E · Đánh giá cuối"]
+  C --> E
+  D --> E
+```
+
+### Phụ thuộc thí nghiệm
+
+```mermaid
+flowchart LR
+  V00["V00 · Baseline"] --> V03
+  V01["V01 · Parity"] --> V03
+  V02["V02 · Gradient và VRAM"] --> V03
+  DATA["12 h VI + 8 h CS + dev"] --> V03["V03 · Baseline fine-tune"]
+  V03 --> R["V04–V13 · Ablation"]
+  R --> V14["V14 · Chốt recipe"]
+  V14 --> V15["V15 · Benchmark khóa"]
+```
+
+### Quyết định theo bằng chứng
+
+```mermaid
+flowchart TD
+  S{"Checkpoint và V01/V02 còn hiệu lực?"} -->|Chưa| P["Hoàn tất phép đo"]
+  S -->|Có| D{"Đủ giờ thật, quyền và dev độc lập?"}
+  D -->|Chưa| A["Bổ sung và duyệt audio"]
+  D -->|Có| B{"Cổng nhiễm bẩn và hash CutSet đạt?"}
+  B -->|Chưa| R["Sửa hoặc tạo lại bundle"]
+  B -->|Có| T["Chạy V03"]
+  T --> E{"Đạt CI cho VI và CS?"}
+  E -->|Có| X["Mở thí nghiệm tiếp theo"]
+  E -->|Chưa| C["Phân tích lỗi baseline"]
+```
+
+## Duyệt dữ liệu và phát hành
+
+1. Dùng nguồn cố định revision và giữ ID clip gốc, video hoặc buổi thu, người nói đã xác minh, domain, nguồn transcript và hồ sơ quyền bản ghi. Chia theo cả người nói và nguồn ghi trước khi nghe duyệt. Dành business, tech, hội thoại đời thường và giáo dục cho dev phi y khoa.
+2. Dùng phiếu nghe có `id`, `audio` và `text_tagged`. Reviewer nghe trước khi xem gợi ý ASR, rồi chọn `ok`, `fix` hoặc `drop`. Sửa đúng chính tả span Anh và gắn `<en>`. Người thứ hai giải quyết bất đồng và kiểm các danh tính người nói chưa rõ. Ghi transcript gốc, bản sửa và người duyệt.
+3. Mở `src/gipbench/dataset/label/review_bench.html` để nghe phiếu y khoa tại `data/work/vietnote/dev/medical_review/`. Sau khi xuất `listen_reviewed.csv`, dùng `gipbench.dataset.release.holdout_dev apply`. Bổ sung danh tính người nói đã xác minh trước khi gộp các lô. Dùng `make_dev_split --candidates … --kind cs --exclude-from …` để kiểm tất cả pool train và bench khóa. Chỉ phát hành `dev/dev_v2_cs@1` khi tối thiểu 1.500 câu, bốn domain, 100 người nói và đủ kiểm âm học. Bộ 65 câu CS tạm và subset V01 dùng chẩn đoán kỹ thuật.
+4. Với pool V03, gắn `recording_rights` vào nguồn đã xác minh trong registry với `evidence`, `sha256`, `license` và `training_allowed`. Đăng ký release mới với `flags.vietnote_v03` gồm `source`, `source_revision`, `kind`, `transcripts_verified` và `speakers_verified`. Release giữ cờ kiểm audio và fingerprint. Trỏ hỗn hợp vào release vừa phát hành.
+
+| Ưu tiên | Công việc thu nhận |
+| --- | --- |
+| VietSpeech | Chủ tài khoản Hugging Face chấp nhận bước truy cập cho nguồn đã ghim. Kiểm một shard về quyền audio, speaker và nhãn trước khi mở rộng. [VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech) |
+| VietSuperSpeech | Sàng lọc theo video phi y khoa đã có cục bộ, giữ nguồn độc lập trước khi duyệt thủ công. Thẻ MIT và nhãn Zipformer cần kiểm riêng với quyền ghi âm. [VietSuperSpeech](https://huggingface.co/datasets/thanhnew2001/VietSuperSpeech) |
+| code_switch_OM | Xác minh quyền theo video và đối chiếu transcript người nghe với phụ đề dùng align. [code_switch_OM](https://huggingface.co/datasets/nhatminh/code_switch_OM) |
+| LSVSC | Xem lại pilot 119 dòng qua lọc metadata, ưu tiên phỏng vấn và hội thoại có nguồn và người nói xác định. [LSVSC](https://huggingface.co/datasets/doof-ferb/LSVSC) |
+| VietPrism | Chờ tác giả chấp thuận điều khoản cho phần audio thật. [VietPrism](https://arxiv.org/abs/2609.30005) |
+
+## Lệnh xác minh và chuẩn bị V03
+
+PowerShell từ gốc repo.
+
+```powershell
+$env:PYTHONUTF8 = '1'
+$py = '.\.venv\gipbench-win\Scripts\python.exe'
+& $py -m gipbench.model.research_report report --out reports/vietnote_status.md
+& $py scripts/diagnostics/vietnote_parity.py --export data/work/vietnote/v01/checkpoint_export_softmax --out data/work/vietnote/v01/parity_softmax --rescore
+& $py -m gipbench.model.run configs/model/experiments/vietnote_v03.yaml --stages 0-3 --seed 0 --dry-run
+```
+
+Ubuntu WSL từ gốc repo. Mỗi lượt mới dùng thư mục mới.
+
+```bash
+FT=~/.venvs/gipbench-ft/bin/python
+ICE=models/vietnote78/upstream/icefall/9c966762e058bd7ba79d9da71e42fc06b64b703e.tar.gz
+ICE_DIR=models/vietnote78/upstream/icefall/icefall-9c966762e058bd7ba79d9da71e42fc06b64b703e
+export PYTHONPATH=src:data/work/vietnote/recipe:models/vietnote78/upstream/src:$ICE_DIR
+$FT scripts/diagnostics/vietnote_reexport.py --icefall "$ICE" --softmax-python .venv/gipbench-win/Scripts/python.exe --out data/work/vietnote/v01/checkpoint_export_repeat
+PYTHONPATH="$PYTHONPATH:$PWD/$ICE_DIR/egs/librispeech/ASR/zipformer" $FT scripts/diagnostics/vietnote_fp32_tensors.py --icefall "$ICE_DIR" --export data/work/vietnote/v01/checkpoint_export_repeat --manifest data/work/vietnote/v01/parity/dev.jsonl --out data/work/vietnote/v01/tensors_repeat.json
+$FT scripts/diagnostics/vietnote_train_validation.py tiny --out data/work/vietnote/v02/tiny_repeat
+$FT scripts/diagnostics/vietnote_train_validation.py memory --out data/work/vietnote/v02/memory_repeat
+```
+
+Sau khi export, chạy parity từ PowerShell ở gốc repo. Cả bản phát hành và bản mới được giải mã trên cùng runtime Windows.
+
+```powershell
+& .venv/gipbench-win/Scripts/python.exe scripts/diagnostics/vietnote_parity.py --locked-parity data/work/vietnote/v01/parity --export data/work/vietnote/v01/checkpoint_export_repeat --out data/work/vietnote/v01/parity_repeat
+```
+
+Để tái lập phép đối chiếu INT8 của exporter cũ, chuẩn bị các biến thể với ONNX Runtime 1.32.0 trong WSL.
+
+```bash
+PYTHONPATH=src "$FT" scripts/diagnostics/vietnote_int8_isolate.py --parity data/work/vietnote/v01/parity --export data/work/vietnote/v01/checkpoint_export --out data/work/vietnote/v01/int8_isolation_repeat
+```
+
+Sau đó giải mã cả bản chính thức và các biến thể từ PowerShell.
+
+```powershell
+& $py scripts/diagnostics/vietnote_int8_isolate.py --parity data/work/vietnote/v01/parity --export data/work/vietnote/v01/checkpoint_export --out data/work/vietnote/v01/int8_isolation_repeat --verify-runtime
+```
+
+Để tái lập phép thử hằng FP32 với các artifact gốc đã khóa, chạy từ PowerShell với thư mục kết quả mới.
+
+```powershell
+& $py scripts/diagnostics/vietnote_encoder_constants.py --out data/work/vietnote/v01/encoder_constants/repeat
+```
+
+Khi dữ liệu và dev đủ, chạy stages 0–3 theo từng seed rồi dựng bundle dưới đây. Lượt hiện tại dừng ở các cổng V03.
+
+```bash
+CFG=configs/model/experiments/vietnote_v03.yaml
+$FT -m gipbench.model.run "$CFG" --stages 0-3 --seed 0
+$FT -m gipbench.model.research_report bundle --seed 0 --staged data/work/model/vietnote_v03/seed-0/lhotse --out data/work/vietnote/v03/bundle-seed-0
+$FT -m gipbench.model.train.vietnote_icefall "$CFG" --icefall "$ICE" --recipe data/work/vietnote/recipe --cuts data/work/vietnote/v03/bundle-seed-0 --seed 0 --output exp/vietnote/v03/seed-0 --dry-run
+```

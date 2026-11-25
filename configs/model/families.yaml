@@ -1,0 +1,11 @@
+gipformer:
+  role: historical_baseline
+  training_adapter: gipbench.model.train.icefall_runner
+  normalizer: gipbench
+  pipeline_stages: [0, 1, 2, 3, 4, 5, 6]
+vietnote_zipformer:
+  role: primary_research_model
+  training_adapter: gipbench.model.train.vietnote_icefall
+  normalizer: vietnote
+  pipeline_stages: [0, 1, 2, 3]
+  artifact_lock: configs/model/vietnote.json

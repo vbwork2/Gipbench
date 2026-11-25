@@ -43,6 +43,7 @@ from gipbench.core.manifest import read_jsonl
 from gipbench.core.paths import REPO
 from gipbench.core.textnorm import Catalog
 from gipbench.model.export import onnx_export
+from gipbench.model.families import family
 from gipbench.model.recipe import experiment as X
 from gipbench.model.recipe.split_groups import split
 from gipbench.model.train import icefall_runner as IR
@@ -71,6 +72,7 @@ def opt_args(d):
 class Ctx:
     def __init__(self, exp, dry, seed=None):
         self.exp, self.dry, self.seed = exp, dry, seed
+        self.family = family(exp)
         self.py = str(paths.path("python_cpu"))
         self.py_ft = str(paths.path("python_ft"))
         self.icefall = X.abspath(paths.get("icefall"))
@@ -239,8 +241,8 @@ def stage_features(c):
     aug = (["--speed-perturb"] if f.get("speed_perturb") else []) + (["--phone-sim", f["phone_sim"]] if f.get("phone_sim") else [])
     tail = ["--bench", c.bench, "--catalog", c.cat, "--out", c.lhotse]
     env = None
-    if c.exp.get("family") == "vietnote_zipformer":
-        tail += ["--normalizer", "vietnote", "--max-dur", f.get("max_duration", 45)]
+    if c.family["normalizer"] == "vietnote":
+        tail += ["--normalizer", c.family["normalizer"], "--max-dur", f.get("max_duration", 45)]
         env = dict(os.environ, PYTHONUTF8="1", PYTHONPATH=os.pathsep.join(
             filter(None, [str(c.model / "upstream/src"), os.environ.get("PYTHONPATH")])))
     for g, p in sorted(files.items()):
@@ -276,8 +278,8 @@ def stage_mix(c):
         p = c.lhotse / f"{g['group']}_cuts_raw.jsonl.gz"
         if p.exists() or c.dry:
             args += ["--group", f"{g['group']}={p}:{g['weight']}"]
-        elif c.exp["train"].get("max_batches"):
-            sys.exit(f"Missing cuts for the configured E4 group {g['group']}: {p}")
+        elif c.exp["train"].get("max_batches") or c.family["normalizer"] == "vietnote":
+            sys.exit(f"Missing cuts for the configured group {g['group']}: {p}")
     c.run([c.py_ft, "-m", "gipbench.model.features.mix_cuts", *args, "--epoch-hours", m["epoch_hours"],
            "--epochs", m["epochs"], *(["--max-views", m["max_views"]] if m.get("max_views") else []),
            *c.seed_args, "--out", c.lhotse / "train_mix_cuts.jsonl.gz"])
@@ -575,8 +577,9 @@ def main():
     for i in stages:
         if not 0 <= i < len(STAGES):
             sys.exit(f"stage {i} không có (0–{len(STAGES) - 1})")
-    if exp.get("family") == "vietnote_zipformer" and any(stage >= 4 for stage in stages):
-        sys.exit("Use stages 0-3 for VietNote preparation and gipbench.model.train.vietnote_icefall for the official recipe.")
+    adapter = family(exp)
+    if any(stage not in adapter["pipeline_stages"] for stage in stages):
+        sys.exit(f"Use stages 0-3 for VietNote preparation and {adapter['training_adapter']} for the official recipe.")
     for seed in X.run_seeds(exp, args.seed, args.dry_run):
         c = Ctx(exp, args.dry_run, seed=seed)
         if seed is not None:

@@ -5,6 +5,7 @@ sources:
     revision: 21beffb18c4974550a4bec66adb59c516cad1947
     license: unresolved
     repository_bytes: 29138240610
+    next_action: Resolve video-level recording rights and compare hand transcripts against gold and subtitle provenance.
   vss:
     status: reuse_local_research_pools_pending_original_recording_rights
     repo: thanhnew2001/VietSuperSpeech
@@ -12,6 +13,7 @@ sources:
     license: MIT in dataset card; underlying recording rights unresolved
     repository_bytes: 64254802601
     local_pool: pool/vss_cs@v5
+    next_action: Identify licensed recording groups and reserve whole videos and verified speakers for non-medical dev before relabeling.
   vimedcss:
     status: reuse_local_train
     repo: tensorxt/ViMedCSS
@@ -29,6 +31,12 @@ sources:
     revision: 0f18688afa9b64ea515d3fdaad850999b86a0f52
     license: Apache-2.0 in dataset card
     repository_bytes: 130501007846
+    next_action: Accept gated access on Hugging Face, then inspect a pinned shard for recording rights, speaker IDs and transcript provenance.
+  vietprism:
+    status: pending_author_approval
+    url: https://arxiv.org/abs/2609.30005
+    license: unresolved
+    next_action: Request author approval and terms for the authentic speech subset.
   vimd:
     status: blocked_for_pool_pending_nc_nd_review
     repo: nguyendv02/ViMD_Dataset
@@ -59,6 +67,7 @@ sources:
     language_category: vi_replay_candidate
     metadata: [gender, dialect, topic, emotion, age]
     row_flags: {review_required: true}
+    next_action: Review the screened local pilot for recording permissions, speaker identity and original spelling of English words.
   vivos:
     status: reuse_local_research_pool
     url: https://zenodo.org/records/7068130

@@ -154,7 +154,7 @@ def units_of(text_tagged, readings):
     return units
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--manifest", required=True, help="train_tts_raw.jsonl")
     ap.add_argument("--hyps", nargs="*", default=[], help="NAME=PATH (hyps.jsonl hoặc thư mục); lặp được")
@@ -172,7 +172,7 @@ def main():
     ap.add_argument("--max-dur", type=float, default=20.0)
     ap.add_argument("--min-voices-per-term", type=int, default=3)
     ap.add_argument("--min-contexts-per-term", type=int, default=5)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     rows = read_jsonl(args.manifest)
     cat = Catalog.load(args.catalog)

@@ -1,0 +1,11 @@
+pools:
+  replay_real:
+    refs: [pool/cv_other@v3, pool/vietnote_fleurs_vi@v1]
+    datasets: [commonvoice, fleurs_vi]
+    weight: 0.60
+  cs_real:
+    refs: [pool/vietnote_vimedcss_cs@v1]
+    datasets: [ViMedCSS]
+    weight: 0.40
+features: {speed_perturb: false, max_duration: 45}
+mix: {epochs: 1, epoch_hours: 20, max_views: 1}

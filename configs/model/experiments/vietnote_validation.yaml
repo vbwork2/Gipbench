@@ -1,0 +1,32 @@
+parity:
+  sources:
+    - {path: data/work/vietnote/dev/vi_quick.jsonl, sha256: 586d9a67720af4a02c037640bfc17be23d710840a8e1ee2dc5d3e53a737a7560}
+    - {path: data/work/vietnote/dev/interim_cs_quick.jsonl, sha256: 2fae9f55718e5695fa21403e1d3cf55e17275b78cb1002485613c3f38c1da661}
+  long_min_seconds: 20
+  long_rows_min: 12
+  fp32_exact_min: 0.99
+  int8_exact_min: 0.95
+  int8_wer_delta_max_pp: 0.5
+  int8_cs_wer_delta_max_pp: 1.0
+  max_first_emission_shift_seconds: 0.64
+  max_lost_late_emissions: 0
+tiny:
+  pool: pool/vss_cs@v5
+  pool_sha256: 1145fd87ec90093399bdbcc8960b346deffb677a0ab74713abb13202387f9105
+  review: data/listen/vss_cs_v1/listen_A_reviewed.csv
+  review_sha256: 135a64c86de3602af6e69bd81abfbd591f95c8a77806478724649af7be9f1f58
+  historical_tiny_sha256: f9ed852a4ab8287344ae88f1eff3a914e3e7fb71a20bde4029bfabe97e4f06a2
+  rows: 163
+  seed: 0
+  passes: 3
+  batch_seconds: 16
+  lr: 0.0045
+  relative_wer_reduction_min: 0.20
+  relative_cs_wer_reduction_min: 0.20
+  recall_drop_max_pp: 0
+memory:
+  pool: pool/vietnote_vimedcss_cs@v1
+  steps_per_case: 3
+  cases: [32, 64, 200]
+  long_clip_min_seconds: 25
+  min_free_fraction: 0.10

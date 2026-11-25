@@ -9,6 +9,7 @@ import tarfile
 from pathlib import Path
 
 from gipbench.core.download import verify_file
+from gipbench.model.families import family
 from gipbench.model.recipe import experiment
 from gipbench.model.vietnote import LOCK, verify_tokenizer
 
@@ -112,7 +113,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     cfg = experiment.load(args.experiment)
-    if cfg.get("family") != "vietnote_zipformer":
+    if family(cfg)["training_adapter"] != "gipbench.model.train.vietnote_icefall":
         parser.error("A VietNote experiment configuration is required")
     card = json.loads(LOCK.read_text(encoding="utf-8"))
     base = experiment.abspath(cfg["base_model"])
@@ -136,11 +137,18 @@ def main():
     print(json.dumps(command, ensure_ascii=False), flush=True)
     if args.dry_run:
         return
-    if cfg["research"]["status"] != "ready":
-        parser.error("The experiment must pass its registered data, model parity and development gates")
-    for name in ("train.jsonl.gz", "valid.jsonl.gz"):
-        if not (cuts / name).is_file():
-            parser.error(f"Missing prepared CutSet: {cuts / name}")
+    import torch
+
+    from gipbench.model.readiness import require_training
+
+    if not torch.cuda.is_available():
+        parser.error("CUDA is required for the registered training configuration")
+    if args.seed not in cfg["seeds"]:
+        parser.error("Select a registered training seed")
+    try:
+        require_training(cfg, args.seed, cuts, torch.cuda.get_device_name())
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        parser.error(str(exc))
     icefall = icefall_source(card, icefall)
     strict_check(card, recipe, icefall, base)
     env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(icefall), str(recipe)]))

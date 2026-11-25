@@ -38,7 +38,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from gipbench.core import release as R
-from gipbench.core.decontam import dataset_family, row_text, source_key
+from gipbench.core.decontam import dataset_family, is_video_unit, row_text, source_key
 from gipbench.core.manifest import read_jsonl, write_jsonl
 from gipbench.core.scoring import en_like
 from gipbench.core.textnorm import Catalog, normalize_ref
@@ -243,12 +243,6 @@ def write_report(path, args, sides, notes, checks, shared):
     Path(path).write_text("\n".join(L) + "\n", encoding="utf-8")
 
 
-def is_video_unit(unit):
-    """Đơn vị là video (không phải người nói): YouTube ID hoặc video VSS (`vss_<tên>.mp4` / `vss:<tên>.mp4`)."""
-    return (unit.startswith(("yt:", "vss_", "vss:")) or
-            (source_key({"speaker": unit}) or "").startswith("yt:"))
-
-
 INTERIM_MIN_CS_ROWS = 300  # dev tạm: không đòi 4 domain / 100 người nói (không có nguồn, TODO 2e)
 # dev tạm VI: 0,75 h (người dùng chọn 19/11: nghe xong 214 / 365 câu = 0,76 h, bỏ 41%). Dev VI đạt chuẩn vẫn ≥ 1 h.
 INTERIM_MIN_VI_SECONDS = 0.75 * 3600
@@ -361,6 +355,16 @@ def build_independent(args):
         missing = [r["id"] for r in keep if not Path(r["_audio_path"]).is_file()]
         if missing:
             raise SystemExit(f"Missing development audio for {len(missing)} utterances, e.g. {missing[:3]}")
+        if args.kind == "cs" and not args.interim:
+            from gipbench.core.manifest import manifest_sha256
+
+            flags["independent_cs_audit"] = {
+                "exclusion_sha256": {name: R.sha256(R.resolve(name).manifest) for name, _ in refs
+                                     if "/" in name and name.split("/", 1)[0] in R.KINDS},
+                "audio_verified": bool(acoustic and not audio_stats.get("ref_audio_unreadable")
+                                       and all(r.get("audio_sha256") for r in keep)),
+                "review_manifest_sha256": manifest_sha256(keep),
+            }
         R.write_release(args.release, manifest_rows=keep, parents=[Path(p) for p in args.candidates], flags=flags,
                         builder=__spec__.name if __spec__ else __name__,
                         builder_args={"kind": args.kind, "exclusion_sets": flags["exclusion_sets"],

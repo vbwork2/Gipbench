@@ -1,0 +1,31 @@
+catalog: catalog/train-v1
+script: data/work/vietnote/tts/script/tts_script.jsonl
+script_sha256: 722dc345b7bcaa24cf92197aba98cadb6950300df572c7defd60b288479d8ccd
+negative_control: data/work/vietnote/tts/espeak_control/train_tts_raw.jsonl
+negative_control_sha256: 9ec643741aa2278883dbbc907219f6ab4a67f5bc6c5c6b35e748c100e754aba7
+seed: 0
+samples_per_stratum: 6
+engines:
+  zerotts:
+    model: zeroweight-ai/ZeroTTS
+    weights_license: MIT
+    runtime: zerotts==0.1.5
+    voice: maichi
+    source: https://github.com/zeroweight-ai/ZeroTTS
+  vieneu:
+    model: pnnbao-ump/VieNeu-TTS-v3-Turbo
+    revision: 61b85e3d937fbbacb387714180e8182823512523
+    weights_license: Apache-2.0
+    runtime: vieneu==3.8.5, ONNX CPU
+    source: https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo
+  f5_vi:
+    model: hynt/F5-TTS-Vietnamese-ViVoice
+    weights_license: CC-BY-NC-SA-4.0
+    runtime: Vietnamese F5 recipe with compatible vocabulary, Vocos and an authorized reference clip
+    source: https://huggingface.co/hynt/F5-TTS-Vietnamese-ViVoice
+human_review:
+  dimensions: [accented_english_pronunciation, english_span_correctness, naturalness_1_to_5, transcript_alignment]
+  acceptance: All spans and transcript align, pronunciation is intelligible, and naturalness is at least 3 of 5.
+  criteria: Compare blind on identical text, record ASR agreement separately, and require human approval before release.
+external_pool: ZeroSpeech
+custom_pool: V10

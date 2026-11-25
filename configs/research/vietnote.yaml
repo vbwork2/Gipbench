@@ -1,0 +1,56 @@
+objective: Reduce unseen Vietnamese-English code-switching errors while preserving Vietnamese recognition.
+family: vietnote_zipformer
+experiment_config: configs/model/experiments/vietnote_v03.yaml
+validation_config: configs/model/experiments/vietnote_validation.yaml
+memory_config: configs/model/experiments/vietnote_memory.yaml
+tiny_followup_config: configs/model/experiments/vietnote_tiny_low_lr.yaml
+sources: configs/dataset/vietnote_sources.yaml
+strategies: configs/research/vietnote_strategies.yaml
+scorer_files: [core/textnorm.py, core/normprofiles.py, core/align.py, core/scoring.py, core/evalstats.py, bench/evaluate.py]
+evidence:
+  quick_baseline: results/vietnote/v00/quick_t4
+  strict_offline: data/work/vietnote/torch_checks/offline_parity.json
+  single_step: data/work/vietnote/torch_checks/gpu_smoke_report.json
+  medical_candidates: data/work/vietnote/dev/medical_candidates.jsonl.report.json
+  checkpoint_export: data/work/vietnote/v01/checkpoint_export_softmax/export.json
+  parity: data/work/vietnote/v01/parity_softmax/result.json
+  parity_before_softmax: data/work/vietnote/v01/parity/result.json
+  int8_isolation: data/work/vietnote/v01/int8_isolation/matched_runtime.json
+  encoder_graph_diff: data/work/vietnote/v01/int8_isolation/encoder_graph_diff.json
+  encoder_constants: data/work/vietnote/v01/encoder_constants/windows/result.json
+  tensors: data/work/vietnote/v01/tensors_softmax.json
+  tiny: data/work/vietnote/v02/tiny/result.json
+  tiny_followup: data/work/vietnote/v02/tiny_low_lr/result.json
+  tiny_followup_attempt: data/work/vietnote/v02/tiny_low_lr_attempt.json
+  memory: data/work/vietnote/v02/memory_serial/result.json
+  zerotts: data/work/vietnote/tts/zerotts_pilot/result.json
+  zerotts_asr: data/work/vietnote/tts/zerotts_pilot/asr_metrics.json
+  espeak: data/work/vietnote/tts/espeak_control/two_family_review.jsonl.report.md
+  diagnostic_dev: data/work/vietnote/dev/interim_cs_quick.lock.json
+  source_review: data/work/vietnote/source_review/result.json
+  conventional_results: results/vietnote/v03/result.json
+experiments:
+  V00: {strategy: conventional, title: Released checkpoint on quick and full development sets, requires: []}
+  V01: {strategy: conventional, title: Re-export and compare FP32 and per-channel INT8, requires: []}
+  V02: {strategy: conventional, title: Tiny-set learning and separate CUDA memory validation, requires: []}
+  V03: {strategy: conventional, title: Real-speech conventional baseline, requires: [V00, V01, V02]}
+  V04: {strategy: replay, title: Replay ratio, requires: [V03]}
+  V04b: {strategy: duration, title: Duration balance, requires: [V03]}
+  V05: {strategy: mechanisms, title: Token rank and failure modes, requires: [V03]}
+  V05b: {strategy: mining, title: Hard-example mining, requires: [V03, V05]}
+  V06: {strategy: confusables, title: Confusable examples, requires: [V03]}
+  V07: {strategy: distillation, title: Teacher distillation, requires: [V03]}
+  V08: {strategy: accented, title: Vietnamese-accented English, requires: [V03]}
+  V09: {strategy: external_tts, title: External ZeroSpeech ablation, requires: [V03]}
+  V10: {strategy: custom_tts, title: Custom neural TTS ablation, requires: [V03]}
+  V11: {strategy: adaptation, title: Predictor and joiner adaptation, requires: [V03, V05]}
+  V12: {strategy: adaptation, title: Encoder stack adaptation, requires: [V03, V05]}
+  V13: {strategy: weights, title: Compatible weight-space adaptation, requires: [V03]}
+  V14: {strategy: combined, title: Pre-register the final recipe, requires: [V03]}
+  V15: {strategy: final, title: Locked evaluation, requires: [V14]}
+independent_cs:
+  ref: dev/dev_v2_cs@1
+  min_rows: 1500
+  min_domains: 4
+  min_verified_speakers: 100
+  diagnostic_use: Engineering diagnosis only. Generalization claims and V03 acceptance are prohibited.

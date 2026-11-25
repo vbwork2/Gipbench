@@ -3,6 +3,8 @@
 Chạy trong WSL tại gốc repo. `source ~/.venvs/gipbench/bin/activate && export PYTHONIOENCODING=utf-8`. Mọi script chạy bằng
 `python -m gipbench.<...>`, xem `--help` của từng module. Kiến trúc: `docs/ARCHITECTURE.md`. Định dạng: `docs/CONTRACTS.md`.
 
+VietNote dùng [lệnh tái lập và lộ trình riêng](VIETNOTE_RESEARCH.md#lệnh-xác-minh-và-chuẩn-bị-v03). Cổng V03 kiểm release, dữ liệu thực trước augmentation, CutSet, parity và kết quả GPU trước khi adapter gọi Icefall.
+
 ## 0. Kiểm tra
 
 ```bash

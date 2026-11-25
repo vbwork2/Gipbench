@@ -1,6 +1,6 @@
 # GipBench — nghiên cứu ASR chuyển mã Việt–Anh
 
-Hướng nghiên cứu chính hiện tại là VietNote-Zipformer-78M. Xem [nhật ký triển khai và lộ trình VietNote](docs/VIETNOTE_RESEARCH.md).
+VietNote-Zipformer-78M là model nghiên cứu chính. GipFormer là baseline lịch sử. [Lộ trình VietNote](docs/VIETNOTE_RESEARCH.md) mô tả các thí nghiệm và cách chạy. [Báo cáo trạng thái](reports/vietnote_status.md) được sinh từ registry và artifact cục bộ.
 
 Ba pipeline độc lập, nói chuyện với nhau chỉ qua file có hợp đồng. Đổi hướng ở một pipeline (engine TTS, cách FT, model
 ngoài, metric) không phải sửa hai pipeline còn lại. Kiến trúc: `docs/ARCHITECTURE.md`. Lệnh: `docs/RUNBOOK.md`.
@@ -21,6 +21,7 @@ data/dl ─► [ DATASET ] ─► data/releases/{bench,catalog,pool,dev}/   (b�
 | `src/gipbench/infer/` | Engine ASR -> `hyps.jsonl`: sherpa-onnx (`decode`), faster-whisper / Qwen3-ASR (`asr_hyps`), cache |
 | `src/gipbench/dataset/` | `ingest` (converter), `label` (duyệt, wordlist, domain), `pseudolabel` (vss_cs, đồng thuận, distill), `synth` (TTS), `derive` (confusable), `release` (bench, dev, đăng ký release, validate), `report` (EDA dữ liệu) |
 | `src/gipbench/model/` | `recipe` (experiment YAML, curate, tách nhóm, mix_plan), `features` (Lhotse), `train` (icefall + watchdog), `select` (chọn checkpoint, WiSE-FT), `export`, `systems` (hotwords, tokenizer), `run.py` |
+| `configs/research/` | Registry thí nghiệm VietNote, quan hệ phụ thuộc và tiêu chí từng chiến lược |
 | `src/gipbench/bench/` | `run.py` (system -> decode -> chấm), `score`, `leaderboard`, `report` (EDA bench, bảng) |
 | `configs/` | `paths.example.yaml`; `dataset/` (quy ước gắn tag, TTS, `releases.yaml`); `model/experiments/`; `bench/` (`systems/`, `rules.yaml`) |
 | `tests/` | `run_tests.sh` (mọi test, CPU), `test_boundaries.py` (luật import), `golden/` (so output với code trước refactor) |

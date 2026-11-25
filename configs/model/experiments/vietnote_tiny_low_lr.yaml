@@ -1,0 +1,2 @@
+hypothesis: Reducing the base learning rate limits the final-pass WER regression.
+lr: 0.0015
