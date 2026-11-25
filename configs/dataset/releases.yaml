@@ -200,6 +200,27 @@ releases:
             excludes_dev: [data/listen/dev_interim_cs/heldout.jsonl, data/listen/dev_interim_vi/heldout.jsonl]}
     notes: "Nội dung = pool/distill@v5 (1 394 câu / 5.02 h / 93 nguồn); chỉ sửa dấu phân cách đường dẫn audio (lỗi B1)."
 
+  pool/vietnote_vimedcss_cs@v1:
+    manifest: data/work/vietnote/medical_cs/manifest.jsonl
+    built_by: scripts/dataset/vietnote_medical_pool.py
+    flags: {parent: pool/vimedcss_train@v4, clean_against: locked_benches_and_local_dev,
+            research_only: true, source_unit: video, label_source: "human:vimedcss"}
+    notes: "Derived from existing audio. Only mixed-language clips with unique audio hashes and no reserved terms."
+
+  pool/vietnote_librispeech_en@v1:
+    manifest: data/work/vietnote/pilots/librispeech/verified.jsonl
+    built_by: gipbench.dataset.ingest.vietnote, gipbench.dataset.release.clean_pool, and acoustic_audit
+    flags: {language_category: native_en, license: CC-BY-4.0, pilot: true, acoustic_checked: true,
+            upstream_revision: 71cacbfb7e2354c4226d01e70d77d5fca3d04ba1}
+    notes: "Native English audiobook pilot from train-clean-100, screened for reserved terms, for a separate ablation."
+
+  pool/vietnote_fleurs_vi@v1:
+    manifest: data/work/vietnote/pilots/fleurs_vi/verified.jsonl
+    built_by: gipbench.dataset.ingest.vietnote, gipbench.dataset.release.clean_pool, and acoustic_audit
+    flags: {language_category: vi, speech_type: read, license: CC-BY-4.0, pilot: true, acoustic_checked: true,
+            speaker_ids_available: false, upstream_revision: 70bb2e84b976b7e960aa89f1c648e09c59f894dd}
+    notes: "Vietnamese read-speech pilot from FLEURS vi_vn train, screened for reserved terms."
+
   pool/tts_train@e4_v1:
     manifest: data/tts/e4/train_tts.jsonl
     catalog: catalog/train-v1

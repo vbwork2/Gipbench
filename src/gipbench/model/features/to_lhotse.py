@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--catalog")
     ap.add_argument("--out", default="data/lhotse")
     ap.add_argument("--case", choices=["upper", "lower"], default="upper")
+    ap.add_argument("--normalizer", choices=["gipbench", "vietnote"], default="gipbench")
     ap.add_argument("--min-dur", type=float, default=1.0)
     ap.add_argument("--max-dur", type=float, default=20.0)
     ap.add_argument("--speed-perturb", action="store_true", help="thêm bản 0.9x và 1.1x")
@@ -36,6 +37,8 @@ def main():
     args = ap.parse_args()
 
     from lhotse import CutSet, Recording, RecordingSet, SupervisionSegment, SupervisionSet
+    if args.normalizer == "vietnote":
+        from vnasr.text import normalize_text
 
     cat = Catalog.load(args.catalog)
     reserved = {t for t, v in cat.terms.items() if v.reserved_b3}
@@ -70,7 +73,9 @@ def main():
             if not (args.min_dur <= d <= args.max_dur):
                 drop[f"thời lượng ngoài {args.min_dur}–{args.max_dur}s"] += 1
                 continue
-            if not toks:
+            model_text = (normalize_text(plain_text(text_src)) if args.normalizer == "vietnote"
+                          else model_case_text(text_src, args.case, cat))
+            if not toks or not model_text:
                 drop["text rỗng"] += 1
                 continue
             rid = f"{args.name}-{r['id']}"
@@ -81,7 +86,7 @@ def main():
                 continue
             recs.append(rec)
             sups.append(SupervisionSegment(id=rid, recording_id=rid, start=0.0, duration=rec.duration, channel=0,
-                                           text=model_case_text(text_src, args.case, cat), speaker=r.get("speaker"),
+                                           text=model_text, speaker=r.get("speaker"),
                                            language="vi"))
     if not recs:
         sys.exit("Không còn utterance nào sau khi lọc.")

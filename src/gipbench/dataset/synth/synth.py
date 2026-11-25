@@ -135,11 +135,15 @@ def main():
     ap.add_argument("--max-voice-share", type=float, default=0.4, help="một giọng tối đa tỉ lệ này số câu")
     ap.add_argument("--strict-voices", action="store_true", help="thoát mã 3 nếu không đạt --min-voices-per-term")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--provenance", type=Path, help="JSON object describing the pilot model, voices and settings")
     ap.add_argument("--limit", type=int, default=0, help="chỉ tổng hợp N câu đầu của kịch bản (thử nhanh)")
     ap.add_argument("--keep-sil", type=float, default=0.15, help="giây lặng chừa ở mỗi đầu sau khi cắt")
     ap.add_argument("--peak", type=float, default=0.9, help="đỉnh sau chuẩn hoá (0-1)")
     ap.add_argument("--abort-after-fails", type=int, default=20, help="dừng (mã 3) sau N lỗi liên tiếp; 0 = không dừng")
     args = ap.parse_args()
+    provenance = json.loads(args.provenance.read_text(encoding="utf-8")) if args.provenance else None
+    if args.provenance and not isinstance(provenance, dict):
+        ap.error("--provenance must contain a JSON object")
 
     out = Path(args.out_dir)
     (out / "audio").mkdir(parents=True, exist_ok=True)
@@ -171,6 +175,8 @@ def main():
     if man_path.exists():
         for r in read_jsonl(str(man_path)):
             rows[r["id"]] = {k: v for k, v in r.items() if not k.startswith("_")}
+    if provenance is not None and any(r.get("tts", {}).get("provenance") != provenance for r in rows.values()):
+        ap.error("Use a fresh output directory when the TTS provenance changes")
 
     def valid(ln, r):
         v = assign[ln["id"]]
@@ -219,6 +225,13 @@ def main():
                    "en_meta": span_levels(ln["text_tagged"], ln["readings"]),
                    "tts": {"backend": backend.name, "voice": v.id, "tts_text": ln["tts_text"], "readings": ln["readings"],
                            "category": ln.get("category", ""), "flags": ln.get("flags", []), "stats": st}}
+            if provenance is not None:
+                from gipbench.core.fileio import sha256_file
+
+                row.update(audio_sha256=sha256_file(out / row["audio"]), license=provenance.get("license"),
+                           quality_status=provenance.get("quality_status", "pending_review"),
+                           label_source="synthetic:tts_conditioning_text", text_orig=ln["text_tagged"])
+                row["tts"].update(provenance=provenance, seed=args.seed)
             rows[sid] = row
             mf.write(json.dumps(row, ensure_ascii=False) + "\n")
             mf.flush()

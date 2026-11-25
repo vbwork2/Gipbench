@@ -1,0 +1,42 @@
+name: vietnote_v03
+family: vietnote_zipformer
+description: Conventional fine-tuning from the original VietNote checkpoint
+base_model: models/vietnote78
+catalog: catalog/train-v1
+leak_guard: bench/general-v1.0
+leak_gate:
+  mode: fail
+  check_dev: true
+  near: true
+  audio_sha: hash
+  reserved_terms: configs/dataset/reserved_terms_v1.txt
+dev: {vi: dev/dev_v2_vi@1, cs: dev/dev_v2_cs@1}
+seeds: [0, 1, 2]
+pools:
+  replay_real:
+    refs: [pool/cv_other@v3, pool/vietnote_fleurs_vi@v1]
+    datasets: [commonvoice, fleurs_vi]
+    weight: 0.60
+  cs_real:
+    refs: [pool/vietnote_vimedcss_cs@v1]
+    datasets: [ViMedCSS]
+    weight: 0.40
+features: {speed_perturb: false, max_duration: 45}
+mix: {epochs: 1, epoch_hours: 20, max_views: 1}
+train: {num_epochs: 5, fp16: false, lr: 0.0045, max_duration: 200, buckets: 10, workers: 4, save_every: 500, keep_last_k: 10}
+research:
+  status: blocked
+  question: Does diverse Vietnamese replay retain Vietnamese accuracy while real CS improves unseen-term recall?
+  hypothesis: Real CS with duration-matched replay reduces English deletions on unseen speakers.
+  controls: [original tokenizer, causal architecture, optimizer, seed, decoding precision, audio exposure]
+  target_unique_hours: {vi: 12, cs: 8}
+  evaluation: [independent dev, fixed quick dev, paired cluster bootstrap]
+  acceptance: {vi_wer_delta_max_pp: 0.3, vi_wer_ci_upper_max_pp: 0.5, cs_wer_ci_upper_max_pp: 0.0}
+  blockers: [independent_cs_dev, verified_20h_mix, export_parity, tiny_set_smoke]
+  realized_exposure_hours: null
+  results: null
+output:
+  exp_dir: ${exp_root}/${name}
+  work_dir: data/work/model/${name}
+  dev_results: ${results_root}/${name}_dev
+  artifact: ${exp_root}/artifacts/${name}

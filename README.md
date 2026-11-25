@@ -1,4 +1,6 @@
-# gipbench: bench code-switching Việt–Anh cho Gipformer 1.5
+# GipBench — nghiên cứu ASR chuyển mã Việt–Anh
+
+Hướng nghiên cứu chính hiện tại là VietNote-Zipformer-78M. Xem [nhật ký triển khai và lộ trình VietNote](docs/VIETNOTE_RESEARCH.md).
 
 Ba pipeline độc lập, nói chuyện với nhau chỉ qua file có hợp đồng. Đổi hướng ở một pipeline (engine TTS, cách FT, model
 ngoài, metric) không phải sửa hai pipeline còn lại. Kiến trúc: `docs/ARCHITECTURE.md`. Lệnh: `docs/RUNBOOK.md`.

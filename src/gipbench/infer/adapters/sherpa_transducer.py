@@ -1,4 +1,4 @@
-"""Adapter Zipformer-transducer ONNX qua sherpa-onnx (Gipformer 1.5 hoặc bản FT export lại).
+"""Adapter Zipformer-transducer ONNX qua sherpa-onnx.
 
 Dùng lại đúng logic của gipbench.infer.decode (chọn file int8/fp32, hotwords từ catalog, bpe.vocab) để kết quả trùng
 với E0 / E1 khi cùng tham số: audio đưa vào ở tần số GỐC của file (sherpa-onnx tự resample), trộn về mono.
@@ -26,6 +26,13 @@ class SherpaTransducerAdapter(ASRAdapter):
         self.dec = {"quantize": d.get("quantize", "int8"), "decoding_method": d.get("decoding_method", "modified_beam_search"),
                     "beam": int(d.get("beam", 4)), "threads": int(d.get("threads", 4)),
                     "blank_penalty": float(d.get("blank_penalty", 0.0)), "case": d.get("case", "upper")}
+        self.streaming = bool(d.get("streaming", False))
+        if self.streaming:
+            self.dec.update(streaming=True, feed_ms=int(d.get("feed_ms", 100)),
+                            model_type=d.get("model_type", "zipformer2"),
+                            tail_pad_ms=int(d.get("tail_pad_ms", 0)))
+            if self.dec["feed_ms"] <= 0 or self.dec["tail_pad_ms"] < 0:
+                raise ValueError("decode.feed_ms must be positive and tail_pad_ms must be nonnegative")
         self.model_dir = Path(cfg["model"]["dir"])
         self.work_dir = Path(work_dir)
         self.lm = Path(d["lm"]) if d.get("lm") else None
@@ -65,7 +72,8 @@ class SherpaTransducerAdapter(ASRAdapter):
         kw = dict(encoder=str(pick(md, "encoder", q)), decoder=str(pick(md, "decoder", q)), joiner=str(pick(md, "joiner", q)),
                   tokens=str(md / "tokens.txt"), num_threads=self.dec["threads"], decoding_method=self.dec["decoding_method"],
                   max_active_paths=self.dec["beam"], blank_penalty=self.dec["blank_penalty"])
-        self.info.extra["model_files"] = {k: {"path": kw[k], "sha256": file_sha256(kw[k])} for k in ("encoder", "decoder", "joiner")}
+        self.info.extra["model_files"] = {k: {"path": kw[k], "sha256": file_sha256(kw[k])}
+                                          for k in ("encoder", "decoder", "joiner", "tokens")}
         if self.lm is not None:
             if not self.lm.is_file():
                 raise FileNotFoundError(f"RNN LM not found: {self.lm}")
@@ -85,9 +93,39 @@ class SherpaTransducerAdapter(ASRAdapter):
                         f.write(f"{sp.id_to_piece(i)}\t{sp.get_score(i)}\n")
             kw.update(hotwords_file=str(self.hot), hotwords_score=self.info.context_vocab["score"], modeling_unit="bpe",
                       bpe_vocab=str(vocab))
-        self.rec = sherpa_onnx.OfflineRecognizer.from_transducer(**kw)
+        if self.streaming:
+            self.rec = sherpa_onnx.OnlineRecognizer.from_transducer(
+                **kw, model_type=self.dec["model_type"], enable_endpoint_detection=False)
+        else:
+            self.rec = sherpa_onnx.OfflineRecognizer.from_transducer(**kw)
+
+    def transcribe_stream(self, samples, sample_rate, on_partial=None):
+        if not self.streaming:
+            raise ValueError("A streaming recognizer is required")
+        if len(samples) == 0:
+            return ""
+        stream = self.rec.create_stream()
+        step = max(1, sample_rate * self.dec["feed_ms"] // 1000)
+        for start in range(0, len(samples), step):
+            end = min(start + step, len(samples))
+            stream.accept_waveform(sample_rate, samples[start:end])
+            while self.rec.is_ready(stream):
+                self.rec.decode_stream(stream)
+                if on_partial is not None:
+                    on_partial(end / sample_rate, self.rec.get_result(stream))
+        tail = sample_rate * self.dec["tail_pad_ms"] // 1000
+        if tail:
+            import numpy as np
+
+            stream.accept_waveform(sample_rate, np.zeros(tail, dtype=np.float32))
+        stream.input_finished()
+        while self.rec.is_ready(stream):
+            self.rec.decode_stream(stream)
+        return self.rec.get_result(stream)
 
     def transcribe_batch(self, audio_paths: Sequence[str]) -> List[str]:
+        if self.streaming:
+            return [self.transcribe_stream(*load_audio(p, target_sr=None)) for p in audio_paths]
         streams = []
         for p in audio_paths:
             x, sr = load_audio(p, target_sr=None)

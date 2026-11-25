@@ -1,0 +1,10 @@
+{
+  "model": "eSpeak NG rule-based synthesis",
+  "revision": "espeakng-loader==0.2.4",
+  "license": "GPL-3.0-or-later (engine)",
+  "reference_voice": "Bundled phoneme rules, no reference recording",
+  "words_per_minute": 160,
+  "catalog": "catalog/train-v1",
+  "purpose": "Diagnostic control; human review required before training",
+  "quality_status": "pending_review"
+}

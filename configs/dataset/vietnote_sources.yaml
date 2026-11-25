@@ -1,0 +1,150 @@
+sources:
+  code_switch_om:
+    status: quarantined_unverified_audio_rights_and_transcript_quality
+    repo: nhatminh/code_switch_OM
+    revision: 21beffb18c4974550a4bec66adb59c516cad1947
+    license: unresolved
+    repository_bytes: 29138240610
+  vss:
+    status: reuse_local_research_pools_pending_original_recording_rights
+    repo: thanhnew2001/VietSuperSpeech
+    revision: cbf624ae9b30e1c2793a27e95b262115c69601f3
+    license: MIT in dataset card; underlying recording rights unresolved
+    repository_bytes: 64254802601
+    local_pool: pool/vss_cs@v5
+  vimedcss:
+    status: reuse_local_train
+    repo: tensorxt/ViMedCSS
+    revision: b6959a18a08739464733930a872e7125c03e6558
+    license: CC-BY-4.0
+    repository_bytes: 36618009030
+    local_pool: pool/vimedcss_train@v4
+  canvec:
+    status: blocked_audio_by_author_request
+    url: https://github.com/Bak3rLi/CanVEC
+    license: unresolved for recordings
+  vietspeech:
+    status: gated
+    repo: NhutP/VietSpeech
+    revision: 0f18688afa9b64ea515d3fdaad850999b86a0f52
+    license: Apache-2.0 in dataset card
+    repository_bytes: 130501007846
+  vimd:
+    status: blocked_for_pool_pending_nc_nd_review
+    repo: nguyendv02/ViMD_Dataset
+    revision: 3a5b30157034e7eadd5c75fae1a820c6f9383398
+    license: CC-BY-NC-ND-4.0
+    repository_bytes: 74224155880
+    excluded_splits: [validation, test]
+  vivoice:
+    status: gated_research_only
+    repo: capleaf/viVoice
+    revision: 693e9882c8e73b31e96a723741fa1861c3252b75
+    license: CC-BY-NC-SA-4.0
+    repository_bytes: 168570951374
+  lsvsc:
+    status: pilot_quarantine_transcript_and_recording_rights
+    repo: doof-ferb/LSVSC
+    revision: 269de0604fd94765648cbfcaed4341ef65a31e50
+    split: train
+    file: data/train-00000-of-00018.parquet
+    bytes: 446824131
+    sha256: 39974ff6de3f37206f6cbf3df37bac6dad378a97639e777c50469b22c335dad1
+    license: CC-BY-4.0
+    dataset: lsvsc:train
+    text: transcription
+    label_source: human:upstream_lsvsc_mirror
+    speech_type: mixed_broadcast_and_read
+    domain: broadcast_mixed
+    language_category: vi_replay_candidate
+    metadata: [gender, dialect, topic, emotion, age]
+    row_flags: {review_required: true}
+  vivos:
+    status: reuse_local_research_pool
+    url: https://zenodo.org/records/7068130
+    license: CC-BY-NC-SA-4.0
+    local_pool: pool/vivos_train@v3
+  fleurs_vi:
+    status: pilot_eligible
+    repo: google/fleurs
+    revision: 70bb2e84b976b7e960aa89f1c648e09c59f894dd
+    split: train
+    file: data/vi_vn/audio/train.tar.gz
+    bytes: 1607278457
+    sha256: 016a568afc1909cfaf9efb1a2fc2f1d3311e646d9b52d05dc2e84ac0c17c34ce
+    tsv:
+      path: data/vi_vn/train.tsv
+      bytes: 2056005
+      git_blob_sha1: f88141e2bc80f1942d5939819da120264f7eeed6
+    license: CC-BY-4.0
+    dataset: fleurs_vi:train
+    text: text
+    source: sentence_id
+    label_source: human:upstream_read_prompt
+    speech_type: read
+    domain: read
+    language_category: vi
+    metadata: [sentence_id, gender, text_norm_upstream]
+  commonvoice_vi:
+    status: reuse_local_cv27
+    url: https://commonvoice.mozilla.org/
+    license: CC0-1.0 per release
+    local_pool: pool/cv_other@v3
+  l2_arctic:
+    status: blocked_download_form
+    url: https://psi.engr.tamu.edu/l2-arctic-corpus/
+    license: CC-BY-NC-4.0
+  l2_arctic_mirror:
+    status: gated_same_recordings_as_l2_arctic
+    repo: KoelLabs/L2Arctic
+    revision: e9f2aaca153989a45e86bc2d981ba03c4879476d
+    license: CC-BY-NC-4.0
+    repository_bytes: 945128535
+  librispeech:
+    status: pilot_eligible
+    repo: openslr/librispeech_asr
+    revision: 71cacbfb7e2354c4226d01e70d77d5fca3d04ba1
+    split: train.100
+    file: clean/train.100/0000.parquet
+    bytes: 469629285
+    sha256: 3098c6e44d1d49f8c62bd123775f1c492bda2cabd80f3ee70fe7800572371401
+    license: CC-BY-4.0
+    dataset: librispeech:train.100
+    id: id
+    text: text
+    source: chapter_id
+    speaker: speaker_id
+    label_source: human:upstream_aligned_audiobook
+    speech_type: audiobook
+    domain: read
+    language_category: native_en
+  commonvoice_en:
+    status: blocked_release_access_unverified
+    url: https://commonvoice.mozilla.org/
+    license: confirm against selected release
+  zerospeech:
+    status: pilot_quarantine_text_rights_and_pronunciation_review
+    repo: zeroweight-ai/ZeroSpeech
+    revision: 40d6c083c420f5b620a2f9cd8f5cee9045fed715
+    split: train
+    file: data/train-00000-000.parquet
+    bytes: 1011089980
+    sha256: 636b12140a2872b22d2e36c917611d91db09d9966a7032a59c4ee7afa54184c2
+    repository_bytes: 1696033622017
+    license: CC-BY-NC-4.0
+    dataset: zerospeech:train
+    id: id
+    text: text
+    speaker: speaker_id
+    label_source: synthetic:zerotts_conditioning_text
+    speech_type: synthetic
+    domain: conversational_text
+    language_category: mixed_candidate
+    ext: .flac
+    filters: {kind: [mixed], source: [blossoms]}
+    metadata: [source, kind, duration, voice_id, speaker_id, voice_lang]
+    row_flags:
+      research_only: true
+      review_required: true
+      source_text_license: unresolved
+      source_text_url: https://huggingface.co/datasets/BlossomsAI/vietnamese-conversational-dataset

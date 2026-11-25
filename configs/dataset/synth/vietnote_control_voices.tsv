@@ -1,0 +1,4 @@
+voice	backend_voice	ref_audio	gender	region
+espeak_north	vi		u	north
+espeak_central	vi-vn-x-central		u	central
+espeak_south	vi-vn-x-south		u	south

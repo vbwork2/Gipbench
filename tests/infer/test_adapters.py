@@ -13,6 +13,7 @@ import numpy as np
 from gipbench.bench.transcribe import guard, subsample
 from gipbench.infer.adapters import build_adapter
 from gipbench.infer.adapters.base import ASRAdapter, AdapterInfo, run_manifest, split_long
+from gipbench.infer.adapters.sherpa_transducer import SherpaTransducerAdapter
 
 FAIL = []
 
@@ -44,8 +45,43 @@ def rows(n):
             for i in range(n)]
 
 
+def test_streaming_tail(work_dir):
+    class Recognizer:
+        def __init__(self):
+            self.calls = []
+            self.finished = self.decoded = False
+
+        def create_stream(self):
+            return self
+
+        def accept_waveform(self, rate, samples):
+            self.calls.append((rate, len(samples), bool(np.any(samples))))
+
+        def input_finished(self):
+            self.finished = True
+
+        def is_ready(self, stream):
+            return stream.finished and not stream.decoded
+
+        def decode_stream(self, stream):
+            stream.decoded = True
+
+        def get_result(self, stream):
+            return "flushed" if stream.decoded else ""
+
+    adapter = SherpaTransducerAdapter({
+        "system": "test", "model": {"id": "test", "dir": str(work_dir)}, "inference_mode": "open_vocab",
+        "decode": {"streaming": True, "feed_ms": 100, "tail_pad_ms": 660},
+    }, work_dir)
+    adapter.rec = Recognizer()
+    result = adapter.transcribe_stream(np.ones(1900, dtype=np.float32), 16000)
+    check("Streaming adds the configured silence before draining the final frames",
+          result == "flushed" and adapter.rec.calls == [(16000, 1600, True), (16000, 300, True), (16000, 10560, False)])
+
+
 def main():
     d = Path(tempfile.mkdtemp())
+    test_streaming_tail(d)
     meta = run_manifest(Fake(), rows(7), d / "r1", batch=3)
     hy = [json.loads(l) for l in open(d / "r1" / "hyps.jsonl", encoding="utf-8")]
     check("một hyp mỗi id, đúng thứ tự manifest", [h["id"] for h in hy] == [f"u{i}" for i in range(7)])

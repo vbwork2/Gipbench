@@ -1,0 +1,207 @@
+{
+  "family": "vietnote_zipformer",
+  "license": "Apache-2.0",
+  "model": "Kaisye/VietNote-Zipformer-78M-Streaming",
+  "revision": "69eec0a86fef25639996813d3e10fbe656659650",
+  "upstream": "kaisye/vietnote-asr",
+  "upstream_commit": "fd4dcde6f41ca888823a0c50fcce8cf8d274487c",
+  "icefall_commit": "9c966762e058bd7ba79d9da71e42fc06b64b703e",
+  "icefall_archive": {
+    "bytes": 12019310,
+    "sha256": "70e23f83cfe0b3843b3d296b96ed6c7fc3de743c3c1f65a9102d67718db3bef7"
+  },
+  "published_parameters": 78000000,
+  "sample_rate": 16000,
+  "feature_dim": 80,
+  "vocab_size": 6144,
+  "context_size": 2,
+  "streaming_step_ms": 640,
+  "training_normalizer": "vnasr.text.normalize_text 1.3",
+  "architecture": {
+    "type": "causal Zipformer2 transducer",
+    "num_encoder_layers": [2, 2, 3, 4, 3, 2],
+    "encoder_dim": [192, 256, 384, 512, 384, 256],
+    "feedforward_dim": [512, 768, 1024, 1536, 1024, 768],
+    "decoder_dim": 512,
+    "joiner_dim": 512,
+    "train_chunk_sizes": [16, 32, 64, -1],
+    "train_left_context_frames": [64, 128, 256, -1],
+    "streaming_export_chunk_size": 32,
+    "streaming_export_left_context_frames": 128,
+    "streaming_onnx_feature_window": 77,
+    "streaming_onnx_feature_shift": 64,
+    "streaming_onnx_cache_frames": [128, 64, 32, 16, 32, 64],
+    "cnn_module_kernels": [31, 31, 15, 15, 15, 31],
+    "num_heads": [4, 4, 4, 8, 4, 4],
+    "ctc": false
+  },
+  "decoding_methods": [
+    "greedy_search",
+    "modified_beam_search"
+  ],
+  "pretraining_overlap": "Upstream discloses FLEURS and VIVOS train and same-source CS dev; complete pretraining inventory unavailable.",
+  "model_files": [
+    {
+      "path": "tokens.txt",
+      "bytes": 77730,
+      "git_blob_sha1": "70ce1071d63079d521c90c936dbee57f42e758ee"
+    },
+    {
+      "path": "NOTICE",
+      "bytes": 818,
+      "git_blob_sha1": "bd9e4c456dcf2bdce6b77e06b091d1956b74014f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9649,
+      "git_blob_sha1": "cd331dcef5e01dc30103fa2e15935c77e9a44deb"
+    },
+    {
+      "path": "bpe.model",
+      "bytes": 337431,
+      "sha256": "0534a242b49e7d82e751f454645dc8211870955f9da0c57fe480f0eb345ab8af"
+    },
+    {
+      "path": "offline/fp32/decoder.onnx",
+      "bytes": 13651997,
+      "sha256": "87bd71bc46a58cc9770271b1b85821410a19a95a10d6f48dae68b8d73e9175d9"
+    },
+    {
+      "path": "offline/fp32/encoder.onnx",
+      "bytes": 266007027,
+      "sha256": "639e9f692d8e4105d2e89f3b5cffc2c17ef7c8579e15123ad30a60320fb975ca"
+    },
+    {
+      "path": "offline/fp32/joiner.onnx",
+      "bytes": 12607956,
+      "sha256": "d919ebf78fbb9dc333dd409e815d1ee56eedb5df5f86d4130967e53271dfa294"
+    },
+    {
+      "path": "offline/fp32/tokens.txt",
+      "bytes": 77730,
+      "same_as": "tokens.txt"
+    },
+    {
+      "path": "offline/int8/decoder.int8.onnx",
+      "bytes": 12869829,
+      "sha256": "0fd78fc6dc39f1df63431e25c4f0ac2bdedce816e6ea5de6009f369be399221a"
+    },
+    {
+      "path": "offline/int8/encoder.int8.onnx",
+      "bytes": 76639756,
+      "sha256": "bc440fb01c57a5ed74c8aab81bcdc6eb85b328c8a3eb275c231c7d103e809101"
+    },
+    {
+      "path": "offline/int8/joiner.int8.onnx",
+      "bytes": 3202453,
+      "sha256": "5ab3c31a61a5d12f2820f2b966a25cc90a1189e150992beaed2b89a09c7b99c5"
+    },
+    {
+      "path": "offline/int8/tokens.txt",
+      "bytes": 77730,
+      "same_as": "tokens.txt"
+    },
+    {
+      "path": "pytorch/pretrained.pt",
+      "bytes": 311199896,
+      "sha256": "90f840fd8d4939bd394be6968fe2965100192411e6ffb97959da332d0d7cd9d3"
+    },
+    {
+      "path": "streaming/fp32/decoder.onnx",
+      "bytes": 13651997,
+      "same_as": "offline/fp32/decoder.onnx"
+    },
+    {
+      "path": "streaming/fp32/encoder.onnx",
+      "bytes": 261022873,
+      "sha256": "7060b12ba781e34d4a8a6b9e46d7d8b77b43bad8bde8897d7eda0b8290223cea"
+    },
+    {
+      "path": "streaming/fp32/joiner.onnx",
+      "bytes": 12607956,
+      "same_as": "offline/fp32/joiner.onnx"
+    },
+    {
+      "path": "streaming/fp32/tokens.txt",
+      "bytes": 77730,
+      "same_as": "tokens.txt"
+    },
+    {
+      "path": "streaming/int8/decoder.int8.onnx",
+      "bytes": 12869829,
+      "same_as": "offline/int8/decoder.int8.onnx"
+    },
+    {
+      "path": "streaming/int8/encoder.int8.onnx",
+      "bytes": 71186627,
+      "sha256": "7fdfba7c964ee4d0c2acbe9bc83c0aafdcb7632ad7df41f51f0810b21b26c746"
+    },
+    {
+      "path": "streaming/int8/joiner.int8.onnx",
+      "bytes": 3202453,
+      "same_as": "offline/int8/joiner.int8.onnx"
+    },
+    {
+      "path": "streaming/int8/tokens.txt",
+      "bytes": 77730,
+      "same_as": "tokens.txt"
+    }
+  ],
+  "recipe_files": [
+    {
+      "path": "LICENSE",
+      "bytes": 11337,
+      "git_blob_sha1": "ade38f16cc0b4cdb123bce503a9148204b2946ba"
+    },
+    {
+      "path": "docs/FINETUNE.md",
+      "bytes": 6064,
+      "git_blob_sha1": "858b77397a44cce27c213c2b6f1ad942c3782930"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 913,
+      "git_blob_sha1": "5f10dae6cd192163c36f228b9efe7feda0ad71ba"
+    },
+    {
+      "path": "recipe/export_onnx.sh",
+      "bytes": 665,
+      "git_blob_sha1": "0c3b968ae5ab768779433b581e9798b27c41ff74"
+    },
+    {
+      "path": "recipe/finetune.sh",
+      "bytes": 1058,
+      "git_blob_sha1": "d0850c85ef1790b02bf851a2b904e71a4022b6f7"
+    },
+    {
+      "path": "recipe/make_recipe.py",
+      "bytes": 6574,
+      "git_blob_sha1": "8f09a205c4170ff4b06bb1d492fb53b08fda2980"
+    },
+    {
+      "path": "recipe/prepare_data.py",
+      "bytes": 2922,
+      "git_blob_sha1": "bce1875d769e3e830d05d3740a4d9bfc669e6df6"
+    },
+    {
+      "path": "scripts/quantize_int8.py",
+      "bytes": 1239,
+      "git_blob_sha1": "8dcd6d1df4ce3ef543bf4ffc26ab6916b99e63f9"
+    },
+    {
+      "path": "src/vnasr/__init__.py",
+      "bytes": 128,
+      "git_blob_sha1": "c4a8a1c5cf2c90b643810c62ace3c2e889beaf12"
+    },
+    {
+      "path": "src/vnasr/numbers.py",
+      "bytes": 9837,
+      "git_blob_sha1": "5d4e875e4efd50aa912a250d369bc54cab4cb431"
+    },
+    {
+      "path": "src/vnasr/text.py",
+      "bytes": 2180,
+      "git_blob_sha1": "5b4c24d043aaead185c3c10ed9e1c251da00fe61"
+    }
+  ]
+}

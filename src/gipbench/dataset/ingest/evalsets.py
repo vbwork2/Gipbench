@@ -171,7 +171,8 @@ def read_fleurs(spec: Dict, files: List[str], limit: int = 0):
             # id (câu FLEURS), file_name, raw_transcription, transcription, characters, num_samples, gender
             rows[c[1]] = {"text": c[2].strip(), "text_norm_upstream": c[3].strip(), "sentence_id": c[0], "gender": c[6]}
     n = 0
-    with tarfile.open(tgz, "r:gz") as tf:
+    archive = (tarfile.open(fileobj=tgz, mode="r|gz") if hasattr(tgz, "read") else tarfile.open(tgz, "r:gz"))
+    with archive as tf:
         for m in tf:
             name = Path(m.name).name
             if m.isfile() and name in rows:

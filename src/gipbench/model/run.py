@@ -238,16 +238,21 @@ def stage_features(c):
     f = c.exp.get("features", {})
     aug = (["--speed-perturb"] if f.get("speed_perturb") else []) + (["--phone-sim", f["phone_sim"]] if f.get("phone_sim") else [])
     tail = ["--bench", c.bench, "--catalog", c.cat, "--out", c.lhotse]
+    env = None
+    if c.exp.get("family") == "vietnote_zipformer":
+        tail += ["--normalizer", "vietnote", "--max-dur", f.get("max_duration", 45)]
+        env = dict(os.environ, PYTHONUTF8="1", PYTHONPATH=os.pathsep.join(
+            filter(None, [str(c.model / "upstream/src"), os.environ.get("PYTHONPATH")])))
     for g, p in sorted(files.items()):
-        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", p, "--name", g, *tail, *aug, *c.seed_args])
+        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", p, "--name", g, *tail, *aug, *c.seed_args], env=env)
     for k in c.dev:
-        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.dev[k], "--name", f"dev_{k}", *tail])
+        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.dev[k], "--name", f"dev_{k}", *tail], env=env)
     if not c.has_dev:
         n = int((c.exp.get("select") or {}).get("valid_rows", 200))
         print(f"  valid (chỉ theo dõi loss, KHÔNG chọn checkpoint): {n} câu train theo hash id -> {c.valid}")
         if not c.dry:
             write_valid_sample(c.work / "train_curated.jsonl", c.valid, n)
-        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.valid, "--name", "valid", *tail])
+        c.run([c.py_ft, "-m", "gipbench.model.features.to_lhotse", "--manifest", c.valid, "--name", "valid", *tail], env=env)
 
 
 def write_valid_sample(src, out, n):
@@ -570,6 +575,8 @@ def main():
     for i in stages:
         if not 0 <= i < len(STAGES):
             sys.exit(f"stage {i} không có (0–{len(STAGES) - 1})")
+    if exp.get("family") == "vietnote_zipformer" and any(stage >= 4 for stage in stages):
+        sys.exit("Use stages 0-3 for VietNote preparation and gipbench.model.train.vietnote_icefall for the official recipe.")
     for seed in X.run_seeds(exp, args.seed, args.dry_run):
         c = Ctx(exp, args.dry_run, seed=seed)
         if seed is not None:

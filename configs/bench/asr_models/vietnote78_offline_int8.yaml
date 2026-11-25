@@ -1,0 +1,15 @@
+system: vietnote78_offline_int8
+engine: sherpa_transducer
+model:
+  id: Kaisye/VietNote-Zipformer-78M-Streaming
+  revision: 69eec0a86fef25639996813d3e10fbe656659650
+  dir: "${models_root}/vietnote78/offline/int8"
+inference_mode: open_vocab
+decode:
+  quantize: int8
+  decoding_method: modified_beam_search
+  beam: 4
+  threads: 16
+  blank_penalty: 0.0
+  case: lower
+batch: 1
