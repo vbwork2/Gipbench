@@ -4,8 +4,8 @@ Mục tiêu giảm lỗi chuyển mã Việt–Anh với thuật ngữ chưa th�
 
 | Lượt | Trạng thái | Điều kiện trước |
 | --- | --- | --- |
-| V02P | Pilot Icefall đã chạy cục bộ. Chờ xác minh Kaggle. | — |
-| V00 | Tích hợp và quick baseline có 10 lượt đã lưu. Full dev còn mở. | — |
+| V02P | CLI Icefall đã xác minh trên Kaggle. Pilot cục bộ có kết quả chấm riêng. | — |
+| V00 | Có 10 lượt quick baseline và 2/2 bộ dev đầy đủ đã chấm. | — |
 | V01 | Đạt. | — |
 | V02 | Một phần. Xem tiny-set và batch FP32 bên dưới. | — |
 | V03 | Bị chặn bởi cổng dữ liệu hoặc model. | V00, V01, V02 |
@@ -81,19 +81,34 @@ Kho train cục bộ sau gộp có 21,426 bản ghi duy nhất và 43.059 giờ 
 
 ### Quyền truy cập và xét duyệt
 
-- VietSpeech và viVoice cần chấp nhận điều khoản trên Hugging Face và xác minh quyền bản ghi theo subset. [VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech), [viVoice](https://huggingface.co/datasets/capleaf/viVoice).
+- VietSpeech và viVoice có cổng điều khoản trên Hugging Face và cần xác minh quyền bản ghi theo subset. [VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech), [viVoice](https://huggingface.co/datasets/capleaf/viVoice).
 - VietSuperSpeech, code_switch_OM, LSVSC và ViMedCSS cần hồ sơ quyền bản ghi và quyền chuyển lên Kaggle cho dữ liệu dùng từ xa. V02 có 163 câu VietSuperSpeech đã nghe duyệt, tương đương 0,601 giờ.
 - Common Voice VI tái sử dụng bản cục bộ. Bản EN cần thông tin truy cập Mozilla Data Collective. L2-ARCTIC cần biểu mẫu của PSI Lab hoặc quyền mirror KoelLabs, chỉ chọn một bản. [Common Voice](https://commonvoice.mozilla.org/vi/datasets), [L2-ARCTIC](https://psi.engr.tamu.edu/l2-arctic-corpus/).
 - CanVEC cần tác giả cấp audio. ZeroSpeech còn chờ quyền văn bản nguồn và nghe duyệt. VietPrism chờ yêu cầu truy cập riêng. [CanVEC](https://github.com/Bak3rLi/CanVEC).
 
 Hàng đợi kiểm nguồn có 1076 câu VietSuperSpeech (3.969 giờ) và 119 câu LSVSC (0.203 giờ). Chưa bổ sung giờ đủ điều kiện V03.
+Shard code_switch_OM đã có 1,000 clip duy nhất (2.388 giờ) và 24 video trong phiếu kiểm nguồn.
+Metadata theo revision xác nhận VietSpeech yêu cầu mở quyền trên Hugging Face.
+Tài khoản hiện có quyền đọc VietSpeech và viVoice. Thẻ VietSpeech chỉ liệt kê audio và transcript. Thẻ viVoice có kênh nguồn và giới hạn sử dụng cho nghiên cứu. Cần bằng chứng theo nhóm bản ghi và người nói trước khi đưa vào V03.
+Footer shard train VietSpeech có 38,002 dòng và các trường `audio, transcription`. Cần hồ sơ ngoài shard để kiểm nguồn và tách người nói.
+Đã tải và kiểm hash 8 cuộc hội thoại tiếng Việt DataHive (3.452 giờ). Nguồn công bố quyền huấn luyện và CC BY 4.0. Cần phiên âm và đối chiếu người nói trước khi phát hành. [Điều khoản và đồng thuận](https://huggingface.co/datasets/datahiveai/multilingual-conversations-sample/blob/c29728a0c9792ba486807fa1ea9ca64e292cec01/README.md#consent-and-privacy).
+Phiếu VSS ưu tiên 192 câu có domain cụ thể. Phiếu LSVSC có 119 câu và cần phân biệt hội thoại với giọng đọc.
 
 ### Dev CS độc lập
 
 Y khoa còn 72 ứng viên qua lọc ban đầu, 0 người nói xác minh theo báo cáo ứng viên. Release độc lập cần 1500 câu, 4 domain và 100 người nói đã xác minh.
 Quick CS (65 câu) dùng chẩn đoán kỹ thuật. Cấm dùng cho kết luận tổng quát hóa hoặc chấp nhận V03.
+Đã dành nguyên 3 cuộc gọi DataHive cho ứng viên dev. Phiếu nghe có 18 đoạn chẩn đoán. Đã duyệt 0 đoạn và xác minh 0 người nói.
+Đối chiếu dấu vân tay 18 đoạn với 23,611 tệp train/dev đã có cache, ghi nhận 0 cặp khớp. Chờ audit đầy đủ khi có transcript đã duyệt.
 
 ## Kết quả
+
+| Dev đầy đủ | Số câu | WER | CER | CS-WER | RTF CPU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| dev/dev_v2_vi@1 | 1,691 | 9.20% | 6.94% | — | 0.0437 |
+| dev/dev_interim_cs@1 | 323 | 6.55% | 4.42% | 39.09% | 0.0732 |
+
+Baseline là VietNote offline FP32 gốc với beam 4, batch 1 và 4 luồng. Bộ CS tạm dùng chẩn đoán.
 
 Exporter tính softmax FP32 của `encoder.encoders.3.downsample.bias` trên PyTorch 2.15.0+cpu (win32) từ checkpoint gốc và ghi hệ số vào encoder trước khi lượng tử hóa. Bản phát hành và bản export được giải mã trên Windows-11-10.0.26200-SP0, Python 3.12.10, Sherpa-ONNX 2.0.1. SHA256 bộ câu `3cb69a25b1bf8453517ab32d597aa1adf3d82c6d10dd664e31ec065099045b45`.
 
@@ -134,6 +149,8 @@ Exporter tính softmax FP32 của `encoder.encoders.3.downsample.bias` trên PyT
   vieneu/gipformer có WER 13.40%, CS-WER 76.47% và recall Anh 40.00%.
   vieneu/vietnote có WER 10.31%, CS-WER 58.82% và recall Anh 33.33%.
 - Phiếu nghe mù ở `data/work/vietnote/tts/vieneu_pilot/blind_review.csv`. Còn chờ phê duyệt của người nghe.
+- Phiếu chung đã xáo trộn 24 mẫu ZeroTTS và VieNeu-TTS. Đã duyệt 0 mẫu.
+- Tiếp tục ZeroSpeech từ cache. Có 235 ứng viên, 0.732 giờ và 0 byte tải mới.
 - Pilot Icefall cục bộ trên 24 câu dev có WER 8.29% → 8.62% và CS-WER 42.86% → 42.86%. Kết quả tổng không đạt.
 
 ### Đối chiếu INT8 cùng runtime trước khi sửa exporter
@@ -187,11 +204,29 @@ Các hệ số đã khác nhau giữa bản phát hành và bản re-export trư
 
 | Lượt | Trạng thái | Phiên bản từ xa | GPU đã xác minh |
 | --- | --- | --- | --- |
+| [gipbench-icefall-08d6b53fd3e63175](https://www.kaggle.com/code/vinhbui40/gipbench-icefall-08d6b53fd3e63175) | completed | 1 | Tesla T4 |
+| [gipbench-icefall-memory-e6be6ca486125e1d](https://www.kaggle.com/code/vinhbui40/gipbench-icefall-memory-e6be6ca486125e1d) | completed | 1 | Tesla T4 |
+| gipbench-icefall-pilot-439acfcb3d5ae2fb | rejected | — | — |
+| [gipbench-icefall-pilot-5346eabd383e4026](https://www.kaggle.com/code/vinhbui40/gipbench-icefall-pilot-5346eabd383e4026) | failed | 1 | — |
+| [gipbench-icefall-pilot-94a84b5d2b072dcb](https://www.kaggle.com/code/vinhbui40/gipbench-icefall-pilot-94a84b5d2b072dcb) | completed | 1 | Tesla T4 |
+| [gipbench-icefall-pilot-c1de6ad6eea86f97](https://www.kaggle.com/code/vinhbui40/gipbench-icefall-pilot-c1de6ad6eea86f97) | failed | 1 | — |
 | [gipbench-smoke-256230eae499a2ca](https://www.kaggle.com/code/vinhbui40/gipbench-smoke-256230eae499a2ca) | completed | 1 | Tesla T4 |
 | [gipbench-synthetic-7c0d1eabd90c49c4](https://www.kaggle.com/code/vinhbui40/gipbench-synthetic-7c0d1eabd90c49c4) | completed | 1 | Tesla T4 |
-| gipbench-v02-0d077f2409bb07d8 | prepared | — | — |
+| gipbench-v02-e86021aba06caa64 | prepared | — | — |
 
-Đã gửi 2 lượt. Đã đồng bộ và xác minh 2 lượt. V02 cần quyền chuyển đúng 163 bản ghi và khóa dependency khớp GPU smoke.
+Đã gửi 7 lượt. Đã đồng bộ và xác minh 5 lượt. V02 cần văn bản quyền huấn luyện và chuyển đúng 163 bản ghi.
+- gipbench-icefall-pilot-5346eabd383e4026 tới bước export sau huấn luyện và resume. Exporter dừng vì thiếu ONNX Runtime. Lượt khôi phục ghim wheel theo SHA256.
+- gipbench-icefall-pilot-c1de6ad6eea86f97 dừng trước huấn luyện. Kaggle đã giải nén archive thành `bundle/pilot.json`. Lượt khôi phục kiểm SHA256 payload trong thư mục mount.
+
+- Recipe VietNote/Icefall `finetune.py` trên Tesla T4 đã chạy 1 bước với audio tổng hợp và 77,686,775 tham số. Train loss mỗi frame 0.21527.
+- Đã nạp lại checkpoint vào model mới và đối chiếu trọng số, optimizer và scheduler. SHA256 checkpoint `e9229e4d5b0f42a5d42971976868b591ac62f105af00fbc5cf384b80347a2df5`. Các wheel cài thêm được ghim trong `requirements.txt`, phiên bản package của phiên chạy nằm trong `runtime-packages.json`.
+
+- Pilot FLEURS dùng 4 câu train và 32 câu validation. Số bước trước và sau resume là 4 và 8. Loss validation theo epoch là 1.1110, 1.0830.
+- Trạng thái trùng lượt chạy liên tục tại cuối epoch 2 gồm scheduler, grad_scaler. RNG vắng trong checkpoint. Kết quả kiểm khôi phục áp dụng cho ranh giới epoch của pilot.
+- Checkpoint và ba graph ONNX FP32 offline đã đồng bộ qua manifest. SHA256 checkpoint `bab780f03b355305e51eadaef0c4ec648d4eef7794c17e1c81551be674eaf401`.
+- Lượt resume lệch lượt liên tục ở model, optimizer. Kiểm phục hồi chính xác chưa đạt.
+- Chấm offline FP32 trên 32 câu validation FLEURS cho WER 0.20% → 1.01% và CER 0.19% → 0.84%. ΔWER +0.81 điểm phần trăm, CI 95% ghép cặp [+0.00, +1.81]. Pilot tiếng Việt đọc chưa cải thiện.
+- Log T4 ghi đỉnh allocated 2,122 MB với giới hạn 8 giây/batch. V03 cần probe 200 giây.
 
 - Smoke v1 đạt phép nhân ma trận CUDA trên Tesla T4. PyTorch thấy 1 GPU, VRAM trống 14.46/14.56 GiB. Giới hạn phiên 600 giây.
 - Python 3.13.16, PyTorch 2.11.0+cu130, CUDA 13.0. k2 chưa cài, lhotse chưa cài.
@@ -200,6 +235,25 @@ Các hệ số đã khác nhau giữa bản phát hành và bản re-export trư
 - Lhotse 1.33.0 trích 100 khung × 80 hệ số log-Mel từ âm thanh tổng hợp 1 giây, 16 kHz.
 - k2 1.24.4.dev20260625+cuda13.0.torch2.11.0 chạy RNN-T trên Tesla T4. Loss 165.70718, chuẩn L2 gradient của trọng số phép chiếu 600.76367. Giới hạn phiên 600 giây.
 - SHA256 manifest kết quả `13cd1979103d3cee41e585b8c6f08afbff0c24265230189e8cd6de487af576b2`.
+
+### Probe bộ nhớ FP32 200 giây trên FLEURS
+
+- Tesla T4, `pool/vietnote_fleurs_vi@v2`, câu dài nhất 33.24 giây. Hoàn tất 3/3 bước cập nhật.
+- Đỉnh CUDA allocated 8.75 GiB và reserved 9.52 GiB. VRAM trống trước probe 14.41 GiB. Dư địa ước tính tại đỉnh reserved 4.90 GiB.
+
+| Bước | Audio thật (giây) | Sau padding (giây) | Tensor đầu vào | Loss |
+| ---: | ---: | ---: | --- | ---: |
+| 1 | 169.14 | 199.44 | 6 × 3324 × 80 | 1350.52295 |
+| 2 | 159.42 | 199.44 | 6 × 3324 × 80 | 1097.03662 |
+| 3 | 153.18 | 199.44 | 6 × 3324 × 80 | 949.84155 |
+
+Đạt ngưỡng kỹ thuật. Probe gọi trực tiếp bước huấn luyện để đo batch dài bằng FLEURS. Cổng V03 vẫn chưa đạt.
+[Artifact phép đo](../data/work/vietnote/kaggle/gipbench-icefall-memory-e6be6ca486125e1d/output/engineering-memory.json)
+
+Khóa offline gồm 941 phiên bản distribution từ phiên Icefall v1 và năm wheel được kiểm SHA256. Khóa yêu cầu ảnh Kaggle có Python, CUDA, PyTorch và các gói dựng sẵn đúng phiên bản đã ghi.
+Khóa huấn luyện và export FLEURS ghi 942 distribution và sáu wheel có SHA256, gồm ONNX Runtime 1.32.0.
+
+Gói V02 `gipbench-v02-e86021aba06caa64` đã chuẩn bị cục bộ với LR 0,0015, seed 0 và 163 câu. SHA256 manifest `f3ff60b1e7739fcc78dbf1eb99e92342113a3ff6958dfca157b26f4d3831b46a`.
 
 ## Cổng chưa đạt
 
@@ -212,6 +266,13 @@ Các hệ số đã khác nhau giữa bản phát hành và bản re-export trư
 - tiny · registered criteria failed
 - tiny_followup · Thiếu artifact hoặc release đã đăng ký
 - memory · Thiếu artifact hoặc release đã đăng ký
+- Probe bộ nhớ V03 cần các pool đã đăng ký và ba bước FP32 ở mức 200 giây/batch có câu từ 25 giây. Recipe CLI Icefall ghim hiện loại câu train trên 20 giây. Phép đo kỹ thuật FLEURS dùng trực tiếp bước huấn luyện.
+
+## Việc cần người dùng
+
+- Cung cấp văn bản quyền huấn luyện và chuyển lên Kaggle cho danh sách V02. [Phạm vi 163 bản ghi](../data/work/vietnote/v02/rights-scope.csv).
+- Xin hồ sơ nguồn và người nói từ đơn vị phát hành VietSpeech. VietPrism chờ tác giả phê duyệt. [VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech).
+- Phân công người nghe duyệt các phiếu và xác minh người nói. [Hướng dẫn duyệt và hồ sơ quyền](../docs/VIETNOTE_KAGGLE.md#phiếu-nghe-và-quyền-nguồn).
 
 ## Phụ thuộc theo chiến lược
 
@@ -234,4 +295,4 @@ Các hệ số đã khác nhau giữa bản phát hành và bản re-export trư
 
 ## Hành động nghiên cứu kế tiếp
 
-Giữ 163 bản ghi V02 ở máy cho đến khi xác minh quyền huấn luyện và chuyển lên Kaggle. Ghim các gói phụ thuộc cho toàn bộ recipe Icefall trước khi chạy V02 với LR 0,0015.
+Sau khi có quyền cho đúng 163 bản ghi, tái lập arm đối chứng LR 0,0045 trên Kaggle T4 với seed 0, cùng môi trường và 489 bước. Giữ nguyên quy tắc chấm đã đăng ký.

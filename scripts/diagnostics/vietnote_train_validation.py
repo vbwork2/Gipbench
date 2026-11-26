@@ -189,6 +189,37 @@ def tiny(base, rows, settings, out):
             "peak_allocated_bytes": peak_allocated, "peak_reserved_bytes": peak_reserved}
 
 
+def measure_memory_case(base, cfg, kind, limit, groups, min_free_fraction):
+    if not groups:
+        return {"kind": kind, "limit": limit, "passed": False, "reason": "Insufficient qualifying training clips"}
+    selected = list({row["id"]: row for group in groups for row in group}.values())
+    features = prepare(selected)
+    props = torch.cuda.get_device_properties(0)
+    free, _ = torch.cuda.mem_get_info()
+    torch.cuda.reset_peak_memory_stats()
+    log = {"kind": kind, "limit": limit, "gpu_total_bytes": props.total_memory, "gpu_free_before_bytes": free,
+           "precision": "fp32", "steps": [], "longest_clip": max(float(row["duration"]) for row in selected)}
+    state = None
+    try:
+        state = setup(base, cfg["tiny"]["lr"], limit, cfg["tiny"]["seed"])
+        for group in groups:
+            batch = make_batch(group, features)
+            stats = run_step(*state, batch)
+            log["steps"].append({**stats, "audio_seconds": sum(float(row["duration"]) for row in group),
+                                 "padded_seconds": len(group) * max(float(row["duration"]) for row in group),
+                                 "input_shape": list(batch["inputs"].shape),
+                                 "ids": [row["id"] for row in group]})
+        log["passed"] = torch.cuda.max_memory_reserved() <= free - min_free_fraction * props.total_memory
+    except torch.cuda.OutOfMemoryError as exc:
+        log.update(passed=False, reason=str(exc))
+    finally:
+        log.update(peak_allocated_bytes=torch.cuda.max_memory_allocated(),
+                   peak_reserved_bytes=torch.cuda.max_memory_reserved())
+        state = None
+        torch.cuda.empty_cache()
+    return log
+
+
 def memory(base, cfg, selected_limit):
     settings = yaml.safe_load(MEMORY_PROTOCOL.read_text(encoding="utf-8"))
     release = R.resolve(settings["pool"])
@@ -224,31 +255,7 @@ def memory(base, cfg, selected_limit):
     planned.append(("long", selected_limit, long_groups))
     results = []
     for kind, limit, groups in planned:
-        if not groups:
-            results.append({"kind": kind, "limit": limit, "passed": False, "reason": "Insufficient qualifying training clips"})
-            continue
-        selected = list({row["id"]: row for group in groups for row in group}.values())
-        features = prepare(selected)
-        props = torch.cuda.get_device_properties(0)
-        free, _ = torch.cuda.mem_get_info()
-        torch.cuda.reset_peak_memory_stats()
-        log = {"kind": kind, "limit": limit, "gpu_total_bytes": props.total_memory, "gpu_free_before_bytes": free,
-               "precision": "fp32", "steps": [], "longest_clip": max(float(row["duration"]) for row in selected)}
-        try:
-            state = setup(base, cfg["tiny"]["lr"], limit, cfg["tiny"]["seed"])
-            for group in groups:
-                stats = run_step(*state, make_batch(group, features))
-                log["steps"].append({**stats, "audio_seconds": sum(float(row["duration"]) for row in group),
-                                     "padded_seconds": len(group) * max(float(row["duration"]) for row in group),
-                                     "ids": [row["id"] for row in group]})
-            log["passed"] = torch.cuda.max_memory_reserved() <= free - settings["min_free_fraction"] * props.total_memory
-        except torch.cuda.OutOfMemoryError as exc:
-            log.update(passed=False, reason=str(exc))
-        finally:
-            log.update(peak_allocated_bytes=torch.cuda.max_memory_allocated(),
-                       peak_reserved_bytes=torch.cuda.max_memory_reserved())
-            state = None
-            torch.cuda.empty_cache()
+        log = measure_memory_case(base, cfg, kind, limit, groups, settings["min_free_fraction"])
         results.append(log)
         print(json.dumps(log), flush=True)
     environment = {"platform": platform.system(), "kernel": platform.release(), "torch": str(torch.__version__),

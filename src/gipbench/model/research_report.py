@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from gipbench.core import release as R
-from gipbench.core.manifest import read_jsonl
+from gipbench.core.manifest import manifest_sha256, read_jsonl
 from gipbench.core.paths import REPO
 from gipbench.model.recipe import experiment as X
 from gipbench.model.readiness import build_bundle, data_ready, model_validation, read_json, read_yaml, registry
@@ -31,6 +31,26 @@ def quick_results(path):
 
 def pct(value):
     return f"{value:.2f}%" if isinstance(value, (int, float)) else "—"
+
+
+def full_baselines(path):
+    runs = []
+    for subset, ref in (("vi", "dev/dev_v2_vi@1"), ("cs_diagnostic", "dev/dev_interim_cs@1")):
+        directory = path / subset / "vietnote78_offline_fp32_t4"
+        summary = optional_json(directory / "score/summary.json")
+        meta = optional_json(directory / "run_meta.json")
+        if not summary or not meta:
+            continue
+        release = R.resolve(ref)
+        digest = manifest_sha256(read_jsonl(release.manifest))
+        hyps_digest = R.sha256(directory / "hyps.jsonl")
+        score = summary["profiles"]["gipbench_strict_v1"]["overall"]
+        if (summary.get("manifest_sha256") == meta.get("manifest_sha256") == digest
+                and summary.get("hyps_sha256") == meta.get("hyps_sha256") == hyps_digest
+                and summary.get("hyp_check", {}).get("ok") is True
+                and score["utt"] == release.meta["files"]["manifest.jsonl"]["rows"]):
+            runs.append((ref, score, meta["rtf"]))
+    return runs
 
 
 def int8_isolation(paths, parity):
@@ -258,7 +278,7 @@ def artifact_metrics(paths, detail, quick):
     return lines
 
 
-def kaggle_progress(work, runs):
+def kaggle_progress(work, runs, pilot_evaluation):
     doctor = optional_json(work / "kaggle/doctor.json")
     authenticated = doctor.get("authentication") == "verified"
     lines = ["", "## Kaggle", "",
@@ -269,6 +289,9 @@ def kaggle_progress(work, runs):
     lines += ["", "| Lượt | Trạng thái | Phiên bản từ xa | GPU đã xác minh |",
               "| --- | --- | --- | --- |"]
     for run in runs:
+        if run["state"] == "prepared" and not (run["experiment"] == "V02" and run.get("runtime_lock")
+                                               and run.get("bundle", {}).get("members_manifest_sha256")):
+            continue
         gpu = run.get("environment", {}).get("gpu", "—")
         name = run["run"]
         if run.get("url"):
@@ -277,8 +300,17 @@ def kaggle_progress(work, runs):
     submitted = [r for r in runs if r.get("version")]
     complete = [r for r in submitted if r.get("state") == "completed"]
     lines += ["", f"Đã gửi {len(submitted)} lượt. Đã đồng bộ và xác minh {len(complete)} lượt. "
-              "V02 cần quyền chuyển đúng 163 bản ghi và khóa dependency khớp GPU smoke."]
-    for run in complete:
+              "V02 cần văn bản quyền huấn luyện và chuyển đúng 163 bản ghi."]
+    for run in submitted:
+        if run["experiment"] == "icefall-pilot" and run["state"] == "failed":
+            log = optional_json(work / "kaggle" / run["run"] / "logs.json").get("logs", "")
+            if "The pinned dataset archive was unavailable or ambiguous" in log:
+                lines.append(f"- {run['run']} dừng trước huấn luyện. Kaggle đã giải nén archive thành "
+                             "`bundle/pilot.json`. Lượt khôi phục kiểm SHA256 payload trong thư mục mount.")
+            elif "ModuleNotFoundError: No module named 'onnxruntime'" in log:
+                lines.append(f"- {run['run']} tới bước export sau huấn luyện và resume. "
+                             "Exporter dừng vì thiếu ONNX Runtime. Lượt khôi phục ghim wheel theo SHA256.")
+    for run in sorted(complete, key=lambda item: item["experiment"] == "icefall-memory"):
         if run["experiment"] == "icefall":
             probe = optional_json(work / "kaggle" / run["run"] / "output/icefall.json")
             lines += ["", f"- Recipe VietNote/Icefall `finetune.py` trên {run['environment']['gpu']} "
@@ -287,6 +319,57 @@ def kaggle_progress(work, runs):
                       f"- Đã nạp lại checkpoint vào model mới và đối chiếu trọng số, optimizer và scheduler. "
                       f"SHA256 checkpoint `{probe['checkpoint_sha256']}`. Các wheel cài thêm được ghim trong "
                       "`requirements.txt`, phiên bản package của phiên chạy nằm trong `runtime-packages.json`."]
+        if run["experiment"] == "icefall-memory":
+            memory = optional_json(work / "kaggle" / run["run"] / "output/engineering-memory.json")
+            steps = memory["steps"]
+            headroom = (memory["gpu_free_before_bytes"] - memory["peak_reserved_bytes"]) / 2**30
+            lines += ["", "### Probe bộ nhớ FP32 200 giây trên FLEURS", "",
+                      f"- Tesla T4, `{memory['release']}`, câu dài nhất {memory['longest_clip']:.2f} giây. "
+                      f"Hoàn tất {len(steps)}/{memory['planned_steps']} bước cập nhật.",
+                      f"- Đỉnh CUDA allocated {memory['peak_allocated_bytes'] / 2**30:.2f} GiB và reserved "
+                      f"{memory['peak_reserved_bytes'] / 2**30:.2f} GiB. "
+                      f"VRAM trống trước probe {memory['gpu_free_before_bytes'] / 2**30:.2f} GiB. "
+                      f"Dư địa ước tính tại đỉnh reserved {headroom:.2f} GiB."]
+            if steps:
+                lines += ["", "| Bước | Audio thật (giây) | Sau padding (giây) | Tensor đầu vào | Loss |",
+                          "| ---: | ---: | ---: | --- | ---: |"]
+                for step in steps:
+                    shape = " × ".join(map(str, step["input_shape"]))
+                    lines.append(f"| {step['step']} | {step['audio_seconds']:.2f} | {step['padded_seconds']:.2f} "
+                                 f"| {shape} | {step['loss']:.5f} |")
+            if memory.get("reason"):
+                lines += ["", f"Lỗi đo được là `{memory['reason']}`."]
+            outcome = "Đạt ngưỡng kỹ thuật" if memory["passed"] else "Chưa đạt ngưỡng kỹ thuật"
+            lines += ["", f"{outcome}. Probe gọi trực tiếp bước huấn luyện để đo batch dài bằng FLEURS. "
+                      "Cổng V03 vẫn chưa đạt.",
+                      f"[Artifact phép đo](../data/work/vietnote/kaggle/{run['run']}/output/engineering-memory.json)"]
+        if run["experiment"] == "icefall-pilot":
+            pilot = optional_json(work / "kaggle" / run["run"] / "output/pilot.json")
+            equal = ", ".join(key for key, same in pilot["epoch_boundary_equal"].items() if same) or "không có"
+            different = ", ".join(key for key, same in pilot["epoch_boundary_equal"].items() if not same)
+            lines += ["", f"- Pilot FLEURS dùng {pilot['train_cuts']} câu train và {pilot['valid_cuts']} câu validation. "
+                      f"Số bước trước và sau resume là {pilot['steps_before_resume']} và {pilot['steps_resumed']}. "
+                      f"Loss validation theo epoch là {', '.join(f'{loss:.4f}' for loss in pilot['validation_losses'])}.",
+                      f"- Trạng thái trùng lượt chạy liên tục tại cuối epoch 2 gồm {equal}. "
+                      f"RNG {'có' if pilot['rng_saved'] else 'vắng'} trong checkpoint. "
+                      f"Kết quả kiểm khôi phục áp dụng cho ranh giới epoch của pilot.",
+                      f"- Checkpoint và ba graph ONNX FP32 offline đã đồng bộ qua manifest. "
+                      f"SHA256 checkpoint `{pilot['checkpoint_sha256']}`."]
+            if different:
+                lines.append(f"- Lượt resume lệch lượt liên tục ở {different}. Kiểm phục hồi chính xác chưa đạt.")
+            if (pilot_evaluation.get("run") == run["run"]
+                    and pilot_evaluation.get("checkpoint_sha256") == pilot["checkpoint_sha256"]
+                    and pilot_evaluation.get("result_manifest_sha256") == run["result_manifest_sha256"]):
+                base, exported = pilot_evaluation["pretrained"], pilot_evaluation["exported"]
+                wer = next(metric for metric in pilot_evaluation["paired"] if metric["metric"] == "wer")
+                lines.append(f"- Chấm offline FP32 trên {exported['utt']} câu validation FLEURS "
+                             f"cho WER {pct(base['wer'])} → {pct(exported['wer'])} và "
+                             f"CER {pct(base['cer'])} → {pct(exported['cer'])}. "
+                             f"ΔWER {wer['delta']:+.2f} điểm phần trăm, "
+                             f"CI 95% ghép cặp [{wer['ci95'][0]:+.2f}, {wer['ci95'][1]:+.2f}]. "
+                             "Pilot tiếng Việt đọc chưa cải thiện.")
+                lines.append(f"- Log T4 ghi đỉnh allocated {pilot_evaluation['peak_allocated_mb']:,} MB "
+                             f"với giới hạn {pilot_evaluation['pilot_max_duration']} giây/batch. V03 cần probe 200 giây.")
         if run["experiment"] == "synthetic":
             probe = optional_json(work / "kaggle" / run["run"] / "output/probe.json")
             lines += ["", f"- Lhotse {probe['lhotse']} trích {probe['features'][0]} khung × "
@@ -335,6 +418,7 @@ def report(config, research):
     except (OSError, ValueError) as exc:
         detail, issues = {}, {"checkpoint": str(exc)}
     quick = quick_results(paths["quick_baseline"])
+    full = full_baselines(paths["full_baseline"])
     medical = optional_json(paths["medical_candidates"])
     diagnostic = optional_json(paths["diagnostic_dev"])
     historical = optional_json(paths["parity_before_softmax"])
@@ -343,12 +427,17 @@ def report(config, research):
     constants = encoder_constants(paths, isolation, historical_official)
     v01 = all(key in detail and key not in issues for key in ("parity", "tensors")) and "export" not in issues
     v02 = all(key in detail and key not in issues for key in ("tiny", "memory"))
+    work = paths["single_step"].parents[1]
+    kaggle_runs = [optional_json(file) for file in sorted((work / "kaggle").glob("*/run.json"))]
+    icefall_completed = any(run.get("experiment") == "icefall" and run.get("state") == "completed"
+                            for run in kaggle_runs)
     statuses = {
-        "V00": f"Tích hợp và quick baseline có {len(quick)} lượt đã lưu. Full dev còn mở." if quick else "Thiếu quick baseline.",
+        "V00": f"Có {len(quick)} lượt quick baseline và {len(full)}/2 bộ dev đầy đủ đã chấm.",
         "V01": "Đạt." if v01 else "Một phần. Xem đối chiếu FP32, INT8 và cổng bên dưới.",
         "V02": "Đạt." if v02 else "Một phần. Xem tiny-set và batch FP32 bên dưới.",
-        "V02P": "Pilot Icefall đã chạy cục bộ. Chờ xác minh Kaggle." if optional_json(paths["cli_pilot"])
-                else "Chờ chạy pilot Icefall.",
+        "V02P": ("CLI Icefall đã xác minh trên Kaggle. Pilot cục bộ có kết quả chấm riêng." if icefall_completed
+                 else "Pilot cục bộ đã chạy. Chờ xác minh Kaggle." if optional_json(paths["cli_pilot"])
+                 else "Chờ chạy pilot Icefall."),
         "V03": "Bị chặn bởi cổng dữ liệu hoặc model." if data_issues or not v01 or not v02 else
                "Các tiền đề dữ liệu và model đạt. Chờ bundle và kết quả.",
     }
@@ -373,7 +462,6 @@ def report(config, research):
               "| Nguồn | Trạng thái registry | Giờ ứng viên cục bộ | Giờ qua audit kỹ thuật | Giờ duyệt tại repo | Giờ đủ V03 |",
               "| --- | --- | ---: | ---: | ---: | ---: |"]
     sources = read_yaml(REPO / research["sources"])["sources"]
-    work = paths["single_step"].parents[1]
     acquisitions, screens = {}, {}
     for name, item in sources.items():
         acquisition = optional_json(work / "pilots" / name / "acquisition.json")
@@ -440,7 +528,7 @@ def report(config, research):
                   f"âm thanh tổng hợp {speech_groups.get('synthetic', 0):.3f} giờ "
                   f"và các bản ghi khác {speech_groups.get('other_released_speech', 0):.3f} giờ."]
     lines += ["", "### Quyền truy cập và xét duyệt", "",
-              "- VietSpeech và viVoice cần chấp nhận điều khoản trên Hugging Face và xác minh quyền bản ghi theo subset. "
+              "- VietSpeech và viVoice có cổng điều khoản trên Hugging Face và cần xác minh quyền bản ghi theo subset. "
               "[VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech), [viVoice](https://huggingface.co/datasets/capleaf/viVoice).",
               "- VietSuperSpeech, code_switch_OM, LSVSC và ViMedCSS cần hồ sơ quyền bản ghi và quyền chuyển lên Kaggle "
               "cho dữ liệu dùng từ xa. V02 có 163 câu VietSuperSpeech đã nghe duyệt, tương đương 0,601 giờ.",
@@ -450,13 +538,39 @@ def report(config, research):
               "- CanVEC cần tác giả cấp audio. ZeroSpeech còn chờ quyền văn bản nguồn và nghe duyệt. "
               "VietPrism chờ yêu cầu truy cập riêng. [CanVEC](https://github.com/Bak3rLi/CanVEC)."]
     source_review = optional_json(paths["source_review"])
+    cards = optional_json(paths["source_cards"])
+    gated = {name: optional_json(paths["gated_sources"] / name / "metadata.json")
+             for name in ("vietspeech", "vivoice")}
+    reviews = optional_json(paths["execution_review"])
+    datahive = optional_json(paths["datahive_acquired"])
     if source_review.get("source_registry_sha256") == R.sha256(REPO / research["sources"]):
         queues = source_review["local_queue"]
         lines += ["", f"Hàng đợi kiểm nguồn có {queues['vss']['queued_rows']} câu VietSuperSpeech "
                   f"({queues['vss']['queued_hours']:.3f} giờ) và {queues['lsvsc']['queued_rows']} câu LSVSC "
                   f"({queues['lsvsc']['queued_hours']:.3f} giờ). Chưa bổ sung giờ đủ điều kiện V03."]
-        if source_review["cards"].get("vietspeech", {}).get("gated"):
-            lines.append("Metadata ở revision đã khóa xác nhận VietSpeech yêu cầu mở quyền trên Hugging Face.")
+        om = queues.get("code_switch_om")
+        if om:
+            lines.append(f"Shard code_switch_OM đã có {om['unique_recordings']:,} clip duy nhất "
+                         f"({om['acquired_hours']:.3f} giờ) và {om['queued_rows']} video trong phiếu kiểm nguồn.")
+    if cards.get("source_registry_sha256") == R.sha256(REPO / research["sources"]):
+        if cards["cards"].get("vietspeech", {}).get("gated"):
+            lines.append("Metadata theo revision xác nhận VietSpeech yêu cầu mở quyền trên Hugging Face.")
+    if all(item.get("authenticated_access") for item in gated.values()):
+        lines.append("Tài khoản hiện có quyền đọc VietSpeech và viVoice. Thẻ VietSpeech chỉ liệt kê audio và "
+                     "transcript. Thẻ viVoice có kênh nguồn và giới hạn sử dụng cho nghiên cứu. "
+                     "Cần bằng chứng theo nhóm bản ghi và người nói trước khi đưa vào V03.")
+        shard = optional_json(paths["gated_sources"] / "vietspeech/shard_schema.json")
+        if shard.get("revision") == gated["vietspeech"]["revision"]:
+            lines.append(f"Footer shard train VietSpeech có {shard['shard_rows']:,} dòng và các trường "
+                         f"`{', '.join(shard['fields'])}`. Cần hồ sơ ngoài shard để kiểm nguồn và tách người nói.")
+    if datahive:
+        lines += [f"Đã tải và kiểm hash {datahive['candidate_rows']} cuộc hội thoại tiếng Việt DataHive "
+                  f"({datahive['candidate_hours']:.3f} giờ). Nguồn công bố quyền huấn luyện và CC BY 4.0. "
+                  f"Cần phiên âm và đối chiếu người nói trước khi phát hành. "
+                  f"[Điều khoản và đồng thuận]({datahive['recording_rights_evidence']})."]
+    if reviews:
+        lines.append(f"Phiếu VSS ưu tiên {reviews['vss']['known_domain_rows']} câu có domain cụ thể. "
+                     f"Phiếu LSVSC có {reviews['lsvsc']['rows']} câu và cần phân biệt hội thoại với giọng đọc.")
     lines += ["", "### Dev CS độc lập", "",
               f"Y khoa còn {medical.get('filter', {}).get('n_keep', '—')} ứng viên qua lọc ban đầu, "
               f"{medical.get('speakers', '—')} người nói xác minh theo báo cáo ứng viên. "
@@ -464,7 +578,27 @@ def report(config, research):
               f"{research['independent_cs']['min_domains']} domain và "
               f"{research['independent_cs']['min_verified_speakers']} người nói đã xác minh.",
               f"Quick CS ({diagnostic.get('rows', '—')} câu) dùng chẩn đoán kỹ thuật. "
-              "Cấm dùng cho kết luận tổng quát hóa hoặc chấp nhận V03.", "", "## Kết quả", ""]
+              "Cấm dùng cho kết luận tổng quát hóa hoặc chấp nhận V03."]
+    if reviews.get("datahive_vi"):
+        heldout = reviews["datahive_vi"]
+        lines.append(f"Đã dành nguyên {len(heldout['diagnostic_source_calls'])} cuộc gọi DataHive cho ứng viên dev. "
+                     f"Phiếu nghe có {heldout['diagnostic_candidates']} đoạn chẩn đoán. "
+                     f"Đã duyệt {heldout['human_reviewed_rows']} đoạn và xác minh {heldout['verified_speakers']} người nói.")
+        screening = optional_json(paths["execution_review"].parent / "datahive_vi/acoustic_train_dev.json")
+        stats = screening.get("stats", {})
+        if screening.get("queue_sha256") == heldout["queue_sha256"] and stats.get("n_bench_unique_audio"):
+            lines.append(f"Đối chiếu dấu vân tay {stats['n_train_fp']} đoạn với "
+                         f"{stats['n_bench_unique_audio']:,} tệp train/dev đã có cache, "
+                         f"ghi nhận {stats['n_matches']} cặp khớp. Chờ audit đầy đủ khi có transcript đã duyệt.")
+    lines += ["", "## Kết quả", ""]
+    if full:
+        lines += ["| Dev đầy đủ | Số câu | WER | CER | CS-WER | RTF CPU |",
+                  "| --- | ---: | ---: | ---: | ---: | ---: |"]
+        for ref, score, rtf in full:
+            lines.append(f"| {ref} | {score['utt']:,} | {pct(score['wer'])} | {pct(score['cer'])} "
+                         f"| {pct(score['cs_wer'])} | {rtf:.4f} |")
+        lines += ["", "Baseline là VietNote offline FP32 gốc với beam 4, batch 1 và 4 luồng. "
+                  "Bộ CS tạm dùng chẩn đoán.", ""]
     current = detail.get("parity", {})
     exporter = optional_json(paths["checkpoint_export"])
     weights = exporter.get("checkpoint_softmax")
@@ -476,6 +610,12 @@ def report(config, research):
                   f"{runtime['platform']}, Python {runtime['python']}, Sherpa-ONNX {runtime['sherpa-onnx']}. "
                   f"SHA256 bộ câu `{current['dev_manifest_sha256']}`.", ""]
     lines += artifact_metrics(paths, detail, quick)
+    if reviews.get("tts"):
+        lines.append(f"- Phiếu chung đã xáo trộn {reviews['tts']['rows']} mẫu ZeroTTS và VieNeu-TTS. "
+                     f"Đã duyệt {reviews['tts']['human_reviewed_rows']} mẫu.")
+    if zerospeech.get("cache_only"):
+        lines.append(f"- Tiếp tục ZeroSpeech từ cache. Có {zerospeech['candidate_rows']} ứng viên, "
+                     f"{zerospeech['candidate_hours']:.3f} giờ và {zerospeech['new_download_bytes']} byte tải mới.")
     pilot = optional_json(paths["cli_pilot"])
     if pilot and pilot.get("selection", {}).get("scores"):
         first, last = pilot["selection"]["scores"][0], pilot["selection"]["scores"][-1]
@@ -504,13 +644,39 @@ def report(config, research):
                     for item in before_quantization.values()):
                 lines.append("Các hệ số đã khác nhau giữa bản phát hành và bản re-export trước khi lượng tử hóa "
                              "ở cả chế độ offline và streaming.")
-    kaggle_runs = [optional_json(file) for file in sorted((work / "kaggle").glob("*/run.json"))]
-    lines += kaggle_progress(work, kaggle_runs)
+    pilot_evaluation = optional_json(paths["icefall_pilot_evaluation"])
+    lines += kaggle_progress(work, kaggle_runs, pilot_evaluation)
+    lock = optional_json(paths["icefall_runtime_lock"])
+    if lock and any(run.get("result_manifest_sha256") == lock["result_manifest_sha256"] for run in kaggle_runs):
+        lines += ["", f"Khóa offline gồm {len(lock['packages'])} phiên bản distribution từ phiên Icefall v1 "
+                  "và năm wheel được kiểm SHA256. Khóa yêu cầu ảnh Kaggle có Python, CUDA, PyTorch "
+                  "và các gói dựng sẵn đúng phiên bản đã ghi."]
+    export_lock = optional_json(paths["icefall_export_lock"])
+    if export_lock and any(run.get("result_manifest_sha256") == export_lock["result_manifest_sha256"] for run in kaggle_runs):
+        lines.append(f"Khóa huấn luyện và export FLEURS ghi {len(export_lock['packages'])} distribution "
+                     "và sáu wheel có SHA256, gồm ONNX Runtime 1.32.0.")
+    prepared = [run for run in kaggle_runs if run.get("experiment") == "V02" and run.get("runtime_lock")
+                and run.get("bundle", {}).get("members_manifest_sha256")]
+    if prepared:
+        run = prepared[-1]
+        lines += ["", f"Gói V02 `{run['run']}` đã chuẩn bị cục bộ với LR 0,0015, seed 0 và "
+                  f"{run['bundle']['train_rows']} câu. SHA256 manifest "
+                  f"`{run['bundle']['train_manifest_sha256']}`."]
     lines += ["", "## Cổng chưa đạt", ""]
     for label, why in [*((None, issue) for issue in data_issues), *issues.items()]:
         if "No such file" in why or "chưa có release" in why:
             why = "Thiếu artifact hoặc release đã đăng ký"
         lines.append(f"- {label + ' · ' if label else ''}{why}")
+    lines += ["- Probe bộ nhớ V03 cần các pool đã đăng ký và ba bước FP32 ở mức 200 giây/batch có câu từ 25 giây. "
+              "Recipe CLI Icefall ghim hiện loại câu train trên 20 giây. "
+              "Phép đo kỹ thuật FLEURS dùng trực tiếp bước huấn luyện.",
+              "", "## Việc cần người dùng", "",
+              "- Cung cấp văn bản quyền huấn luyện và chuyển lên Kaggle cho danh sách V02. "
+              "[Phạm vi 163 bản ghi](../data/work/vietnote/v02/rights-scope.csv).",
+              "- Xin hồ sơ nguồn và người nói từ đơn vị phát hành VietSpeech. VietPrism chờ tác giả phê duyệt. "
+              "[VietSpeech](https://huggingface.co/datasets/NhutP/VietSpeech).",
+              "- Phân công người nghe duyệt các phiếu và xác minh người nói. "
+              "[Hướng dẫn duyệt và hồ sơ quyền](../docs/VIETNOTE_KAGGLE.md#phiếu-nghe-và-quyền-nguồn)."]
     lines += ["", "## Phụ thuộc theo chiến lược", "",
               "| Nhánh | Chiến lược | Tiền đề |", "| --- | --- | --- |"]
     for name, item in read_yaml(REPO / research["strategies"]).items():
@@ -525,10 +691,9 @@ def report(config, research):
     elif "parity" in issues:
         lines.append("Cô lập sai khác INT8 trên subset V01 đã khóa bằng cách lượng tử hóa lại FP32 chính thức và FP32 "
                      "re-export với cùng phiên bản ONNX Runtime, rồi đối chiếu từng bộ phận encoder, decoder và joiner.")
-    elif not v02 and any(run.get("experiment") == "icefall" and run.get("state") == "completed"
-                         for run in kaggle_runs):
-        lines.append("Giữ 163 bản ghi V02 ở máy. Chỉ triển khai lượt LR 0,0015 trên Kaggle sau khi xác minh "
-                     "quyền huấn luyện và chuyển dữ liệu, cùng gói môi trường cho V02.")
+    elif not v02 and icefall_completed:
+        lines.append("Sau khi có quyền cho đúng 163 bản ghi, tái lập arm đối chứng LR 0,0045 trên Kaggle T4 "
+                     "với seed 0, cùng môi trường và 489 bước. Giữ nguyên quy tắc chấm đã đăng ký.")
     elif not v02 and any(run.get("experiment") == "synthetic" and run.get("state") == "completed"
                          for run in kaggle_runs):
         lines.append("Giữ 163 bản ghi V02 ở máy cho đến khi xác minh quyền huấn luyện và chuyển lên Kaggle. "

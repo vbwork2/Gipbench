@@ -9,6 +9,7 @@ strategies: configs/research/vietnote_strategies.yaml
 scorer_files: [core/textnorm.py, core/normprofiles.py, core/align.py, core/scoring.py, core/evalstats.py, bench/evaluate.py]
 evidence:
   quick_baseline: results/vietnote/v00/quick_t4
+  full_baseline: results/vietnote/v00/full_t4
   strict_offline: data/work/vietnote/torch_checks/offline_parity.json
   single_step: data/work/vietnote/torch_checks/gpu_smoke_report.json
   medical_candidates: data/work/vietnote/dev/medical_candidates.jsonl.report.json
@@ -35,6 +36,13 @@ evidence:
   diagnostic_dev: data/work/vietnote/dev/interim_cs_quick.lock.json
   source_review_historical: data/work/vietnote/source_review/result.json
   source_review: data/work/vietnote/source_review_post_audit/result.json
+  source_cards: data/work/vietnote/source_review_execution/result.json
+  gated_sources: data/work/vietnote/pilots/gated_metadata
+  execution_review: data/work/vietnote/execution_review/result.json
+  datahive_acquired: data/work/vietnote/pilots/datahive_vi/acquisition.json
+  icefall_runtime_lock: data/work/vietnote/kaggle/icefall-t4-lock/lock.json
+  icefall_export_lock: data/work/vietnote/kaggle/icefall-fleurs-t4-lock/lock.json
+  icefall_pilot_evaluation: results/vietnote/v00/icefall_fleurs_pilot/result.json
   conventional_results: results/vietnote/v03/result.json
 experiments:
   V02P:

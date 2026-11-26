@@ -1,4 +1,4 @@
-"""Run the published VietNote fine-tuning CLI on generated tones in the Kaggle notebook."""
+"""Bootstrap the pinned VietNote Icefall recipe in a Kaggle notebook."""
 
 import math
 import tarfile
@@ -107,7 +107,26 @@ def run_icefall_probe(config, environment, out):
         initial = root / "pretrained.pt"
         fetch_checked(f"{public_model}/pytorch/pretrained.pt", initial,
                       "90f840fd8d4939bd394be6968fe2965100192411e6ffb97959da332d0d7cd9d3")
-        make_probe_cuts(root)
+        if config["experiment"] == "icefall-memory":
+            run_fleurs_memory(config, root, out, recipe, icefall, initial)
+            return
+        pilot = None
+        if config["experiment"] == "icefall-pilot":
+            expected = config["pilot_payload_sha256"]
+            expanded = [file for file in Path("/kaggle/input").rglob("bundle/pilot.json") if digest(file) == expected]
+            if len(expanded) == 1:
+                payload = expanded[0]
+            else:
+                inputs = root / "inputs"
+                extract_inputs(config, inputs)
+                payload = inputs / "pilot.json"
+            if digest(payload) != expected:
+                raise ValueError("The mounted FLEURS payload differs from the prepared bundle")
+            pilot = json.loads(payload.read_text(encoding="utf-8"))
+            pilot["pilot_payload_sha256"] = expected
+            materialize_pilot(pilot, root, out)
+        else:
+            make_probe_cuts(root)
         args = [sys.executable, str(recipe / "finetune.py"), "--world-size", "1", "--seed", "0",
                 "--exp-dir", str(root / "exp"), "--manifest-dir", str(root), "--bpe-model", str(root / "bpe.model"),
                 "--num-epochs", "1", "--do-finetune", "1", "--finetune-ckpt", str(initial),
@@ -118,6 +137,9 @@ def run_icefall_probe(config, environment, out):
                 "--max-duration", "8", "--on-the-fly-feats", "1", "--enable-musan", "0", "--tensorboard", "0",
                 "--base-lr", "0.0015", "--lr-batches", "100000", "--lr-epochs", "100"]
         env = dict(os.environ, PYTHONPATH=str(icefall), OMP_NUM_THREADS="1", LHOTSE_AUDIO_BACKEND="LibsndfileBackend")
+        if pilot:
+            run_pilot(pilot, root, out, recipe, icefall, args, env, public_model)
+            return
         log = out / "train.log"
         with log.open("w") as handle:
             proc = subprocess.run(args, cwd=root, env=env, stdout=handle, stderr=subprocess.STDOUT)

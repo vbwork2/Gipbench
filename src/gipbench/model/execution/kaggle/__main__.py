@@ -17,10 +17,16 @@ from pathlib import Path
 from gipbench.core.fileio import sha256_file
 from gipbench.core.manifest import manifest_sha256, read_jsonl
 from gipbench.core.paths import REPO, path
-from gipbench.model.execution.kaggle.bundle import TINY_SHA256, check_approval, portable_name, prepare_v02
+from gipbench.model.execution.kaggle.bundle import (
+    FLEURS_RELEASE, FLEURS_SHA256, TINY_SHA256, check_approval, fleurs_memory_inputs, fleurs_pilot,
+    portable_name, prepare_v02, write_zip,
+)
 
-EXPERIMENTS = ("smoke", "synthetic", "icefall", "V02")
-TERMINAL = {"remote_complete", "failed", "interrupted", "completed"}
+EXPERIMENTS = ("smoke", "synthetic", "icefall", "icefall-pilot", "icefall-memory", "V02")
+FLEURS_EXPERIMENTS = {"icefall-pilot", "icefall-memory"}
+PILOT_EXPORT_REQUIREMENT = ("onnxruntime==1.32.0 "
+                            "--hash=sha256:02ea12a28c069ea8510093d95a7f6ff8126bfd9fc5c0d3381c03b80fb2b424ba")
+TERMINAL = {"remote_complete", "failed", "interrupted", "completed", "rejected"}
 SLUG = re.compile(r"[a-z0-9][a-z0-9-]{0,49}")
 CONFIGURE = "Create an API token at https://www.kaggle.com/settings/api and save it to ~/.kaggle/access_token."
 
@@ -129,7 +135,8 @@ def plan(experiment, approval=None, runtime=None):
 
 def notebook_metadata(state):
     dataset = state.get("dataset")
-    if dataset and state.get("dataset_version"):
+    if (dataset and state.get("dataset_version") and state["experiment"] not in FLEURS_EXPERIMENTS
+            and not state.get("bundle", {}).get("members_manifest_sha256")):
         dataset = f"{dataset}/{state['dataset_version']}"
     return {
         "id": state["kernel"], "title": state["slug"], "code_file": "job.ipynb",
@@ -149,13 +156,26 @@ def prepare(args):
     template = Path(__file__).with_name("runtime.py")
     identity = [args.experiment, args.owner, commit, sha256_file(template), args.internet]
     extra = ""
-    if args.experiment == "icefall":
+    pilot = None
+    memory = None
+    if args.experiment == "icefall" or args.experiment in FLEURS_EXPERIMENTS:
         if not args.internet:
-            raise ValueError("The synthetic Icefall probe downloads pinned public dependencies")
+            raise ValueError("The Icefall probe downloads pinned public dependencies")
         helper = template.with_name("icefall_probe.py")
         requirements = helper.with_name("icefall-t4-requirements.txt")
         identity.extend([sha256_file(helper), sha256_file(requirements)])
         extra = helper.read_text(encoding="utf-8")
+        if args.experiment == "icefall-pilot":
+            runner = template.with_name("icefall_pilot.py")
+            pilot = fleurs_pilot()
+            identity.extend([sha256_file(runner), hashlib.sha256(json.dumps(pilot).encode()).hexdigest(),
+                             PILOT_EXPORT_REQUIREMENT])
+            extra += "\n" + runner.read_text(encoding="utf-8")
+        elif args.experiment == "icefall-memory":
+            runner = template.with_name("icefall_memory.py")
+            memory = fleurs_memory_inputs(commit)
+            identity.extend([sha256_file(runner), memory[1]["members_manifest_sha256"]])
+            extra += "\n" + runner.read_text(encoding="utf-8")
     if args.runtime:
         identity.extend(sha256_file(args.runtime / name) for name in ("lock.json", "requirements.txt"))
         identity.extend((file.name, sha256_file(file)) for file in sorted((args.runtime / "wheels").glob("*.whl")))
@@ -173,21 +193,47 @@ def prepare(args):
             "run": slug, "slug": slug, "experiment": args.experiment, "commit": commit,
             "kernel": f"{args.owner}/{slug}", "internet": args.internet, "state": "prepared",
         }
-        if args.experiment == "V02":
+        if args.experiment == "V02" or args.experiment in FLEURS_EXPERIMENTS:
             dataset_dir = run / "dataset"
             dataset_dir.mkdir(exist_ok=True)
-            bundle = prepare_v02(dataset_dir, commit, args.runtime)
-            dataset_slug = f"gipbench-v02-{bundle['sha256'][:20]}"
+            if pilot:
+                archive = dataset_dir / "bundle.zip"
+                pilot_payload = json.dumps(pilot).encode()
+                write_zip(archive, {"pilot.json": pilot_payload})
+                bundle = {"sha256": sha256_file(archive), "bytes": archive.stat().st_size,
+                          "release_sha256": pilot["release_sha256"], "license": pilot["license"]}
+                state["pilot_payload_sha256"] = hashlib.sha256(pilot_payload).hexdigest()
+                license_name = "CC-BY-4.0"
+            elif memory:
+                archive = dataset_dir / "bundle.zip"
+                files, evidence = memory
+                write_zip(archive, files)
+                bundle = {**evidence, "sha256": sha256_file(archive), "bytes": archive.stat().st_size}
+                license_name = "CC-BY-4.0"
+            else:
+                bundle = prepare_v02(dataset_dir, commit, args.runtime)
+                license_name = "other"
+            dataset_slug = f"gipbench-{args.experiment.lower()}-{bundle['sha256'][:20]}"
             state.update(bundle=bundle, dataset=f"{args.owner}/{dataset_slug}")
-            write_json(dataset_dir / "dataset-metadata.json", {
-                "id": state["dataset"], "title": dataset_slug, "licenses": [{"name": "other"}],
-            })
+            dataset_metadata = {
+                "id": state["dataset"], "title": dataset_slug, "licenses": [{"name": license_name}],
+            }
+            if args.experiment in FLEURS_EXPERIMENTS:
+                dataset_metadata["description"] = (
+                    "Google FLEURS vi_vn train (CC BY 4.0), selected from GipBench's audited v2 release. "
+                    "https://huggingface.co/datasets/google/fleurs"
+                    + (" Audio converted to 16-bit FLAC." if pilot else "")
+                )
+            write_json(dataset_dir / "dataset-metadata.json", dataset_metadata)
             write_json(dataset_dir / "bundle-identity.json", bundle)
         notebook = run / "notebook"
         write_json(notebook / "kernel-metadata.json", notebook_metadata(state))
-        config = {k: state[k] for k in ("run", "experiment", "commit", "internet", "bundle") if k in state}
-        if args.experiment == "icefall":
+        config = {k: state[k] for k in ("run", "experiment", "commit", "internet", "bundle", "pilot_payload_sha256")
+                  if k in state}
+        if args.experiment == "icefall" or args.experiment in FLEURS_EXPERIMENTS:
             config["requirements"] = requirements.read_text(encoding="utf-8")
+            if pilot:
+                config["requirements"] = config["requirements"].rstrip() + "\n" + PILOT_EXPORT_REQUIREMENT + "\n"
         script = template.read_text(encoding="utf-8") + "\n" + extra + f"\nmain(json.loads({json.dumps(json.dumps(config))}))\n"
         write_json(notebook / "job.ipynb", {
             "nbformat": 4, "nbformat_minor": 5, "metadata": {"kernelspec": {
@@ -230,8 +276,14 @@ def ensure_dataset(run, state):
     try:
         status = dataset_status(dataset)
     except KaggleError as exc:
-        if not re.search(r"\b404\b", str(exc)) or state.get("dataset_create_attempted"):
+        if state.get("dataset_create_attempted"):
             raise
+        if not re.search(r"\b404\b", str(exc)):
+            if not re.search(r"\b403\b", str(exc)):
+                raise
+            owned = official("datasets", "list", "--mine", "--search", dataset.split("/", 1)[1], "--csv")
+            if dataset.lower() in owned.lower():
+                raise
         state["dataset_create_attempted"] = True
         write_json(run / "run.json", state)
         official("datasets", "create", "-p", str(run / "dataset"), "--keep-tabular", timeout=900)
@@ -266,9 +318,12 @@ def submit(run, state, args):
             or read_json(notebook / "kernel-metadata.json") != notebook_metadata(state)):
         raise ValueError("Prepared notebook or private metadata was modified")
     if state.get("bundle"):
-        state["transfer_approval_sha256"] = check_approval(args.approval, state["bundle"])
-        if not state["runtime_lock"]:
-            raise ValueError("Prepare V02 with the approved dependency lock after the GPU smoke")
+        if state["experiment"] == "V02":
+            state["transfer_approval_sha256"] = check_approval(args.approval, state["bundle"])
+            if not state["runtime_lock"]:
+                raise ValueError("Prepare V02 with the approved dependency lock after the GPU smoke")
+        elif state["experiment"] not in FLEURS_EXPERIMENTS or state["bundle"].get("license") != "CC-BY-4.0":
+            raise ValueError("No transfer policy for this dataset bundle")
         if sha256_file(run / "dataset/bundle.zip") != state["bundle"]["sha256"]:
             raise ValueError("Prepared bundle was modified")
         state["dataset_version"] = ensure_dataset(run, state)
@@ -286,7 +341,7 @@ def submit(run, state, args):
 
 
 def status(run, state):
-    if state["state"] in {"prepared", "completed"}:
+    if state["state"] in {"prepared", "completed", "rejected"}:
         return state
     # A fresh, content-derived slug is pushed at most once from this registry.
     version = state.get("version", 1)
@@ -338,6 +393,35 @@ def verify_result(result, state):
                 or probe["checkpoint_sha256"] != metadata["files"]["epoch-1.pt"]
                 or not math.isfinite(probe["train_loss"])):
             raise ValueError("Invalid one-step or checkpoint evidence")
+    if state["experiment"] == "icefall-pilot":
+        files = metadata["files"]
+        required = {"pilot.json", "epoch-2.pt", "runtime-packages.json", "requirements.txt",
+                    "train.log", "resume.log", "uninterrupted.log", "export.log", "train.jsonl", "valid.jsonl",
+                    *(f"{part}.onnx" for part in ("encoder", "decoder", "joiner")), "tokens.txt"}
+        if environment["gpu"] != "Tesla T4" or not required <= files.keys():
+            raise ValueError("Incomplete FLEURS engineering pilot artifacts")
+        pilot = read_json(result / "pilot.json")
+        if (pilot["release"] != "pool/vietnote_fleurs_vi@v2"
+                or pilot["release_sha256"] != state["bundle"]["release_sha256"] or pilot["train_cuts"] != 4
+                or pilot["valid_cuts"] != 32 or pilot["checkpoint_sha256"] != files["epoch-2.pt"]
+                or pilot["pilot_payload_sha256"] != state["pilot_payload_sha256"]
+                or pilot["steps_resumed"] <= pilot["steps_before_resume"]
+                or not all(math.isfinite(value) for value in pilot["validation_losses"])):
+            raise ValueError("Invalid FLEURS engineering pilot evidence")
+    if state["experiment"] == "icefall-memory":
+        required = {"engineering-memory.json", "batches.json", "train.jsonl", "runtime-packages.json", "requirements.txt"}
+        if environment["gpu"] != "Tesla T4" or not required <= metadata["files"].keys():
+            raise ValueError("Incomplete FP32 memory probe artifacts")
+        probe = read_json(result / "engineering-memory.json")
+        if (probe["release"] != FLEURS_RELEASE or probe["release_sha256"] != FLEURS_SHA256
+                or probe["scope"] != "engineering_only" or probe["v03_gate_passed"] is not False
+                or probe["limit"] != 200 or probe["precision"] != "fp32" or probe["longest_clip"] < 25
+                or probe["planned_steps"] != state["bundle"]["planned_steps"]
+                or not 0 <= probe["peak_allocated_bytes"] <= probe["peak_reserved_bytes"] <= probe["gpu_total_bytes"]
+                or (probe["passed"] and len(probe["steps"]) != probe["planned_steps"])
+                or not all(math.isfinite(step["loss"]) and math.isfinite(step["grad_l2"]) and step["grad_l2"] > 0
+                           and 160 <= step["padded_seconds"] <= 200 for step in probe["steps"])):
+            raise ValueError("Invalid FP32 memory probe evidence")
     return metadata
 
 

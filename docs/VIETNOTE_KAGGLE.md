@@ -55,6 +55,29 @@ Exporter dùng runtime huấn luyện hoặc export có PyTorch, k2, ONNX và ON
 
 Các phiếu nghe mù của ZeroTTS và VieNeu-TTS nằm cạnh `asr_metrics.json` trong `data/work/vietnote/tts`. Xác minh phát âm tiếng Anh, đúng span, độ tự nhiên và độ khớp transcript trước khi phát hành dữ liệu.
 
+## Phiếu nghe và quyền nguồn
+
+Mở [trình duyệt phiếu nghe](../src/gipbench/dataset/label/review_bench.html), chọn CSV và thư mục audio cạnh phiếu. Nghe trước khi đối chiếu transcript. Ghi `ok`, `fix` hoặc `drop`, phiên âm sửa với thẻ `<en>` khi cần và ghi người duyệt. Ghi danh tính người nói đã xác minh, domain, loại giọng và hồ sơ quyền riêng theo nhóm bản ghi.
+
+| Lô | Việc cần duyệt |
+| --- | --- |
+| VietSuperSpeech | Bắt đầu với 192 câu có domain cụ thể trong phiếu 1.076 câu. Ưu tiên tech, business và hội thoại đời thường. Cột `v02_recording` đánh dấu 162 câu trong phạm vi V02 có mặt tại hàng đợi này. Dùng danh sách quyền 163 câu để xác định phạm vi V02. [Phiếu VSS](../data/work/vietnote/execution_review/vss/listen.csv), [phạm vi quyền V02](../data/work/vietnote/v02/rights-scope.csv) |
+| LSVSC | Kiểm 119 câu hiện mang nhãn giọng đọc. Xác minh riêng đoạn phỏng vấn hoặc hội thoại và bản quyền đơn vị thu. [Phiếu LSVSC](../data/work/vietnote/execution_review/lsvsc/listen.csv) |
+| code_switch_OM | Kiểm quyền theo từng video và sửa transcript đối chiếu audio. [Phiếu OM](../data/work/vietnote/execution_review/code_switch_om/listen.csv) |
+| ViMedCSS | Duyệt 72 câu đã giữ ngoài pool hiện tại. Ghi người nói và video trong hồ sơ kiểm. [Phiếu y khoa](../data/work/vietnote/execution_review/medical/listen.csv) |
+| DataHive | Phiên âm 48 đoạn trích từ tám cuộc gọi. Ưu tiên 18 đoạn của ba cuộc dành cho chẩn đoán. Xác minh tiếng Anh thực sự xuất hiện và phát hiện người nói trùng giữa các cuộc trước khi chia tập. [Phiếu DataHive](../data/work/vietnote/execution_review/datahive_vi/listen.csv) |
+| TTS | Nghe 24 mẫu theo thứ tự xáo trộn. Điền các cột phát âm tiếng Anh, span, độ tự nhiên, độ khớp transcript và quyết định trên phiếu. [Phiếu nghe mù](../data/work/vietnote/execution_review/tts/listen.csv) |
+
+Tài khoản hiện có quyền đọc VietSpeech và viVoice. VietSpeech cần hồ sơ gắn bản ghi với nguồn thu và người nói. viVoice yêu cầu dùng cho nghiên cứu theo CC BY-NC-SA 4.0 và cần kiểm quyền theo kênh. VietSuperSpeech, code_switch_OM, LSVSC và ViMedCSS cần xác minh quyền bản ghi theo nguồn và phạm vi chuyển cloud trước khi đóng gói. L2-ARCTIC cần quyền truy cập theo bản gốc hoặc mirror. Common Voice EN cần chọn release và kiểm điều khoản nguồn phân phối. CanVEC và VietPrism chờ cấp quyền từ tác giả. ZeroSpeech cần quyền văn bản nguồn Blossoms cùng kết quả nghe duyệt. [Registry nguồn](../configs/dataset/vietnote_sources.yaml)
+
+Khóa T4 dựa trên phiên Icefall thành công gồm danh sách 941 distribution và năm wheel có SHA256. Gói V02 được chuẩn bị offline và kiểm digest cả archive lẫn các member khi Kaggle tự giải nén. Phiên V02 còn cần văn bản quyền bao phủ đúng manifest đăng ký. [Khóa runtime](../data/work/vietnote/kaggle/icefall-t4-lock/lock.json)
+
+Khóa huấn luyện và export của pilot FLEURS ghi 942 distribution cùng sáu wheel, gồm ONNX Runtime 1.32.0. [Khóa export](../data/work/vietnote/kaggle/icefall-fleurs-t4-lock/lock.json)
+
+### Probe bộ nhớ FP32 với FLEURS
+
+`icefall-memory` dùng `pool/vietnote_fleurs_vi@v2` để đo ba bước cập nhật trên T4 với giới hạn 200 giây sau padding. Mỗi batch có ít nhất một câu từ 25 giây. Probe gọi trực tiếp bước tính loss và cập nhật của recipe đã ghim để đo câu dài. Kết quả nằm trong `output/engineering-memory.json` của lượt Kaggle đã đồng bộ. Đây là kiểm tra kỹ thuật và cổng V03 vẫn cần bằng chứng trên dữ liệu đăng ký.
+
 ## Vòng đời
 
 ### Điều khiển Kaggle
@@ -105,7 +128,7 @@ flowchart LR
   V --> R["Khôi phục nếu recipe hỗ trợ"]
 ```
 
-Checkpoint V02 hiện lưu trọng số để chấm lại hoặc export. Checkpoint pilot Icefall cục bộ đọc được trên Windows và có optimizer, scheduler, GradScaler, sampler và bộ đếm. Không tìm thấy trạng thái RNG trong checkpoint đó. Kiểm chứng phục hồi đầy đủ trên Kaggle còn mở.
+Checkpoint V02 hiện lưu trọng số để chấm lại hoặc export. Pilot FLEURS trên Kaggle nạp lại optimizer, scheduler và GradScaler từ checkpoint epoch 1, rồi hoàn tất epoch 2 ở bước thứ 8. Cuối epoch 2, scheduler và GradScaler khớp lượt liên tục. Trọng số và optimizer còn lệch. Checkpoint lưu sampler và thiếu trạng thái RNG. [Kết quả resume](../data/work/vietnote/kaggle/gipbench-icefall-pilot-94a84b5d2b072dcb/output/pilot.json)
 
 ### Đồng bộ
 

@@ -56,8 +56,26 @@ def gpu_environment():
 
 def extract_inputs(config, root):
     expected = config["bundle"]
-    matches = [file for file in Path("/kaggle/input").rglob("bundle.zip") if file.stat().st_size == expected["bytes"]]
+    mounted = Path("/kaggle/input")
+    matches = [file for file in mounted.rglob("bundle.zip") if file.stat().st_size == expected["bytes"]]
     verified = [file for file in matches if digest(file) == expected["sha256"]]
+    if not verified and expected.get("members_manifest_sha256"):
+        manifests = [file for file in mounted.rglob("bundle/bundle-members.json")
+                     if digest(file) == expected["members_manifest_sha256"]]
+        if len(manifests) == 1:
+            manifest = manifests[0]
+            members = json.loads(manifest.read_text(encoding="utf-8"))
+            root.mkdir()
+            for name, checksum in members.items():
+                source = manifest.parent / name
+                target = root / name
+                if (not target.resolve().is_relative_to(root) or "\\" in name
+                        or not source.resolve().is_relative_to(manifest.parent.resolve())
+                        or not source.is_file() or digest(source) != checksum):
+                    raise ValueError(f"Missing or modified mounted bundle member: {name}")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+            return
     if len(verified) != 1:
         raise ValueError("The pinned dataset archive was unavailable or ambiguous")
     root.mkdir()
@@ -86,6 +104,12 @@ def bootstrap(root, environment, allow_internet):
         raise RuntimeError("Offline execution requires the approved wheelhouse")
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "--require-hashes", "--only-binary", ":all:",
                     *source, "-r", str(root / "runtime/requirements.txt")], check=True)
+    if "packages" in expected:
+        installed = {dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()
+                     if dist.metadata["Name"]}
+        changed = sorted(name for name, version in expected["packages"].items() if installed.get(name) != version)
+        if changed:
+            raise RuntimeError(f"Kaggle distributions differ from the verified Icefall runtime: {changed}")
     import k2
     import lhotse
     import sentencepiece
@@ -191,7 +215,7 @@ def main(config):
     write_json(out / "environment.json", environment)
     if config["experiment"] == "synthetic":
         synthetic_probe(environment, out)
-    if config["experiment"] == "icefall":
+    if config["experiment"] in {"icefall", "icefall-pilot", "icefall-memory"}:
         run_icefall_probe(config, environment, out)
     if config["experiment"] == "V02":
         with tempfile.TemporaryDirectory(prefix="vietnote-") as temporary:
