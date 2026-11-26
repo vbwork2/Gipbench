@@ -1,0 +1,183 @@
+# VietNote provenance-tiered data curation and usage policy
+# Distinguishes 5 label provenance classes and applies risk-based QC,
+# cloud-transfer eligibility, and selective human-review rules.
+
+version: 1
+
+provenance_classes:
+  human_labeled:
+    description: Human-transcribed or human-reviewed evaluation/dev and gold subsets.
+    qc_policy: Reserve intensive human verification here; protect from train contamination.
+    datasets:
+      - ref: dev/dev_v2_vi@1
+        hours: 9.060
+        rows: 1691
+        license: CC-BY-NC-ND-4.0
+        cloud_transfer_allowed: false
+        usage: local_eval_only
+      - ref: dev/dev_interim_cs@1
+        hours: 1.183
+        rows: 323
+        license: mixed_vss_reviewed
+        cloud_transfer_allowed: false
+        usage: local_diagnostic_eval_only
+      - ref: dev/dev_interim_vi@1
+        hours: 0.759
+        rows: 213
+        license: mixed_vss_reviewed
+        cloud_transfer_allowed: false
+        usage: local_diagnostic_eval_only
+      - ref: v02/tiny_163
+        hours: 0.601
+        rows: 163
+        license: unresolved_vss_recording_rights
+        cloud_transfer_allowed: false
+        usage: local_v02_diagnostic_only
+
+  existing_supervised:
+    description: Established datasets with existing transcripts; reuse annotations with automated validation and representative spot audits.
+    qc_policy: >
+      Do NOT require full manual relabeling. Run acoustic checks, BPE OOV checks,
+      contamination/reserved-term filtering, and 2-family ASR discrepancy audits.
+      Unvoted crowd prompts (cv_other) receive 100% automated teacher screening.
+    datasets:
+      - ref: pool/vietnote_fleurs_vi@v2
+        hours: 8.918
+        rows: 2951
+        license: CC-BY-4.0
+        cloud_transfer_allowed: true
+        exploratory_eligible: true
+        confirmatory_v03_eligible: false
+        notes: Read Vietnamese speech; verified archive, acoustic + leak checked.
+      - ref: pool/cv_other@v3
+        hours: 1.035
+        rows: 859
+        license: CC0-1.0
+        cloud_transfer_allowed: true
+        exploratory_eligible: true
+        confirmatory_v03_eligible: false
+        notes: Unvoted CV27 prompts; requires 100% automated acoustic + 2-teacher disagreement screening.
+      - ref: pool/vietnote_librispeech_en@v2
+        hours: 2.595
+        rows: 713
+        license: CC-BY-4.0
+        cloud_transfer_allowed: true
+        exploratory_eligible: true
+        confirmatory_v03_eligible: false
+        notes: Native English audiobook replay/control; verified archive, acoustic + leak checked.
+      - ref: pool/vivos_train@v3
+        hours: 13.956
+        rows: 10555
+        license: CC-BY-NC-SA-4.0
+        cloud_transfer_allowed: false
+        exploratory_eligible: local_only_noncommercial
+        confirmatory_v03_eligible: false
+        notes: First-party CC-BY-NC-SA-4.0 read VI; short clips (P50=4.03s), use low weight locally. confusable_train@v3 (0.865h) is 100% audio duplicate.
+      - ref: pool/vietnote_vimedcss_cs@v1
+        hours: 5.952
+        rows: 3035
+        license: CC-BY-4.0_card_youtube_caveat
+        cloud_transfer_allowed: false
+        exploratory_eligible: local_only_pending_recording_rights
+        confirmatory_v03_eligible: false
+        notes: Derived from vimedcss_train@v4 (7.529h). Real medical CS; local research only until YouTube recording rights/cloud transfer documented.
+      - ref: pilot/vietspeech
+        hours: 0.267
+        rows: 250
+        license: Apache-2.0_card_unverified_source
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: Missing speaker IDs and source recording provenance.
+      - ref: pilot/vivoice
+        hours: 0.224
+        rows: 193
+        license: CC-BY-NC-SA-4.0
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: YouTube channels include audiobooks; requires per-channel rights review.
+      - ref: pilot/lsvsc
+        hours: 0.204
+        rows: 119
+        license: CC-BY-4.0_mirror_unverified
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: Requires original recording rights and English-term spelling check.
+      - ref: pilot/code_switch_om
+        hours: 2.388
+        rows: 1000
+        license: unresolved
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: Quarantined pending video-level rights and transcript verification.
+
+  pseudo_labeled:
+    description: Machine-generated or teacher-curated transcripts.
+    qc_policy: >
+      Never treat teacher consensus as ground truth. Require multi-teacher agreement,
+      reserved-term & leak filtering, and flag uncertain/English-span items for selective human audit.
+    datasets:
+      - ref: pool/vss_cs@v5
+        hours: 4.010
+        rows: 1087
+        license: MIT_card_unresolved_recording_rights
+        cloud_transfer_allowed: false
+        exploratory_eligible: local_only_pending_recording_rights
+        confirmatory_v03_eligible: false
+        notes: Real CS from VietSuperSpeech; reuse cached Qwen3-ASR + Faster-Whisper hyps for audit.
+      - ref: pool/distill@v6
+        hours: 5.018
+        rows: 1394
+        license: MIT_card_unresolved_recording_rights
+        cloud_transfer_allowed: false
+        exploratory_eligible: local_only_pending_recording_rights
+        confirmatory_v03_eligible: false
+        notes: GipFormer-1.5 distilled Vietnamese VSS; local only pending recording rights.
+
+  unlabeled_conversational:
+    description: Raw conversational audio without transcripts; genuinely requires new automated transcription.
+    qc_policy: >
+      Split stereo caller/callee channels, run energy/RMS VAD segmentation, transcribe with >=2 distinct
+      ASR families, keep high-agreement segments for exploratory pseudo-labeled training, and route
+      borderline or English-span segments to selective human review. Keep held-out dev calls strictly separate.
+    datasets:
+      - ref: pilot/datahive_vi_train
+        raw_hours: 2.025
+        calls: [vi_000001, vi_000003, vi_000005, vi_000006, vi_000007]
+        license: CC-BY-4.0
+        cloud_transfer_allowed: true
+        exploratory_eligible: true_after_automated_curation
+        confirmatory_v03_eligible: false
+        notes: Explicit AI-training consent (DataHive CC-BY-4.0). 5 train calls only; stereo caller/callee channels.
+      - ref: pilot/datahive_vi_dev_holdout
+        raw_hours: 1.428
+        calls: [vi_000002, vi_000004, vi_000008]
+        license: CC-BY-4.0
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: Strictly reserved for independent conversational dev; NEVER use in training.
+
+  synthetic_speech:
+    description: External or custom TTS audio.
+    qc_policy: Quarantined until source-text license and blind listening triage complete.
+    datasets:
+      - ref: pilot/zerospeech
+        hours: 0.732
+        rows: 235
+        license: CC-BY-NC-4.0
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: Pending BlossomsAI source-text license clearance.
+      - ref: pilot/tts_local
+        hours: 0.015
+        rows: 24
+        license: internal_pilot
+        cloud_transfer_allowed: false
+        exploratory_eligible: false
+        confirmatory_v03_eligible: false
+        notes: ZeroTTS (12) + VieNeu-TTS (12); 0/24 blind-reviewed.

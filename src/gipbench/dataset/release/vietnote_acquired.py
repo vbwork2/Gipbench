@@ -20,7 +20,12 @@ from gipbench.dataset.release import clean_pool as clean
 from gipbench.dataset.release.acoustic_audit import audit_acoustic, DEFAULT_CACHE
 from gipbench.dataset.report.vietnote import CORPUS_POOLS
 
-POOLS = {"fleurs_vi": "vietnote_fleurs_vi", "librispeech": "vietnote_librispeech_en"}
+POOLS = {
+    "fleurs_vi": "vietnote_fleurs_vi",
+    "librispeech": "vietnote_librispeech_en",
+    "vietspeech": "vietnote_vietspeech_quarantine",
+    "vivoice": "vietnote_vivoice_quarantine",
+}
 
 
 def unique_candidates(rows, train):

@@ -28,7 +28,7 @@ def eligible(row, spec):
     return all(row.get(key) in values for key, values in spec.get("filters", {}).items())
 
 
-def make_row(key, spec, row, rg, index, out, max_seconds, seen):
+def make_row(key, spec, row, rg, index, out, max_seconds, seen, disk_reserve=3 * 2**30):
     import numpy as np
     import soundfile as sf
 
@@ -60,7 +60,7 @@ def make_row(key, spec, row, rg, index, out, max_seconds, seen):
     upstream_id = get("id") or Path(audio_name).name or f"{rg}:{index}"
     uid = hashlib.sha256(f"{key}\0{spec['file']}\0{upstream_id}\0{sha}".encode()).hexdigest()[:20]
     audio_out = out / "audio" / f"vn_{key}_{uid}"
-    if shutil.disk_usage(out).free < len(data) + 3 * 2**30:
+    if shutil.disk_usage(out).free < len(data) + disk_reserve:
         raise OSError(f"Insufficient disk space to materialize {key}")
     p, derivation, duration = write_audio(data, Path(audio_name).suffix or spec.get("ext", ".wav"), audio_out)
     seen.add(sha)
@@ -164,6 +164,7 @@ def acquire(key, spec, out, args):
     seconds = sum(row["duration"] for row in rows)
     tsv = None
     metadata_bytes = 0
+    reserve = int(args.disk_reserve_gib * 2**30)
     if spec.get("tsv"):
         metadata = spec["tsv"]
         tsv = dl / Path(metadata["path"]).name
@@ -173,8 +174,8 @@ def acquire(key, spec, out, args):
         else:
             if metadata_bytes >= budget:
                 raise ByteBudgetExceeded("The TSV exceeds the download budget")
-            download_file(f"{base}/{metadata['path']}", tsv, metadata, 3 * 2**30)
-    with (ParquetRanges(f"{base}/{spec['file']}", spec["bytes"], dl, budget - metadata_bytes, 3 * 2**30) as ranges,
+            download_file(f"{base}/{metadata['path']}", tsv, metadata, reserve)
+    with (ParquetRanges(f"{base}/{spec['file']}", spec["bytes"], dl, budget - metadata_bytes, reserve) as ranges,
           manifest.open("a", encoding="utf-8") as journal):
         stop = "shard_exhausted"
         try:
@@ -184,7 +185,7 @@ def acquire(key, spec, out, args):
                 if current is None:
                     break
                 rg, i, raw = current
-                row, reject = make_row(key, spec, raw, rg, i, out, args.hours * 3600 - seconds, seen)
+                row, reject = make_row(key, spec, raw, rg, i, out, args.hours * 3600 - seconds, seen, reserve)
                 if reject:
                     drops[reject] += 1
                 else:
@@ -215,7 +216,7 @@ def acquire(key, spec, out, args):
                   recorded_download_bytes=transferred + prior.get(
                       "recorded_download_bytes", prior.get("new_download_bytes", prior.get("new_range_bytes", 0))),
                   sampling="archive_prefix" if tsv else "seeded_row_groups")
-    if args.cache_only and spec["status"] != "pilot_eligible":
+    if spec["status"] != "pilot_eligible":
         report["human_reviewed_hours"] = write_review_queue(out / "quarantine-review.csv", read_jsonl(manifest))
     pending = previous.with_suffix(".tmp")
     pending.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -240,6 +241,10 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--discover", action="store_true", help="Verify the pinned train shard against Hugging Face metadata")
     parser.add_argument("--cache-only", action="store_true", help="Process cached bytes without downloading recordings")
+    parser.add_argument("--quarantine-pilot", action="store_true",
+                        help="Allow selective pilot acquisition for authenticated quarantine sources")
+    parser.add_argument("--disk-reserve-gib", type=float, default=1.5,
+                        help="Minimum free disk space in GiB to keep on the target volume")
     parser.add_argument("--hours", type=float, default=0.5)
     parser.add_argument("--byte-budget-mib", type=int, default=128)
     parser.add_argument("--max-rows", type=int, default=160)
@@ -258,9 +263,10 @@ def main():
         spec = specs[key]
         try:
             approved = spec["status"] == "pilot_eligible"
+            quarantine_ok = args.quarantine_pilot and str(spec["status"]).startswith("pilot_quarantine_")
             if args.discover and approved:
                 print(json.dumps({"source": key, "revision": spec["revision"], **discover_shard(spec)}))
-            elif args.dry_run or args.discover or "file" not in spec or not (approved or args.cache_only):
+            elif args.dry_run or args.discover or "file" not in spec or not (approved or quarantine_ok or args.cache_only):
                 print(json.dumps({"source": key, "status": spec["status"], "shard": spec.get("file"),
                                   "shard_bytes": spec.get("bytes"), "max_download_mib": args.byte_budget_mib,
                                   "max_hours": args.hours, "license": spec.get("license")}, ensure_ascii=False))

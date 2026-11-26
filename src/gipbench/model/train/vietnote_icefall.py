@@ -54,8 +54,16 @@ def prepare_recipe(card, base, icefall, out):
 
 def train_cmd(config, card, base, recipe, cuts, output, seed, start_epoch, start_batch):
     t = config["train"]
+    policy = []
+    if "min_utt_duration" in t:
+        policy += ["--min-utt-duration", str(t["min_utt_duration"])]
+    if "max_utt_duration" in t:
+        policy += ["--max-utt-duration", str(t["max_utt_duration"])]
+    if t.get("save_rng_state"):
+        policy += ["--save-rng-state"]
     return [
         sys.executable, str(REPO / "scripts/diagnostics/vietnote_logged_cli.py"),
+        *policy,
         str(recipe / "finetune.py"), "--world-size", "1", "--seed", str(seed),
         "--num-epochs", str(t["num_epochs"]), "--start-epoch", str(start_epoch),
         "--start-batch", str(start_batch), "--use-fp16", str(int(t["fp16"])),

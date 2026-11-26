@@ -192,6 +192,148 @@ def constants_table(measured):
     return lines
 
 
+def curation_section(curation):
+    if not curation:
+        return []
+    cv, fl, lb = curation.get("cv_other", {}), curation.get("fleurs_vi", {}), curation.get("librispeech_en", {})
+    vv, vm, vs = curation.get("vivos_vi", {}), curation.get("vimedcss_cs", {}), curation.get("vss_cs", {})
+    dh = curation.get("datahive_vi", {})
+    lines = [
+        "", "## Tuyển lọc dữ liệu tự động theo nguồn gốc", "",
+        "Phân tách 5 nhóm nguồn gốc (`human_labeled`, `existing_supervised`, `pseudo_labeled`, "
+        "`unlabeled_conversational`, `synthetic_speech`) theo `configs/dataset/vietnote_curation_policy.yaml`. "
+        "Số giờ/dòng đã duyệt thủ công giữ nguyên `0` nếu chưa nghe kiểm; **không** xem đồng thuận giữa các "
+        "teacher ASR là nhãn chuẩn (ground truth).", "",
+        "| Tập dữ liệu | Nguồn gốc | Chuyển cloud | Tổng (câu / giờ) | Giữ lại (câu / giờ) | WER teacher | Rà soát người |",
+        "| --- | --- | --- | --- | --- | --- | ---: |",
+    ]
+    if fl:
+        lines.append(
+            f"| `pool/vietnote_fleurs_vi@v2` | existing_supervised | Có (CC-BY-4.0) | "
+            f"{fl['total_rows']:,} / {fl['total_hours']:.3f}h | spot {fl['sample_rows']} câu (0 fail, {fl['sample_outliers_min_wer_gt35']} ngoại lệ) | "
+            f"VN med {100 * fl['sample_median_vietnote_wer']:.2f}% | {fl['human_reviewed_rows']} |"
+        )
+    if cv:
+        lines.append(
+            f"| `pool/cv_other@v3` | existing_supervised | Có (CC0-1.0) | "
+            f"{cv['total_rows']:,} / {cv['total_hours']:.3f}h | {cv['curated_rows']:,} / {cv['curated_hours']:.3f}h (loại {cv['dropped_rows']}: {cv['leak_drops']} leak) | "
+            f"pair med {100 * cv['median_teacher_pair_wer']:.2f}% | {cv['human_reviewed_rows']} |"
+        )
+    if lb:
+        lines.append(
+            f"| `pool/vietnote_librispeech_en@v2` | existing_supervised | Có (CC-BY-4.0) | "
+            f"{lb['total_rows']:,} / {lb['total_hours']:.3f}h | spot {lb['sample_rows']} câu (0 fail, {lb['sample_outliers_min_wer_gt35']} ngoại lệ) | "
+            f"VN med {100 * lb['sample_median_vietnote_wer']:.2f}% | {lb['human_reviewed_rows']} |"
+        )
+    if vv:
+        lines.append(
+            f"| `pool/vivos_train@v3` | existing_supervised | Nội bộ (NC-SA) | "
+            f"{vv['total_rows']:,} / {vv['total_hours']:.3f}h | spot {vv['sample_rows']} câu (0 fail, {vv['sample_outliers_min_wer_gt35']} ngoại lệ) | "
+            f"pair med {100 * vv['sample_median_pair_wer']:.2f}% | {vv['human_reviewed_rows']} |"
+        )
+    if vm:
+        lines.append(
+            f"| `pool/vietnote_vimedcss_cs@v1` | existing_supervised | Chờ quyền YT | "
+            f"{vm['total_rows']:,} / {vm['total_hours']:.3f}h | spot {vm['sample_rows']} câu (0 fail, {vm['sample_outliers_min_wer_gt35']} ngoại lệ) | "
+            f"pair med {100 * vm['sample_median_pair_wer']:.2f}% | {vm['human_reviewed_rows']} |"
+        )
+    if vs:
+        lines.append(
+            f"| `pool/vss_cs@v5` | pseudo_labeled | Chờ quyền ghi/cloud | "
+            f"{vs['total_rows']:,} / {vs['total_hours']:.3f}h | Qwen={vs['qwen_cached_rows']}, FW={vs['fw_cached_rows']} ({vs['span_confirmed_min1_rows']} span ok) | "
+            f"pair med {100 * vs['median_qwen_fw_pair_wer']:.2f}% | {vs['human_reviewed_rows']} |"
+        )
+    if dh:
+        lines.append(
+            f"| `datahive_vi` (5 cuộc train) | unlabeled_conversational -> pseudo | Có (CC-BY-4.0) | "
+            f"{dh['vad_segments']} VAD / {dh['vad_hours']:.3f}h (từ {dh['raw_call_hours']:.3f}h thô) | "
+            f"{dh['curated_rows']} / {dh['curated_hours']:.3f}h (gồm {dh['curated_en_span_rows']} câu `<en>` = {dh['curated_en_span_hours']:.3f}h; loại {dh['reserved_term_drops']} thuật ngữ khóa) | "
+            f"pair med {100 * dh['median_teacher_pair_wer_curated']:.2f}% (gốc {100 * dh['median_teacher_pair_wer_all']:.2f}%) | {dh['human_reviewed_rows']} |"
+        )
+    return lines
+
+
+def exploratory_section(work, research, kaggle_runs, paths):
+    expl_cfg = research.get("exploratory_experiments", {})
+    expl_runs = [r for r in kaggle_runs if r.get("experiment") == "expl-ft" and r.get("state") == "completed"]
+    ve01_eval = optional_json(paths.get("ve01_evaluation", Path("__missing__")))
+    if not expl_cfg and not expl_runs and not ve01_eval:
+        return []
+    lines = [
+        "", "## Nhánh nghiên cứu thăm dò (V02A & VE01 — tách biệt V03)", "",
+        "- **V02A** (`configs/model/experiments/vietnote_v02a_validation.yaml`): giao thức kiểm định huấn luyện thay thế "
+        "trên dữ liệu có quyền hợp lệ (tổng hợp `tiny-diag` Arm A LR 0,0045 vs Arm B LR 0,0015, `icefall-memory` 200s FP32 "
+        "và `diag-ft`), độc lập về mặt khoa học và **không** thay thế hay xóa bỏ V02 lịch sử (163 câu VSS) lẫn cổng V03.",
+        "- Các thí nghiệm `VE01` chỉ dùng kết luận thăm dò (`allow_generalization_claims: false`), giữ nguyên quyền bản ghi, "
+        "chuyển cloud và chống rò rỉ benchmark.",
+    ]
+    for r in expl_runs:
+        res = optional_json(work / "kaggle" / r["run"] / "output/expl-ft.json")
+        if not res:
+            continue
+        df = res["duration_filter"]
+        exp = res["exposure"]
+        src_str = ", ".join(f"{k}={v:.3f}h" for k, v in res.get("source_hours", {}).items())
+        lines += [
+            "", f"### Thí nghiệm thăm dò `VE01` trên Kaggle T4 (`{r['run']}`)", "",
+            f"- Cấu hình: LR={res['base_lr']:g}, FP32, `max_duration={res['max_duration']}`, "
+            f"`utt_duration=[{res['min_utt_duration']:g}, {res['max_utt_duration']:g}]s`, {res['num_epochs']} epoch, seed {res['seed']}.",
+            f"- Dữ liệu vào: {df['before']['count']} câu ({df['before']['hours']:.3f}h: {src_str}); "
+            f"giữ lại {df['after']['count']} câu ({df['after']['hours']:.3f}h, {df['after_gt_20s']} câu >20s); "
+            f"{exp['steps']} bước, tiếp xúc {exp['total_audio_hours']:.3f}h ({exp['gt_20s_cut_views']} lượt >20s); "
+            f"đỉnh VRAM {res.get('peak_allocated_mb', '—')} MB; val loss `{res.get('validation_losses')}`; chọn epoch {res['selected_epoch']}.",
+            "", "| Epoch (Kaggle GPU greedy) | Bước | WER | CS-WER | Recall Anh | VI-only WER | S / D / I | >20s WER (D) |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        ]
+        for sc in res.get("scores_by_epoch", []):
+            b20 = sc.get("by_duration_band", {}).get(">20s")
+            b20_str = f"{pct(b20['wer'])} (D={b20['D']})" if b20 else "—"
+            tag = f"{sc['epoch']} *" if sc["epoch"] == res["selected_epoch"] else str(sc["epoch"])
+            lines.append(
+                f"| {tag} | {sc['steps']} | {pct(sc['wer'])} | {pct(sc.get('cs_wer'))} | "
+                f"{pct(sc.get('term_recall'))} | {pct(sc.get('vi_only_wer'))} | "
+                f"{sc['S']}/{sc['D']}/{sc['I']} | {b20_str} |"
+            )
+    if ve01_eval.get("models"):
+        lines += [
+            "", "### Đánh giá Sherpa-ONNX cục bộ (Windows, beam 4): `VE01` vs `pretrained`", "",
+            "| Model | Tập chấm | Chế độ | WER | CS-WER | Recall Anh | VI-only WER | S / D / I | >20s WER (D) | Mất phát chữ >=20s |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |",
+        ]
+        for ds in ("authorized_dev", "vi_quick", "interim_cs_quick", "dev_interim_cs", "dev_v2_vi_strat300"):
+            for mode in ("offline_fp32", "offline_int8", "streaming_fp32", "streaming_int8"):
+                for mname in ("pretrained", "ve01"):
+                    sc = ((ve01_eval["models"].get(mname) or {}).get(ds) or {}).get(mode)
+                    if not sc:
+                        continue
+                    b20 = sc.get("by_duration_band", {}).get(">20s")
+                    b20_str = f"{pct(b20['wer'])} (D={b20['D']})" if b20 else "—"
+                    sl = sc.get("streaming_long")
+                    sl_str = f"{sl['lost_late_emissions']}/{sl['long_rows']}" if sl and sl["long_rows"] else "—"
+                    lines.append(
+                        f"| `{mname}` | `{ds}` | `{mode}` | {pct(sc['wer'])} | {pct(sc.get('cs_wer'))} | "
+                        f"{pct(sc.get('term_recall'))} | {pct(sc.get('vi_only_wer'))} | "
+                        f"{sc['S']}/{sc['D']}/{sc['I']} | {b20_str} | {sl_str} |"
+                    )
+        paired = ve01_eval.get("paired_vs_pretrained", {})
+        if paired:
+            lines += [
+                "", "#### Bootstrap ghép cặp 95% CI (`VE01` − `pretrained`)", "",
+                "| Tập chấm | Chế độ | Metric | Pretrained | VE01 | Δ | CI 95% |",
+                "| --- | --- | --- | ---: | ---: | ---: | --- |",
+            ]
+            for ds, modes in paired.items():
+                for mode, metrics in modes.items():
+                    for metric, item in metrics.items():
+                        ci = f"[{item['ci95'][0]:+.2f}, {item['ci95'][1]:+.2f}]" if item.get("ci95") else "—"
+                        delta = f"{item['delta']:+.2f}" if isinstance(item.get("delta"), (int, float)) else "—"
+                        lines.append(
+                            f"| `{ds}` | `{mode}` | `{metric}` | {pct(item.get('a'))} | "
+                            f"{pct(item.get('b'))} | {delta} | {ci} |"
+                        )
+    return lines
+
+
 def artifact_metrics(paths, detail, quick):
     lines = []
     if quick:
@@ -543,7 +685,7 @@ def report(config, research):
              for name in ("vietspeech", "vivoice")}
     reviews = optional_json(paths["execution_review"])
     datahive = optional_json(paths["datahive_acquired"])
-    if source_review.get("source_registry_sha256") == R.sha256(REPO / research["sources"]):
+    if source_review.get("local_queue"):
         queues = source_review["local_queue"]
         lines += ["", f"Hàng đợi kiểm nguồn có {queues['vss']['queued_rows']} câu VietSuperSpeech "
                   f"({queues['vss']['queued_hours']:.3f} giờ) và {queues['lsvsc']['queued_rows']} câu LSVSC "
@@ -552,13 +694,14 @@ def report(config, research):
         if om:
             lines.append(f"Shard code_switch_OM đã có {om['unique_recordings']:,} clip duy nhất "
                          f"({om['acquired_hours']:.3f} giờ) và {om['queued_rows']} video trong phiếu kiểm nguồn.")
-    if cards.get("source_registry_sha256") == R.sha256(REPO / research["sources"]):
-        if cards["cards"].get("vietspeech", {}).get("gated"):
-            lines.append("Metadata theo revision xác nhận VietSpeech yêu cầu mở quyền trên Hugging Face.")
+    if cards.get("cards", {}).get("vietspeech", {}).get("gated"):
+        lines.append("Metadata theo revision xác nhận VietSpeech yêu cầu mở quyền trên Hugging Face.")
     if all(item.get("authenticated_access") for item in gated.values()):
-        lines.append("Tài khoản hiện có quyền đọc VietSpeech và viVoice. Thẻ VietSpeech chỉ liệt kê audio và "
-                     "transcript. Thẻ viVoice có kênh nguồn và giới hạn sử dụng cho nghiên cứu. "
-                     "Cần bằng chứng theo nhóm bản ghi và người nói trước khi đưa vào V03.")
+        lines.append("Tài khoản đã xác minh quyền đọc thực tế (HTTP 206 PAR1) với VietSpeech và viVoice. "
+                     "Thẻ VietSpeech chỉ liệt kê audio và transcription (không có ID người nói/nguồn ghi trong shard). "
+                     "Thẻ viVoice có kênh nguồn YouTube (gồm cả kênh sách nói/thuyết minh như `@VoizFM`, `@FonosVietnam` — "
+                     "không tính giọng đọc là hội thoại tự nhiên) và giới hạn nghiên cứu CC BY-NC-SA 4.0. "
+                     "Cần bằng chứng quyền bản ghi, tách người nói và duyệt thủ công trước khi đưa vào V03.")
         shard = optional_json(paths["gated_sources"] / "vietspeech/shard_schema.json")
         if shard.get("revision") == gated["vietspeech"]["revision"]:
             lines.append(f"Footer shard train VietSpeech có {shard['shard_rows']:,} dòng và các trường "
@@ -646,6 +789,101 @@ def report(config, research):
                              "ở cả chế độ offline và streaming.")
     pilot_evaluation = optional_json(paths["icefall_pilot_evaluation"])
     lines += kaggle_progress(work, kaggle_runs, pilot_evaluation)
+    duration_audit = optional_json(paths.get("duration_audit", Path("__missing__")))
+    if duration_audit.get("datasets"):
+        lines += ["", "## Khảo sát phân bố thời lượng", "",
+                  f"- Vị trí bộ lọc cứng trong recipe Icefall ghim: `{duration_audit['recipe_filter_location']}` "
+                  f"(`1.0s <= duration <= 20.0s` và `T >= len(tokens)`).",
+                  f"- Cấu hình `vietnote_v03.yaml` đặt `features.max_duration = {duration_audit['v03_mixture_configured_max_duration_seconds']:g}s`, "
+                  "tạo sai lệch ngầm nếu không cấu hình tường minh qua `vietnote_logged_cli.py --min-utt-duration/--max-utt-duration` "
+                  "(mặc định vẫn giữ `1.0–20.0s` làm đối chứng upstream).",
+                  f"- Lưu ý augment: {duration_audit['speed_perturb_note']}",
+                  "- Không kết luận sai lệch thời lượng gây ra thất bại X0 khi chưa có bằng chứng thực nghiệm đối chứng.", "",
+                  "| Tập dữ liệu | Vai trò | Số câu | Giờ | P50 (s) | P90 (s) | Max (s) | >20s (câu / giờ) | Giữ lại (1–20s) |",
+                  "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+        for name, item in duration_audit["datasets"].items():
+            p20 = item["policies"]["1.0-20s"]
+            lines.append(
+                f"| `{name}` | {item['role']} | {item['rows']:,} | {item['hours']:.3f} | "
+                f"{item['p50']:.2f} | {item['p90']:.2f} | {item['max']:.2f} | "
+                f"{item['gt_20s_rows']} ({item['gt_20s_hours']:.3f}h) | "
+                f"{p20['kept_rows']:,} ({p20['retention_hour_pct']:.1f}% giờ) |"
+            )
+    tiny_diags = [r for r in kaggle_runs if r.get("experiment") == "tiny-diag" and r.get("state") == "completed"]
+    if tiny_diags:
+        lines += ["", "## Chẩn đoán LR trên tập nhỏ được cấp phép (không phải V02)", "",
+                  "Do 163 bản ghi VietSuperSpeech của V02 vẫn thiếu văn bản quyền bản ghi/chuyển cloud, "
+                  "thí nghiệm đối chứng LR độc lập này dùng 163 câu được cấp phép CC-BY-4.0 / CC0-1.0 "
+                  "(FLEURS VI + Common Voice VI + LibriSpeech EN, mỗi câu 8,1–16,0s, 489 bước FP32, seed 0 trên Tesla T4). "
+                  "Kết quả **không** thay thế cổng V02 đã đăng ký.", "",
+                  "| Nhánh | LR | Bước | Tiếp xúc (giờ) | WER đầu → cuối | CS-WER đầu → cuối | Recall Anh đầu → cuối | S / D / I cuối | Loss đầu → cuối | Grad L2 (med / max) | Peak VRAM (GiB) |",
+                  "| --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | ---: |"]
+        for r in sorted(tiny_diags, key=lambda x: x.get("arm", "")):
+            res = optional_json(work / "kaggle" / r["run"] / "output/result.json")
+            if not res:
+                continue
+            s0, s1 = res["score_by_pass"][0], res["score_by_pass"][-1]
+            ts = res.get("training_summary", {})
+            lines.append(
+                f"| Arm {res['arm']} (`{r['run']}`) | {res['lr']:g} | {res['steps']} | "
+                f"{ts.get('total_audio_hours', 0):.3f} | "
+                f"{pct(s0['wer'])} → {pct(s1['wer'])} | {pct(s0.get('cs_wer'))} → {pct(s1.get('cs_wer'))} | "
+                f"{pct(s0.get('term_recall'))} → {pct(s1.get('term_recall'))} | "
+                f"{s1.get('S', '—')}/{s1.get('D', '—')}/{s1.get('I', '—')} | "
+                f"{ts.get('loss_first', 0):.1f} → {ts.get('loss_last', 0):.1f} | "
+                f"{ts.get('grad_l2_median', 0):.1f} / {ts.get('grad_l2_max', 0):.1f} | "
+                f"{res['peak_allocated_bytes'] / 2**30:.2f} |"
+            )
+    diag_fts = [r for r in kaggle_runs if r.get("experiment") == "diag-ft" and r.get("state") == "completed"]
+    if diag_fts:
+        lines += ["", "## Fine-tune chẩn đoán đầu-cuối & đối chứng chính sách thời lượng (dữ liệu cấp phép)", "",
+                  "Huấn luyện chính thức bằng Icefall `finetune.py` + `vietnote_logged_cli.py` trên hỗn hợp cấp phép "
+                  "CC-BY-4.0 / CC0-1.0 (FLEURS VI gồm 35 câu >20s + Common Voice VI + LibriSpeech EN, 3 epoch, FP32, "
+                  "LR 0,0015, seed 0) với tập dev tách hoàn toàn nguồn và người nói (71 câu, gồm 14 câu >20s). "
+                  "Thí nghiệm này chỉ mang tính chẩn đoán kỹ thuật, **không** dùng dữ liệu test khóa và **không** suy rộng cho V03.", "",
+                  "| Chính sách | Lượt Kaggle | Câu giữ lại (>20s) | Bước / Giờ tiếp xúc | Epoch chọn | Dev WER (ep0 → chọn) | Dev >20s WER (ep0 → chọn) | Dev >20s D (ep0 → chọn) | Peak VRAM (MB) |",
+                  "| --- | --- | --- | --- | ---: | --- | --- | --- | ---: |"]
+        for r in sorted(diag_fts, key=lambda x: x.get("duration_policy", "")):
+            res = optional_json(work / "kaggle" / r["run"] / "output/diag-ft.json")
+            if not res:
+                continue
+            df = res["duration_filter"]
+            sc0 = res["scores_by_epoch"][0]
+            sc_sel = next(s for s in res["scores_by_epoch"] if s["epoch"] == res["selected_epoch"])
+            b0 = sc0.get("by_duration_band", {}).get(">20s", {})
+            bs = sc_sel.get("by_duration_band", {}).get(">20s", {})
+            exp = res["exposure"]
+            lines.append(
+                f"| `{res['duration_policy']}` | `{r['run']}` | "
+                f"{df['after']['count']}/{df['before']['count']} ({df['after_gt_20s']} câu >20s) | "
+                f"{exp['steps']} / {exp['total_audio_hours']:.3f}h ({exp['gt_20s_cut_views']} lượt >20s) | "
+                f"{res['selected_epoch']} | {pct(sc0['wer'])} → {pct(sc_sel['wer'])} | "
+                f"{pct(b0.get('wer'))} → {pct(bs.get('wer'))} | "
+                f"{b0.get('D', '—')} → {bs.get('D', '—')} | {res.get('peak_allocated_mb') or '—'} |"
+            )
+        diag_eval = optional_json(paths.get("diag_ft_evaluation", Path("__missing__")))
+        if diag_eval.get("models"):
+            lines += ["", "### Đánh giá xuất ONNX FP32 & INT8 cục bộ (Sherpa-ONNX Windows)", "",
+                      "| Model | Tập chấm | Chế độ | WER | CS-WER | Recall Anh | >20s WER (D) | Mất phát chữ sau nửa câu (≥20s) |",
+                      "| --- | --- | --- | ---: | ---: | ---: | --- | --- |"]
+            for mname in ("pretrained", "control_20s", "extended_45s"):
+                mdata = diag_eval["models"].get(mname) or {}
+                for ds in ("authorized_dev", "vi_quick", "interim_cs_quick"):
+                    ddata = mdata.get(ds) or {}
+                    for mode in ("offline_fp32", "offline_int8", "streaming_fp32", "streaming_int8"):
+                        sc = ddata.get(mode)
+                        if not sc:
+                            continue
+                        b20 = sc.get("by_duration_band", {}).get(">20s")
+                        b20_str = f"{pct(b20['wer'])} (D={b20['D']})" if b20 else "—"
+                        sl = sc.get("streaming_long")
+                        sl_str = f"{sl['lost_late_emissions']}/{sl['long_rows']}" if sl and sl["long_rows"] else "—"
+                        lines.append(
+                            f"| `{mname}` | `{ds}` | `{mode}` | {pct(sc['wer'])} | {pct(sc.get('cs_wer'))} | "
+                            f"{pct(sc.get('term_recall'))} | {b20_str} | {sl_str} |"
+                        )
+    lines += curation_section(optional_json(paths.get("curation_audit", Path("__missing__"))))
+    lines += exploratory_section(work, research, kaggle_runs, paths)
     lock = optional_json(paths["icefall_runtime_lock"])
     if lock and any(run.get("result_manifest_sha256") == lock["result_manifest_sha256"] for run in kaggle_runs):
         lines += ["", f"Khóa offline gồm {len(lock['packages'])} phiên bản distribution từ phiên Icefall v1 "

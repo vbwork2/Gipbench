@@ -110,6 +110,17 @@ def run_icefall_probe(config, environment, out):
         if config["experiment"] == "icefall-memory":
             run_fleurs_memory(config, root, out, recipe, icefall, initial)
             return
+        if config["experiment"] == "tiny-diag":
+            run_tiny_diag(config, root, out, recipe, icefall, initial)
+            return
+        if config["experiment"] == "diag-ft":
+            env = dict(os.environ, PYTHONPATH=str(icefall), OMP_NUM_THREADS="1", LHOTSE_AUDIO_BACKEND="LibsndfileBackend")
+            run_diag_ft(config, root, out, recipe, icefall, initial, env)
+            return
+        if config["experiment"] == "expl-ft":
+            env = dict(os.environ, PYTHONPATH=str(icefall), OMP_NUM_THREADS="1", LHOTSE_AUDIO_BACKEND="LibsndfileBackend")
+            run_expl_ft(config, root, out, recipe, icefall, initial, env)
+            return
         pilot = None
         if config["experiment"] == "icefall-pilot":
             expected = config["pilot_payload_sha256"]

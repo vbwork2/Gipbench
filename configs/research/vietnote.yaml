@@ -2,9 +2,12 @@ objective: Reduce unseen Vietnamese-English code-switching errors while preservi
 family: vietnote_zipformer
 experiment_config: configs/model/experiments/vietnote_v03.yaml
 validation_config: configs/model/experiments/vietnote_validation.yaml
+v02a_config: configs/model/experiments/vietnote_v02a_validation.yaml
+exploratory_config: configs/model/experiments/vietnote_ve01_exploratory.yaml
 memory_config: configs/model/experiments/vietnote_memory.yaml
 tiny_followup_config: configs/model/experiments/vietnote_tiny_low_lr.yaml
 sources: configs/dataset/vietnote_sources.yaml
+curation_policy: configs/dataset/vietnote_curation_policy.yaml
 strategies: configs/research/vietnote_strategies.yaml
 scorer_files: [core/textnorm.py, core/normprofiles.py, core/align.py, core/scoring.py, core/evalstats.py, bench/evaluate.py]
 evidence:
@@ -43,7 +46,22 @@ evidence:
   icefall_runtime_lock: data/work/vietnote/kaggle/icefall-t4-lock/lock.json
   icefall_export_lock: data/work/vietnote/kaggle/icefall-fleurs-t4-lock/lock.json
   icefall_pilot_evaluation: results/vietnote/v00/icefall_fleurs_pilot/result.json
+  duration_audit: data/work/vietnote/duration_audit/report.json
+  diag_ft_evaluation: data/work/vietnote/diag_ft/evaluation.json
+  curation_audit: data/work/vietnote/curation/audit_summary.json
+  ve01_evaluation: data/work/vietnote/ve01/evaluation.json
   conventional_results: results/vietnote/v03/result.json
+exploratory_experiments:
+  V02A:
+    strategy: conventional
+    title: Alternative authorized training validation (LR 0.0015 vs 0.0045 and 200s memory)
+    requires: [V00, V01]
+    protocol: configs/model/experiments/vietnote_v02a_validation.yaml
+  VE01:
+    strategy: conventional
+    title: Exploratory fine-tuning on authorized mixed conversational/read VI and EN/CS corpus
+    requires: [V00, V01, V02A]
+    protocol: configs/model/experiments/vietnote_ve01_exploratory.yaml
 experiments:
   V02P:
     strategy: conventional

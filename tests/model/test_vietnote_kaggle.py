@@ -113,3 +113,68 @@ def test_sync_checks_identity_and_hash_before_recording_completion(tmp_path, mon
     (tmp_path / "output/environment.json").write_text(json.dumps({"gpu": "changed"}), encoding="utf-8")
     with pytest.raises(ValueError, match="modified result"):
         kaggle.sync(tmp_path, state)
+
+
+def test_v02_arms_have_distinct_identities(tmp_path, monkeypatch):
+    monkeypatch.setattr(kaggle, "registry", lambda: tmp_path)
+    monkeypatch.setattr(kaggle, "prepare_v02", lambda d, c, r: {
+        "sha256": "a" * 64, "bytes": 10, "members_manifest_sha256": "b" * 64,
+        "train_rows": 163, "train_manifest_sha256": kaggle.TINY_SHA256,
+        "model_revision": "rev", "icefall_commit": "commit",
+    })
+    a = kaggle.prepare(argparse.Namespace(owner="my-account", experiment="V02", internet=False, runtime=None, arm="A"))
+    b = kaggle.prepare(argparse.Namespace(owner="my-account", experiment="V02", internet=False, runtime=None, arm="B"))
+    assert a["run"] != b["run"]
+    assert a["arm"] == "A" and a["lr"] == 0.0045
+    assert b["arm"] == "B" and b["lr"] == 0.0015
+
+
+def test_expl_ft_prepare_verify_and_license_guard(tmp_path, monkeypatch):
+    monkeypatch.setattr(kaggle, "registry", lambda: tmp_path)
+    monkeypatch.setattr(kaggle, "doctor", lambda: {"authentication": "verified"})
+    monkeypatch.setattr(kaggle, "expl_ft_inputs", lambda commit: (
+        {"train.jsonl": b'{"id":"t1"}\n', "valid.jsonl": b'{"id":"v1"}\n'},
+        {"license": kaggle.AUTHORIZED_LICENSE, "members_manifest_sha256": "c" * 64,
+         "train_rows": 1, "valid_rows": 1,
+         "train_manifest_sha256": "d" * 64, "valid_manifest_sha256": "e" * 64,
+         "source_hours": {"datahive_vi_curated": 1.0}},
+    ))
+    state = kaggle.prepare(argparse.Namespace(owner="my-account", experiment="expl-ft", internet=True, runtime=None))
+    assert state["experiment"] == "expl-ft"
+    assert state["bundle"]["license"] == kaggle.AUTHORIZED_LICENSE
+    run = tmp_path / state["run"]
+    assert "DataHive VI" in kaggle.read_json(run / "dataset/dataset-metadata.json")["description"]
+
+    # Mutating bundle license must be rejected before submit
+    bad_state = dict(state, bundle=dict(state["bundle"], license="unresolved"))
+    with pytest.raises(ValueError, match="transfer policy"):
+        kaggle.submit(run, bad_state, argparse.Namespace(timeout_seconds=1800, accelerator=None, approval=None))
+
+    # verify_result checks expl-ft.json fields and checkpoint sha256
+    out = tmp_path / "out"
+    out.mkdir()
+    ckpt = out / "selected.pt"
+    ckpt.write_bytes(b"weights")
+    env = out / "environment.json"
+    kaggle.write_json(env, {"gpu": "Tesla T4", "cuda_probe_passed": True,
+                            "gpu_free_bytes": 90, "gpu_total_bytes": 100})
+    rep = out / "expl-ft.json"
+    kaggle.write_json(rep, {
+        "experiment": "expl-ft",
+        "train_manifest_sha256": state["bundle"]["train_manifest_sha256"],
+        "valid_manifest_sha256": state["bundle"]["valid_manifest_sha256"],
+        "selected_checkpoint_sha256": sha256_file(ckpt),
+    })
+    files = {}
+    for name in ("duration-filter.json", "train.log", "train.jsonl", "valid.jsonl", "runtime-packages.json", "requirements.txt"):
+        p = out / name
+        p.write_text("ok", encoding="utf-8")
+        files[name] = sha256_file(p)
+    files["environment.json"] = sha256_file(env)
+    files["expl-ft.json"] = sha256_file(rep)
+    files["selected.pt"] = sha256_file(ckpt)
+    kaggle.write_json(out / "result-manifest.json", {
+        "run": state["run"], "experiment": "expl-ft", "commit": state["commit"],
+        "bundle_sha256": state["bundle"]["sha256"], "files": files,
+    })
+    assert kaggle.verify_result(out, state)["files"]["selected.pt"] == sha256_file(ckpt)

@@ -1,0 +1,69 @@
+# Exploratory fine-tuning experiment VE01
+# Uses only cloud-cleared CC-BY-4.0 / CC0-1.0 subsets from the existing reservoir
+# (including newly curated conversational DataHive VI and long >20s FLEURS clips).
+# Real medical CS (pool/vietnote_vimedcss_cs@v1) and VSS CS (pool/vss_cs@v5) are excluded
+# from Kaggle cloud upload until recording/transfer rights are documented.
+
+name: vietnote_ve01
+scope: exploratory_only
+allow_generalization_claims: false
+family: vietnote_zipformer
+description: Exploratory conventional fine-tuning on Kaggle T4 with authorized mixed conversational/read VI and EN/CS replay
+base_model: models/vietnote78
+license: CC-BY-4.0 / CC0-1.0
+requires: [V00, V01, V02A]
+kaggle_experiment: expl-ft
+
+corpus:
+  vi_conversational_pseudo:
+    source: data/work/vietnote/curation/datahive_train_curated.jsonl
+    provenance: pseudo_labeled (vietnote78+gip15_agreed)
+    held_out_dev_calls: [vi_000002, vi_000004, vi_000008]
+    license: CC-BY-4.0
+  vi_read_fleurs:
+    release: pool/vietnote_fleurs_vi@v2
+    provenance: existing_supervised
+    retain_all_gt20s_train: true
+    license: CC-BY-4.0
+  vi_read_cv_other:
+    source: data/work/vietnote/curation/cv_other_curated.jsonl
+    provenance: existing_supervised (auto_curated)
+    license: CC0-1.0
+  en_replay:
+    release: pool/vietnote_librispeech_en@v2
+    provenance: existing_supervised
+    target_share: 0.20
+    license: CC-BY-4.0
+  excluded_pending_cloud_rights:
+    - pool/vietnote_vimedcss_cs@v1
+    - pool/vss_cs@v5
+    - pool/distill@v6
+    - pool/vivos_train@v3
+
+train:
+  recipe: vietnote_logged_cli + icefall finetune.py
+  precision: fp32
+  use_fp16: false
+  lr: 0.0015
+  lr_note: Initial candidate from tiny-diag Arm B vs Arm A (not an established optimum)
+  lr_batches: 100000
+  lr_epochs: 100
+  max_duration: 160
+  min_utt_duration: 1.0
+  max_utt_duration: 35.0
+  num_epochs: 3
+  buckets: 8
+  on_the_fly_feats: true
+  enable_musan: false
+  seed: 0
+
+evaluation:
+  kaggle_per_epoch_dev: authorized_dev (71 utts, source/speaker disjoint)
+  local_sherpa_onnx_modes: [offline_fp32, offline_int8, streaming_fp32, streaming_int8]
+  local_sets:
+    - authorized_dev (71 utts)
+    - vi_quick (36 utts)
+    - interim_cs_quick (65 utts)
+    - dev/dev_interim_cs@1 (323 utts, offline FP32/INT8)
+    - dev_v2_vi_strat300 (300 utts stratified <10s/10-20s/>20s from dev/dev_v2_vi@1, offline FP32/INT8)
+  metrics: [wer, cer, cs_wer, term_recall, vi_retention, deletions, duration_bands, streaming_late_emissions]

@@ -28,12 +28,23 @@ sources:
     url: https://github.com/Bak3rLi/CanVEC
     license: unresolved for recordings
   vietspeech:
-    status: gated
+    status: pilot_quarantine_provenance_and_speaker_review
     repo: NhutP/VietSpeech
     revision: 0f18688afa9b64ea515d3fdaad850999b86a0f52
+    split: train
+    file: data/train-00000-of-00027.parquet
+    bytes: 4838279065
+    sha256: e2ea2c975f3dee6ba8f0402f086b0f07ad3c681af60af353fd175528d53a315d
     license: Apache-2.0 in dataset card
+    dataset: vietspeech:train
+    text: transcription
+    label_source: human_or_upstream_unverified:vietspeech
+    speech_type: natural_social_unverified
+    domain: social_multi_accent
+    language_category: vi_replay_candidate
     repository_bytes: 130501007846
-    next_action: Accept gated access on Hugging Face, then inspect a pinned shard for recording rights, speaker IDs and transcript provenance.
+    row_flags: {review_required: true, speaker_ids_available: false}
+    next_action: Obtain source-recording and speaker provenance from MMLab-UIT and complete human review before V03 eligibility.
   vietprism:
     status: pending_author_approval
     url: https://arxiv.org/abs/2609.30005
@@ -47,11 +58,25 @@ sources:
     repository_bytes: 74224155880
     excluded_splits: [validation, test]
   vivoice:
-    status: gated_research_only
+    status: pilot_quarantine_research_only_channel_review
     repo: capleaf/viVoice
     revision: 693e9882c8e73b31e96a723741fa1861c3252b75
+    split: train
+    file: data/train-00000-of-00354.parquet
+    bytes: 475943504
+    sha256: aa35a87e66d8901cb5b4884f5c8131ac4175144a6e80f7388e627084586aadb1
     license: CC-BY-NC-SA-4.0
+    dataset: vivoice:train
+    text: text
+    source: channel
+    label_source: upstream_youtube_unverified:vivoice
+    speech_type: youtube_multi_channel_unverified
+    domain: youtube_multi_channel
+    language_category: vi_replay_candidate
+    metadata: [channel]
     repository_bytes: 168570951374
+    row_flags: {research_only: true, review_required: true}
+    next_action: Verify per-channel recording rights, natural vs read style, and human transcript accuracy before V03 eligibility.
   lsvsc:
     status: pilot_quarantine_transcript_and_recording_rights
     repo: doof-ferb/LSVSC

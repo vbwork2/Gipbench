@@ -12,6 +12,16 @@ class ByteBudgetExceeded(OSError):
     pass
 
 
+def _hf_token():
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    if token:
+        return token.strip()
+    cached = Path.home() / ".cache/huggingface/token"
+    if cached.is_file():
+        return cached.read_text(encoding="utf-8").strip()
+    return ""
+
+
 class ParquetRanges(io.RawIOBase):
     block_size = 4 * 1024**2
 
@@ -20,6 +30,7 @@ class ParquetRanges(io.RawIOBase):
         self.budget, self.reserve = budget, reserve
         self.offset = self.transferred = 0
         self._last_start, self._last_block = None, b""
+        self._token = _hf_token() if url.startswith("https://huggingface.co/") else ""
         cache.mkdir(parents=True, exist_ok=True)
 
     def readable(self):
@@ -51,7 +62,10 @@ class ParquetRanges(io.RawIOBase):
         if shutil.disk_usage(self.cache).free < self.reserve + length:
             raise OSError(f"Insufficient disk space in {self.cache}")
         end = start + length - 1
-        request = Request(self.url, headers={"Range": f"bytes={start}-{end}", "Accept-Encoding": "identity"})
+        headers = {"Range": f"bytes={start}-{end}", "Accept-Encoding": "identity"}
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+        request = Request(self.url, headers=headers)
         with urlopen(request, timeout=90) as response:
             if response.status != 206 or response.headers.get("Content-Range") != f"bytes {start}-{end}/{self.size}":
                 raise OSError("The server did not return the pinned byte range")

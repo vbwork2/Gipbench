@@ -130,6 +130,39 @@ flowchart LR
 
 Checkpoint V02 hiện lưu trọng số để chấm lại hoặc export. Pilot FLEURS trên Kaggle nạp lại optimizer, scheduler và GradScaler từ checkpoint epoch 1, rồi hoàn tất epoch 2 ở bước thứ 8. Cuối epoch 2, scheduler và GradScaler khớp lượt liên tục. Trọng số và optimizer còn lệch. Checkpoint lưu sampler và thiếu trạng thái RNG. [Kết quả resume](../data/work/vietnote/kaggle/gipbench-icefall-pilot-94a84b5d2b072dcb/output/pilot.json)
 
+Phân tích cơ chế cho thấy phục hồi (resume) hoạt động chức năng nhưng **không đồng nhất số học** với lượt chạy liên tục do: (1) `icefall.checkpoint.save_checkpoint` không lưu trạng thái RNG của Python/NumPy/PyTorch CPU/CUDA, (2) `scan_pessimistic_batches_for_oom()` chạy lại trên lượt resume và ở chế độ mid-epoch (`--start-batch > 0`) làm tiêu hao iterator của sampler đã khôi phục, (3) tính bất định của kernel CUDA/cuDNN và phép chọn `chunk_size`/SpecAugment/PerturbSpeed. Khi cần tái lập nghiêm ngặt hơn, dùng cờ `--save-rng-state` của `scripts/diagnostics/vietnote_logged_cli.py` để lưu/khôi phục trạng thái RNG cạnh checkpoint và bỏ qua `scan_pessimistic_batches_for_oom` khi `start_batch > 0`.
+
+### Chính sách thời lượng huấn luyện
+
+Recipe `finetune.py` ghim từ Icefall cứng hóa bộ lọc `remove_short_and_long_utt` ở `1.0s <= duration <= 20.0s` (cùng điều kiện khung sau subsampling `T >= len(tokens)`), trong khi cấu hình `vietnote_v03.yaml` cho phép `features.max_duration: 45` và `vi_datamodule.py` áp dụng `PerturbSpeed([0.9, 1.1], p=2/3)` khi `--on-the-fly-feats 1`. `scripts/diagnostics/vietnote_logged_cli.py` cho phép cấu hình tường minh `--min-utt-duration` và `--max-utt-duration` (mặc định giữ nguyên `1.0` và `20.0` làm đối chứng upstream) và ghi thống kê trước/sau lọc vào `duration-filter.json`.
+
+### Hai nhánh V02 đối chứng LR
+
+Khi hồ sơ quyền 163 bản ghi V02 được cấp, `gipbench.model.execution.kaggle prepare --experiment V02 --arm A` (`LR=0.0045`) và `--arm B` (`LR=0.0015`) tạo hai lượt chạy độc lập, cùng checkpoint gốc, cùng 163 câu, seed 0, FP32, 489 bước và lưu kết quả riêng tại `data/work/vietnote/v02/tiny_kaggle_lr0045` và `data/work/vietnote/v02/tiny_low_lr`.
+
+## Nhánh thăm dò tách biệt V03 (Curation, V02A & VE01)
+
+Quy trình thăm dò tái sử dụng kho dữ liệu sẵn có theo mức rủi ro nguồn gốc, giữ nguyên rào cản quyền bản ghi, giới hạn chuyển cloud và cổng xác nhận `V03`:
+
+```powershell
+# 1. Tuyển lọc tự động theo nguồn gốc (audit, tách VAD DataHive, ghép cặp 2 teacher & lọc từ khóa/rò rỉ)
+& $py scripts/dataset/vietnote_auto_curate.py --out data/work/vietnote/curation
+
+# 2. Thí nghiệm fine-tuning thăm dò VE01 trên Kaggle T4 (chỉ dữ liệu CC-BY-4.0 / CC0-1.0)
+& $py -m gipbench.model.execution.kaggle prepare --experiment expl-ft --owner <kaggle-user> --runtime data/work/vietnote/kaggle/icefall-fleurs-t4-lock
+& $py -m gipbench.model.execution.kaggle submit --run <run-id> --timeout-seconds 7200
+& $py -m gipbench.model.execution.kaggle watch --run <run-id> --wait-seconds 300
+& $py -m gipbench.model.execution.kaggle sync --run <run-id>
+
+# 3. Xuất ONNX (WSL) & đánh giá Sherpa-ONNX cục bộ (Windows, offline & streaming FP32/INT8)
+& $py scripts/diagnostics/vietnote_ve01_eval.py `
+  --ve01-export data/work/vietnote/ve01/export `
+  --authorized-dev data/work/vietnote/kaggle/<run-id>/output/valid.jsonl `
+  --out data/work/vietnote/ve01
+```
+
+Giao thức `V02A` (`configs/model/experiments/vietnote_v02a_validation.yaml`) và cấu hình `VE01` (`configs/model/experiments/vietnote_ve01_exploratory.yaml`) chỉ phục vụ thăm dò (`allow_generalization_claims: false`) và không thay thế `V02` hay `V03`.
+
 ### Đồng bộ
 
 ```mermaid

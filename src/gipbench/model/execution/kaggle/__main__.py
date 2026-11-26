@@ -18,12 +18,15 @@ from gipbench.core.fileio import sha256_file
 from gipbench.core.manifest import manifest_sha256, read_jsonl
 from gipbench.core.paths import REPO, path
 from gipbench.model.execution.kaggle.bundle import (
-    FLEURS_RELEASE, FLEURS_SHA256, TINY_SHA256, check_approval, fleurs_memory_inputs, fleurs_pilot,
-    portable_name, prepare_v02, write_zip,
+    AUTHORIZED_LICENSE, FLEURS_RELEASE, FLEURS_SHA256, TINY_SHA256, check_approval, diag_ft_inputs,
+    expl_ft_inputs, fleurs_memory_inputs, fleurs_pilot, portable_name, prepare_v02, tiny_diag_inputs, write_zip,
 )
 
-EXPERIMENTS = ("smoke", "synthetic", "icefall", "icefall-pilot", "icefall-memory", "V02")
+EXPERIMENTS = ("smoke", "synthetic", "icefall", "icefall-pilot", "icefall-memory", "tiny-diag", "diag-ft", "expl-ft", "V02")
 FLEURS_EXPERIMENTS = {"icefall-pilot", "icefall-memory"}
+DIAG_EXPERIMENTS = {"tiny-diag", "diag-ft", "expl-ft"}
+PUBLIC_BUNDLE_EXPERIMENTS = FLEURS_EXPERIMENTS | DIAG_EXPERIMENTS
+ARM_LRS = {"A": 0.0045, "B": 0.0015}
 PILOT_EXPORT_REQUIREMENT = ("onnxruntime==1.32.0 "
                             "--hash=sha256:02ea12a28c069ea8510093d95a7f6ff8126bfd9fc5c0d3381c03b80fb2b424ba")
 TERMINAL = {"remote_complete", "failed", "interrupted", "completed", "rejected"}
@@ -135,7 +138,7 @@ def plan(experiment, approval=None, runtime=None):
 
 def notebook_metadata(state):
     dataset = state.get("dataset")
-    if (dataset and state.get("dataset_version") and state["experiment"] not in FLEURS_EXPERIMENTS
+    if (dataset and state.get("dataset_version") and state["experiment"] not in PUBLIC_BUNDLE_EXPERIMENTS
             and not state.get("bundle", {}).get("members_manifest_sha256")):
         dataset = f"{dataset}/{state['dataset_version']}"
     return {
@@ -154,11 +157,26 @@ def prepare(args):
     root = registry()
     root.mkdir(parents=True, exist_ok=True)
     template = Path(__file__).with_name("runtime.py")
+    arm = getattr(args, "arm", None)
+    duration_policy = getattr(args, "duration_policy", None)
+    if args.experiment == "V02" and arm is None:
+        arm = "B"
+    if args.experiment == "tiny-diag" and arm is None:
+        arm = "A"
+    if args.experiment == "diag-ft" and duration_policy is None:
+        duration_policy = "control_20s"
     identity = [args.experiment, args.owner, commit, sha256_file(template), args.internet]
+    if args.experiment == "V02" and arm != "B":
+        identity.extend(["arm", arm, ARM_LRS[arm]])
+    if args.experiment == "tiny-diag":
+        identity.extend(["arm", arm, ARM_LRS[arm]])
+    if args.experiment == "diag-ft":
+        identity.extend(["duration_policy", duration_policy])
     extra = ""
     pilot = None
     memory = None
-    if args.experiment == "icefall" or args.experiment in FLEURS_EXPERIMENTS:
+    diag_bundle = None
+    if args.experiment == "icefall" or args.experiment in PUBLIC_BUNDLE_EXPERIMENTS:
         if not args.internet:
             raise ValueError("The Icefall probe downloads pinned public dependencies")
         helper = template.with_name("icefall_probe.py")
@@ -175,6 +193,16 @@ def prepare(args):
             runner = template.with_name("icefall_memory.py")
             memory = fleurs_memory_inputs(commit)
             identity.extend([sha256_file(runner), memory[1]["members_manifest_sha256"]])
+            extra += "\n" + runner.read_text(encoding="utf-8")
+        elif args.experiment in DIAG_EXPERIMENTS:
+            runner = template.with_name("icefall_diag.py")
+            if args.experiment == "tiny-diag":
+                diag_bundle = tiny_diag_inputs(commit)
+            elif args.experiment == "diag-ft":
+                diag_bundle = diag_ft_inputs(commit)
+            else:
+                diag_bundle = expl_ft_inputs(commit)
+            identity.extend([sha256_file(runner), diag_bundle[1]["members_manifest_sha256"]])
             extra += "\n" + runner.read_text(encoding="utf-8")
     if args.runtime:
         identity.extend(sha256_file(args.runtime / name) for name in ("lock.json", "requirements.txt"))
@@ -193,7 +221,12 @@ def prepare(args):
             "run": slug, "slug": slug, "experiment": args.experiment, "commit": commit,
             "kernel": f"{args.owner}/{slug}", "internet": args.internet, "state": "prepared",
         }
-        if args.experiment == "V02" or args.experiment in FLEURS_EXPERIMENTS:
+        if args.experiment in {"V02", "tiny-diag"}:
+            state["arm"] = arm
+            state["lr"] = ARM_LRS[arm]
+        if args.experiment == "diag-ft":
+            state["duration_policy"] = duration_policy
+        if args.experiment == "V02" or args.experiment in PUBLIC_BUNDLE_EXPERIMENTS:
             dataset_dir = run / "dataset"
             dataset_dir.mkdir(exist_ok=True)
             if pilot:
@@ -207,6 +240,12 @@ def prepare(args):
             elif memory:
                 archive = dataset_dir / "bundle.zip"
                 files, evidence = memory
+                write_zip(archive, files)
+                bundle = {**evidence, "sha256": sha256_file(archive), "bytes": archive.stat().st_size}
+                license_name = "CC-BY-4.0"
+            elif diag_bundle:
+                archive = dataset_dir / "bundle.zip"
+                files, evidence = diag_bundle
                 write_zip(archive, files)
                 bundle = {**evidence, "sha256": sha256_file(archive), "bytes": archive.stat().st_size}
                 license_name = "CC-BY-4.0"
@@ -224,13 +263,26 @@ def prepare(args):
                     "https://huggingface.co/datasets/google/fleurs"
                     + (" Audio converted to 16-bit FLAC." if pilot else "")
                 )
+            elif args.experiment == "expl-ft":
+                dataset_metadata["description"] = (
+                    "Authorized CC-BY-4.0 / CC0-1.0 exploratory speech bundle "
+                    "(DataHive VI conversations, Google FLEURS vi_vn, Mozilla Common Voice vi, OpenSLR LibriSpeech). "
+                    "Audio converted to 16-bit mono 16 kHz FLAC."
+                )
+            elif args.experiment in DIAG_EXPERIMENTS:
+                dataset_metadata["description"] = (
+                    "Authorized CC-BY-4.0 / CC0-1.0 speech subset from audited GipBench releases "
+                    "(Google FLEURS vi_vn, Mozilla Common Voice vi, OpenSLR LibriSpeech train-clean-100). "
+                    "Audio converted to 16-bit mono 16 kHz FLAC."
+                )
             write_json(dataset_dir / "dataset-metadata.json", dataset_metadata)
             write_json(dataset_dir / "bundle-identity.json", bundle)
         notebook = run / "notebook"
         write_json(notebook / "kernel-metadata.json", notebook_metadata(state))
-        config = {k: state[k] for k in ("run", "experiment", "commit", "internet", "bundle", "pilot_payload_sha256")
+        config = {k: state[k] for k in ("run", "experiment", "commit", "internet", "bundle",
+                                        "pilot_payload_sha256", "arm", "lr", "duration_policy")
                   if k in state}
-        if args.experiment == "icefall" or args.experiment in FLEURS_EXPERIMENTS:
+        if args.experiment == "icefall" or args.experiment in PUBLIC_BUNDLE_EXPERIMENTS:
             config["requirements"] = requirements.read_text(encoding="utf-8")
             if pilot:
                 config["requirements"] = config["requirements"].rstrip() + "\n" + PILOT_EXPORT_REQUIREMENT + "\n"
@@ -322,7 +374,13 @@ def submit(run, state, args):
             state["transfer_approval_sha256"] = check_approval(args.approval, state["bundle"])
             if not state["runtime_lock"]:
                 raise ValueError("Prepare V02 with the approved dependency lock after the GPU smoke")
-        elif state["experiment"] not in FLEURS_EXPERIMENTS or state["bundle"].get("license") != "CC-BY-4.0":
+        elif state["experiment"] in FLEURS_EXPERIMENTS:
+            if state["bundle"].get("license") != "CC-BY-4.0":
+                raise ValueError("No transfer policy for this dataset bundle")
+        elif state["experiment"] in DIAG_EXPERIMENTS:
+            if state["bundle"].get("license") != AUTHORIZED_LICENSE:
+                raise ValueError("No transfer policy for this diagnostic bundle")
+        else:
             raise ValueError("No transfer policy for this dataset bundle")
         if sha256_file(run / "dataset/bundle.zip") != state["bundle"]["sha256"]:
             raise ValueError("Prepared bundle was modified")
@@ -422,6 +480,29 @@ def verify_result(result, state):
                 or not all(math.isfinite(step["loss"]) and math.isfinite(step["grad_l2"]) and step["grad_l2"] > 0
                            and 160 <= step["padded_seconds"] <= 200 for step in probe["steps"])):
             raise ValueError("Invalid FP32 memory probe evidence")
+    if state["experiment"] == "tiny-diag":
+        required = {"result.json", "steps.jsonl", "train.jsonl", "runtime-packages.json", "requirements.txt"}
+        if environment["gpu"] != "Tesla T4" or not required <= metadata["files"].keys():
+            raise ValueError("Incomplete tiny-diag artifacts")
+        diag = read_json(result / "result.json")
+        if (diag.get("experiment") != "tiny-diag" or diag.get("not_v02") is not True
+                or diag.get("arm") != state.get("arm") or diag.get("train_rows") != state["bundle"]["train_rows"]
+                or diag.get("train_manifest_sha256") != state["bundle"]["train_manifest_sha256"]
+                or diag.get("steps") != 489):
+            raise ValueError("Invalid tiny-diag evidence")
+    if state["experiment"] in {"diag-ft", "expl-ft"}:
+        report_name = f"{state['experiment']}.json"
+        required = {report_name, "duration-filter.json", "selected.pt", "train.log",
+                    "train.jsonl", "valid.jsonl", "runtime-packages.json", "requirements.txt"}
+        if environment["gpu"] != "Tesla T4" or not required <= metadata["files"].keys():
+            raise ValueError(f"Incomplete {state['experiment']} artifacts")
+        diag = read_json(result / report_name)
+        if (diag.get("experiment") != state["experiment"]
+                or (state["experiment"] == "diag-ft" and diag.get("duration_policy") != state.get("duration_policy"))
+                or diag.get("train_manifest_sha256") != state["bundle"]["train_manifest_sha256"]
+                or diag.get("valid_manifest_sha256") != state["bundle"]["valid_manifest_sha256"]
+                or diag.get("selected_checkpoint_sha256") != metadata["files"]["selected.pt"]):
+            raise ValueError(f"Invalid {state['experiment']} evidence")
     return metadata
 
 
@@ -448,7 +529,8 @@ def sync(run, state):
                 or measurement.get("steps") != 489):
             raise ValueError("The V02 result used a different training manifest")
         state["acceptance_passed"] = measurement["passed"]
-        record = registry().parent / "v02/tiny_low_lr"
+        arm_dir = "tiny_kaggle_lr0045" if state.get("arm") == "A" else "tiny_low_lr"
+        record = registry().parent / "v02" / arm_dir
         record.mkdir(parents=True, exist_ok=True)
         if not (record / "result.json").exists():
             if ((record / "train.jsonl").exists()
@@ -483,6 +565,8 @@ def main():
         if command == "prepare":
             current.add_argument("--owner", required=True)
             current.add_argument("--internet", action="store_true")
+            current.add_argument("--arm", choices=("A", "B"))
+            current.add_argument("--duration-policy", choices=("control_20s", "extended_45s"))
         else:
             current.add_argument("--approval", type=Path)
     for command in ("submit", "status", "logs", "sync", "watch"):

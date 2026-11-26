@@ -1,0 +1,82 @@
+# Alternative authorized training validation protocol (V02A).
+# Scientifically distinct from historical V02 (which remains preserved in vietnote_validation.yaml
+# on 163 VietSuperSpeech recordings pending recording/cloud-transfer rights).
+# Unblocks EXPLORATORY experiments (VE01+) only; does NOT satisfy confirmatory V03 gates.
+
+name: vietnote_v02a
+scope: exploratory_validation_only
+replaces_historical_v02: false
+historical_v02_ref: configs/model/experiments/vietnote_validation.yaml
+base_model: models/vietnote78
+license: CC-BY-4.0 / CC0-1.0
+
+tiny_lr_comparison:
+  experiment: tiny-diag
+  manifest_rows: 163
+  manifest_hours: 0.5311
+  manifest_sha256: 6398a30f4fab100befe409a8e961be0b35fe2990aaade6a6681aa73553995495
+  duration_band_seconds: [8.1, 16.0]
+  passes: 3
+  steps: 489
+  batch_seconds: 16
+  precision: fp32
+  seed: 0
+  sources:
+    - pool/vietnote_fleurs_vi@v2
+    - pool/cv_other@v3
+    - pool/vietnote_librispeech_en@v2
+  arms:
+    A:
+      run: gipbench-tiny-diag-9428a945dd969784
+      lr: 0.0045
+      wer_start: 4.86
+      wer_end: 9.75
+      cs_wer_start: 0.72
+      cs_wer_end: 14.16
+      term_recall_start: 76.67
+      term_recall_end: 6.67
+      grad_l2_median: 690.08
+      grad_l2_max: 13546.62
+      reloaded: true
+      verdict: unstable_regression
+    B:
+      run: gipbench-tiny-diag-21f9a9afb2cc438c
+      lr: 0.0015
+      wer_start: 4.86
+      wer_end: 1.78
+      cs_wer_start: 0.72
+      cs_wer_end: 1.08
+      term_recall_start: 76.67
+      term_recall_end: 70.00
+      grad_l2_median: 313.20
+      grad_l2_max: 10772.87
+      reloaded: true
+      verdict: stable_learning_candidate
+  acceptance:
+    lower_lr_relative_wer_reduction_min: 0.50
+    lower_lr_strictly_better_wer_than_high_lr: true
+    strict_checkpoint_reload: true
+    status: passed
+
+memory_validation:
+  experiment: icefall-memory
+  run: gipbench-icefall-memory-e6be6ca486125e1d
+  release: pool/vietnote_fleurs_vi@v2
+  gpu: Tesla T4
+  precision: fp32
+  limit_seconds: 200
+  longest_clip_seconds: 33.24
+  steps_completed: 3
+  peak_allocated_gib: 8.75
+  peak_reserved_gib: 9.52
+  free_headroom_gib: 4.90
+  min_free_fraction: 0.10
+  status: passed
+
+e2e_recipe_validation:
+  experiment: diag-ft
+  runs:
+    - gipbench-diag-ft-7ba9aab6431ab46b
+    - gipbench-diag-ft-feb9d119b2393aef
+  evaluation: data/work/vietnote/diag_ft/evaluation.json
+  status: passed

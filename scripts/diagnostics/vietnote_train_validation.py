@@ -157,12 +157,18 @@ def tiny(base, rows, settings, out):
     initial = measure(model, sp, rows, features, out / "before.jsonl", catalog)
     torch.cuda.reset_peak_memory_stats()
     metrics = [initial]
+    step_losses, step_grads = [], []
+    total_audio_seconds = 0.0
     with (out / "steps.jsonl").open("x", encoding="utf-8") as log:
         for epoch in range(settings["passes"]):
             for batch in batches(rows, limit, random.Random(seed + epoch)):
                 result = run_step(model, sp, params, opt, sched, make_batch(batch, features))
+                audio_sec = sum(float(row["duration"]) for row in batch)
+                total_audio_seconds += audio_sec
+                step_losses.append(result["loss"])
+                step_grads.append(result["grad_l2"])
                 log.write(json.dumps({**result, "ids": [row["id"] for row in batch],
-                                      "audio_seconds": sum(row["duration"] for row in batch),
+                                      "audio_seconds": audio_sec,
                                       "learning_rates": [g["lr"] for g in opt.param_groups]}) + "\n")
                 log.flush()
             metrics.append(measure(model, sp, rows, features, out / f"pass-{epoch + 1}.jsonl", catalog))
@@ -183,7 +189,22 @@ def tiny(base, rows, settings, out):
         and final["term_recall"] >= initial["term_recall"] - settings["recall_drop_max_pp"]
         and not reloaded.missing_keys and not reloaded.unexpected_keys
     )
+    grads_sorted = sorted(step_grads)
+    n_steps = len(grads_sorted)
+    training_summary = {
+        "loss_first": step_losses[0] if step_losses else None,
+        "loss_last": step_losses[-1] if step_losses else None,
+        "loss_mean": sum(step_losses) / n_steps if n_steps else None,
+        "grad_l2_min": grads_sorted[0] if n_steps else None,
+        "grad_l2_median": grads_sorted[n_steps // 2] if n_steps else None,
+        "grad_l2_p95": grads_sorted[min(n_steps - 1, int(0.95 * (n_steps - 1)))] if n_steps else None,
+        "grad_l2_max": grads_sorted[-1] if n_steps else None,
+        "grad_l2_mean": sum(grads_sorted) / n_steps if n_steps else None,
+        "total_audio_seconds": round(total_audio_seconds, 3),
+        "total_audio_hours": round(total_audio_seconds / 3600.0, 6),
+    }
     return {"passed": passed, "steps": params.batch_idx_train, "score_by_pass": metrics, "max_updates": updates,
+            "training_summary": training_summary,
             "gradients_sha256": R.sha256(out / "steps.jsonl"), "checkpoint_sha256": R.sha256(checkpoint),
             "reloaded": True, "catalog_sha256": R.sha256(catalog_path), "scorer_code_sha256": scorer_code_sha256(),
             "peak_allocated_bytes": peak_allocated, "peak_reserved_bytes": peak_reserved}

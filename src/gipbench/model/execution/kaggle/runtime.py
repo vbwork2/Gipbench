@@ -128,13 +128,19 @@ def train_v02(config, root, out, environment):
     from gipbench.model.train.vietnote_icefall import icefall_source, prepare_recipe, strict_check
 
     protocol = root / "configs/model/experiments/vietnote_validation.yaml"
-    arm = protocol.with_name("vietnote_tiny_low_lr.yaml")
+    arm_cfg = protocol.with_name("vietnote_tiny_low_lr.yaml")
     config_hash = digest(protocol)
-    arm_hash = digest(arm)
+    arm_hash = digest(arm_cfg)
     settings = yaml.safe_load(protocol.read_text(encoding="utf-8"))["tiny"]
-    lr = yaml.safe_load(arm.read_text(encoding="utf-8"))["lr"]
-    if not 0 < lr < settings["lr"]:
-        raise ValueError("Invalid registered lower learning-rate arm")
+    arm = config.get("arm", "B")
+    if arm == "A":
+        lr = float(settings["lr"])
+    elif arm == "B":
+        lr = float(yaml.safe_load(arm_cfg.read_text(encoding="utf-8"))["lr"])
+        if not 0 < lr < settings["lr"]:
+            raise ValueError("Invalid registered lower learning-rate arm")
+    else:
+        raise ValueError(f"Unsupported V02 arm: {arm}")
     settings["lr"] = lr
     base = root / "models/vietnote78"
     card = json.loads((root / "configs/model/vietnote.json").read_text(encoding="utf-8"))
@@ -154,7 +160,8 @@ def train_v02(config, root, out, environment):
     torch.backends.cudnn.allow_tf32 = False
     write_jsonl(out / "train.jsonl", train)
     result = tiny(base, train, settings, out)
-    result.update(config_sha256=config_hash, lr=lr, lr_protocol_sha256=arm_hash,
+    result.update(config_sha256=config_hash, arm=arm, lr=lr,
+                  lr_protocol_sha256=arm_hash if arm == "B" else config_hash,
                   checkpoint_input_sha256=digest(base / "pytorch/pretrained.pt"), model_revision=card["revision"],
                   train_rows=len(train), train_hours=sum(row["duration"] for row in train) / 3600,
                   train_manifest_sha256=digest_train, gpu=environment["gpu"], torch_version=environment["torch"])
@@ -215,7 +222,7 @@ def main(config):
     write_json(out / "environment.json", environment)
     if config["experiment"] == "synthetic":
         synthetic_probe(environment, out)
-    if config["experiment"] in {"icefall", "icefall-pilot", "icefall-memory"}:
+    if config["experiment"] in {"icefall", "icefall-pilot", "icefall-memory", "tiny-diag", "diag-ft", "expl-ft"}:
         run_icefall_probe(config, environment, out)
     if config["experiment"] == "V02":
         with tempfile.TemporaryDirectory(prefix="vietnote-") as temporary:
